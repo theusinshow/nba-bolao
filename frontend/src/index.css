@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --nba-bg: #0a0a0f;
+  --nba-surface: #13131a;
+  --nba-surface-2: #1c1c26;
+  --nba-gold: #c8963c;
+  --nba-gold-light: #e8b45a;
+  --nba-text: #f0f0f0;
+  --nba-text-muted: #888899;
+  --nba-border: rgba(200, 150, 60, 0.15);
+  --nba-east: #4a90d9;
+  --nba-west: #e05c3a;
+  --nba-success: #2ecc71;
+  --nba-danger: #e74c3c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--nba-bg);
+  color: var(--nba-text);
+  font-family: 'Barlow', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--nba-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--nba-gold);
+  border-radius: 3px;
+}
+
+.card {
+  background: var(--nba-surface);
+  border: 1px solid var(--nba-border);
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: rgba(200, 150, 60, 0.4);
+}
+
+.btn-primary {
+  background: var(--nba-gold);
+  color: #0a0a0f;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--nba-gold-light);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.title {
+  font-family: 'Bebas Neue', cursive;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.num {
+  font-family: 'Barlow Condensed', sans-serif;
+}

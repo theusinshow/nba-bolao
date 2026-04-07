@@ -1,0 +1,25 @@
+# Environment variables — NEVER commit real secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc sensitive files found in repo root
+supabasekeys.txt
+OAuth.txt

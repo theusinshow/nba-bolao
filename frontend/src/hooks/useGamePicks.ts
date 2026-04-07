@@ -1,0 +1,82 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import type { Game, GamePick } from '../types'
+
+export function useGamePicks(participantId?: string, seriesId?: string) {
+  const [games, setGames] = useState<Game[]>([])
+  const [picks, setPicks] = useState<GamePick[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!seriesId) return
+    setLoading(true)
+    fetchGames().finally(() => setLoading(false))
+  }, [seriesId])
+
+  useEffect(() => {
+    if (participantId && games.length > 0) fetchPicks()
+  }, [participantId, games])
+
+  async function fetchGames() {
+    if (!seriesId) return
+    const { data } = await supabase
+      .from('games')
+      .select('*')
+      .eq('series_id', seriesId)
+      .order('game_number')
+    if (data) setGames(data as Game[])
+  }
+
+  async function fetchPicks() {
+    if (!participantId || games.length === 0) return
+    const gameIds = games.map((g) => g.id)
+    const { data } = await supabase
+      .from('game_picks')
+      .select('*')
+      .eq('participant_id', participantId)
+      .in('game_id', gameIds)
+    if (data) setPicks(data as GamePick[])
+  }
+
+  async function saveGamePick(gameId: string, winnerId: string) {
+    if (!participantId) return
+
+    // Check if game has started
+    const game = games.find((g) => g.id === gameId)
+    if (game?.tip_off_at && new Date(game.tip_off_at) <= new Date()) {
+      return { error: 'Game already started' }
+    }
+
+    const existing = picks.find((p) => p.game_id === gameId)
+
+    if (existing) {
+      const { data } = await supabase
+        .from('game_picks')
+        .update({ winner_id: winnerId })
+        .eq('id', existing.id)
+        .select()
+        .single()
+      if (data) setPicks((prev) => prev.map((p) => (p.id === existing.id ? (data as GamePick) : p)))
+    } else {
+      const { data } = await supabase
+        .from('game_picks')
+        .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
+        .select()
+        .single()
+      if (data) setPicks((prev) => [...prev, data as GamePick])
+    }
+
+    return { error: null }
+  }
+
+  function getPickForGame(gameId: string): GamePick | undefined {
+    return picks.find((p) => p.game_id === gameId)
+  }
+
+  function isGameLocked(game: Game): boolean {
+    if (!game.tip_off_at) return false
+    return new Date(game.tip_off_at) <= new Date()
+  }
+
+  return { games, picks, loading, saveGamePick, getPickForGame, isGameLocked }
+}
