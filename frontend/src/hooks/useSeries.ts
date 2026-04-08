@@ -31,17 +31,19 @@ export function useSeries(participantId?: string) {
   }
 
   async function fetchSeries() {
-    const { data } = await supabase
-      .from('series')
-      .select(`
-        *,
-        home_team:home_team_id(id, name, abbreviation, conference, seed, primary_color),
-        away_team:away_team_id(id, name, abbreviation, conference, seed, primary_color),
-        winner:winner_id(id, name, abbreviation)
-      `)
-      .order('round')
-      .order('slot')
-    if (data) setSeries(data as Series[])
+    const [{ data: seriesData }, { data: teamsData }] = await Promise.all([
+      supabase.from('series').select('*').order('round', { ascending: true }).order('position', { ascending: true }),
+      supabase.from('teams').select('*'),
+    ])
+    if (!seriesData) return
+    const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
+    const merged = seriesData.map((s) => ({
+      ...s,
+      home_team: teamMap[s.home_team_id] ?? null,
+      away_team: teamMap[s.away_team_id] ?? null,
+      winner: s.winner_id ? (teamMap[s.winner_id] ?? null) : null,
+    }))
+    setSeries(merged as Series[])
   }
 
   async function fetchPicks() {
@@ -80,9 +82,9 @@ export function useSeries(participantId?: string) {
     return picks.find((p) => p.series_id === seriesId)
   }
 
-  function getSeriesBySlot(slot: string): Series | undefined {
-    return series.find((s) => s.slot === slot)
+  function getSeriesById(id: string): Series | undefined {
+    return series.find((s) => s.id === id)
   }
 
-  return { series, picks, loading, savePick, getPickForSeries, getSeriesBySlot }
+  return { series, picks, loading, savePick, getPickForSeries, getSeriesById }
 }

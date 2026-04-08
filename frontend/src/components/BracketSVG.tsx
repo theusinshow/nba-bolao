@@ -1,4 +1,3 @@
-import { getTeam } from '../data/teams2025'
 import type { Series, SeriesPick } from '../types'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
@@ -42,51 +41,51 @@ const EAST_R2_YS = WEST_R2_YS
 const EAST_CF_Y = WEST_CF_Y
 
 interface SlotDef {
-  slot: string
+  id: string
   x: number
   y: number
 }
 
 const SLOT_DEFS: SlotDef[] = [
-  { slot: 'W-R1-1', x: COLS.WR1, y: WEST_R1_YS[0] },
-  { slot: 'W-R1-2', x: COLS.WR1, y: WEST_R1_YS[1] },
-  { slot: 'W-R1-3', x: COLS.WR1, y: WEST_R1_YS[2] },
-  { slot: 'W-R1-4', x: COLS.WR1, y: WEST_R1_YS[3] },
-  { slot: 'W-R2-1', x: COLS.WR2, y: WEST_R2_YS[0] },
-  { slot: 'W-R2-2', x: COLS.WR2, y: WEST_R2_YS[1] },
-  { slot: 'W-CF',   x: COLS.WCF, y: WEST_CF_Y },
-  { slot: 'FINALS', x: COLS.FIN, y: FIN_Y },
-  { slot: 'E-CF',   x: COLS.ECF, y: EAST_CF_Y },
-  { slot: 'E-R2-1', x: COLS.ER2, y: EAST_R2_YS[0] },
-  { slot: 'E-R2-2', x: COLS.ER2, y: EAST_R2_YS[1] },
-  { slot: 'E-R1-1', x: COLS.ER1, y: EAST_R1_YS[0] },
-  { slot: 'E-R1-2', x: COLS.ER1, y: EAST_R1_YS[1] },
-  { slot: 'E-R1-3', x: COLS.ER1, y: EAST_R1_YS[2] },
-  { slot: 'E-R1-4', x: COLS.ER1, y: EAST_R1_YS[3] },
+  { id: 'W1-1', x: COLS.WR1, y: WEST_R1_YS[0] },
+  { id: 'W1-2', x: COLS.WR1, y: WEST_R1_YS[1] },
+  { id: 'W1-3', x: COLS.WR1, y: WEST_R1_YS[2] },
+  { id: 'W1-4', x: COLS.WR1, y: WEST_R1_YS[3] },
+  { id: 'W2-1', x: COLS.WR2, y: WEST_R2_YS[0] },
+  { id: 'W2-2', x: COLS.WR2, y: WEST_R2_YS[1] },
+  { id: 'WCF',  x: COLS.WCF, y: WEST_CF_Y },
+  { id: 'FIN',  x: COLS.FIN, y: FIN_Y },
+  { id: 'ECF',  x: COLS.ECF, y: EAST_CF_Y },
+  { id: 'E2-1', x: COLS.ER2, y: EAST_R2_YS[0] },
+  { id: 'E2-2', x: COLS.ER2, y: EAST_R2_YS[1] },
+  { id: 'E1-1', x: COLS.ER1, y: EAST_R1_YS[0] },
+  { id: 'E1-2', x: COLS.ER1, y: EAST_R1_YS[1] },
+  { id: 'E1-3', x: COLS.ER1, y: EAST_R1_YS[2] },
+  { id: 'E1-4', x: COLS.ER1, y: EAST_R1_YS[3] },
 ]
 
-// Connections: [fromSlot, toSlot, side: 'left'|'right']
+// Connections: [fromId, toId, side: 'left'|'right']
 // "left" means the connector exits from the right side of `from` and enters from the left of `to`
 // "right" means the opposite (East side — exits left, enters right)
 const CONNECTIONS: Array<[string, string, 'right' | 'left']> = [
-  ['W-R1-1', 'W-R2-1', 'left'],
-  ['W-R1-2', 'W-R2-1', 'left'],
-  ['W-R1-3', 'W-R2-2', 'left'],
-  ['W-R1-4', 'W-R2-2', 'left'],
-  ['W-R2-1', 'W-CF', 'left'],
-  ['W-R2-2', 'W-CF', 'left'],
-  ['W-CF', 'FINALS', 'left'],
-  ['FINALS', 'E-CF', 'right'],
-  ['E-CF', 'E-R2-1', 'right'],
-  ['E-CF', 'E-R2-2', 'right'],
-  ['E-R2-1', 'E-R1-1', 'right'],
-  ['E-R2-1', 'E-R1-2', 'right'],
-  ['E-R2-2', 'E-R1-3', 'right'],
-  ['E-R2-2', 'E-R1-4', 'right'],
+  ['W1-1', 'W2-1', 'left'],
+  ['W1-2', 'W2-1', 'left'],
+  ['W1-3', 'W2-2', 'left'],
+  ['W1-4', 'W2-2', 'left'],
+  ['W2-1', 'WCF',  'left'],
+  ['W2-2', 'WCF',  'left'],
+  ['WCF',  'FIN',  'left'],
+  ['FIN',  'ECF',  'right'],
+  ['ECF',  'E2-1', 'right'],
+  ['ECF',  'E2-2', 'right'],
+  ['E2-1', 'E1-1', 'right'],
+  ['E2-1', 'E1-2', 'right'],
+  ['E2-2', 'E1-3', 'right'],
+  ['E2-2', 'E1-4', 'right'],
 ]
 
-function getSlot(slot: string): SlotDef {
-  return SLOT_DEFS.find((s) => s.slot === slot)!
+function getSlot(id: string): SlotDef {
+  return SLOT_DEFS.find((s) => s.id === id)!
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -129,19 +128,19 @@ function seriesLabel(s: Series, pick?: SeriesPick): { top: string; bot: string; 
 const SVG_PADDING = 24
 
 export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
-  const seriesBySlot: Record<string, Series> = Object.fromEntries(series.map((s) => [s.slot, s]))
+  const seriesById: Record<string, Series> = Object.fromEntries(series.map((s) => [s.id, s]))
   const pickBySeriesId: Record<string, SeriesPick> = Object.fromEntries(picks.map((p) => [p.series_id, p]))
 
-  function pickForSlot(slot: string): SeriesPick | undefined {
-    const s = seriesBySlot[slot]
+  function pickForSlot(id: string): SeriesPick | undefined {
+    const s = seriesById[id]
     if (!s) return undefined
     return pickBySeriesId[s.id]
   }
 
   function renderConnections() {
-    return CONNECTIONS.map(([fromSlot, toSlot, side], i) => {
-      const from = getSlot(fromSlot)
-      const to = getSlot(toSlot)
+    return CONNECTIONS.map(([fromId, toId, side], i) => {
+      const from = getSlot(fromId)
+      const to = getSlot(toId)
 
       if (side === 'left') {
         // from exits right, enters to from left
@@ -180,8 +179,8 @@ export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
   }
 
   function renderBox(def: SlotDef) {
-    const s = seriesBySlot[def.slot]
-    const pick = pickForSlot(def.slot)
+    const s = seriesById[def.id]
+    const pick = pickForSlot(def.id)
     const status = s ? pickStatus(s, pick) : 'none'
 
     const borderColor =
@@ -190,9 +189,9 @@ export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
       status === 'picked' ? '#c8963c' :
       'rgba(200,150,60,0.2)'
 
-    const tA = s ? (s.home_team ?? getTeam(s.home_team_id)) : undefined
-    const tB = s ? (s.away_team ?? getTeam(s.away_team_id)) : undefined
-    const winner = s ? (s.winner ?? getTeam(s.winner_id)) : undefined
+    const tA = s?.home_team
+    const tB = s?.away_team
+    const winner = s?.winner
 
     const isClickable = !!s && !!onSeriesClick
     const label = def.slot === 'FINALS' ? 'FINALS' : def.slot
@@ -284,7 +283,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
         )}
 
         {/* Champion badge for Finals */}
-        {def.slot === 'FINALS' && winner && s?.is_complete && (
+        {def.id === 'FIN' && winner && s?.is_complete && (
           <g>
             <rect x={0} y={BOX_H + 4} width={BOX_W} height={16} rx={4} fill="rgba(200,150,60,0.15)" />
             <text
