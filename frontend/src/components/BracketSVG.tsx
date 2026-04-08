@@ -95,11 +95,17 @@ interface Props {
   series: Series[]
   picks?: SeriesPick[]
   onSeriesClick?: (series: Series) => void
+  // Compare mode — when provided, border colours reflect agreement instead of pick outcome
+  comparePicks?: SeriesPick[]
+  onSeriesHover?: (series: Series | null, clientX: number, clientY: number) => void
 }
 
-export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
+export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, onSeriesHover }: Props) {
   const seriesById     = Object.fromEntries(series.map((s) => [s.id, s]))
   const pickBySeriesId = Object.fromEntries(picks.map((p) => [p.series_id, p]))
+  const compareById    = comparePicks
+    ? Object.fromEntries(comparePicks.map((p) => [p.series_id, p]))
+    : null
 
   function pickForSlot(id: string): SeriesPick | undefined {
     const s = seriesById[id]
@@ -152,12 +158,27 @@ export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
     const yA   = rowH / 2    // 17.5 — center of top row
     const yB   = rowH + rowH / 2  // 52.5 — center of bottom row
 
-    // Box border colour driven by pick outcome
-    const borderColor =
-      status === 'correct' ? '#2ecc71' :
-      status === 'wrong'   ? '#e74c3c' :
-      status === 'picked'  ? '#c8963c' :
-      'rgba(200,150,60,0.2)'
+    // Box border: compare mode overrides pick-status colours
+    let borderColor: string
+    if (compareById && s) {
+      const myPick    = pickBySeriesId[s.id]
+      const otherPick = compareById[s.id]
+      if (myPick && otherPick) {
+        borderColor = myPick.winner_id === otherPick.winner_id
+          ? 'rgba(46,204,113,0.7)'    // agree — green
+          : 'rgba(231,76,60,0.7)'     // disagree — red
+      } else if (myPick || otherPick) {
+        borderColor = 'rgba(241,196,15,0.7)'  // only one picked — yellow
+      } else {
+        borderColor = 'rgba(200,150,60,0.2)'  // neither
+      }
+    } else {
+      borderColor =
+        status === 'correct' ? '#2ecc71' :
+        status === 'wrong'   ? '#e74c3c' :
+        status === 'picked'  ? '#c8963c' :
+        'rgba(200,150,60,0.2)'
+    }
 
     const baseFont = "'Barlow Condensed', sans-serif"
 
@@ -166,6 +187,8 @@ export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
         key={def.id}
         transform={`translate(${def.x}, ${def.y})`}
         onClick={() => s && onSeriesClick?.(s)}
+        onMouseEnter={(e) => s && onSeriesHover?.(s, e.clientX, e.clientY)}
+        onMouseLeave={() => onSeriesHover?.(null, 0, 0)}
         className={isClickable ? 'bracket-slot clickable' : 'bracket-slot'}
       >
         {/* ── Box shell ── */}
@@ -363,15 +386,16 @@ export function BracketSVG({ series, picks = [], onSeriesClick }: Props) {
         WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
         scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'],
         scrollbarColor: 'rgba(200,150,60,0.3) transparent',
+        display: 'flex',
+        justifyContent: 'safe center',
       }}
     >
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         style={{
-          minWidth: VB_W,
-          width: '100%',
-          maxWidth: VB_W,
+          width: VB_W,
           display: 'block',
+          margin: '0 auto',
           overflow: 'visible',
         }}
       >

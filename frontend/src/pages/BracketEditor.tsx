@@ -134,7 +134,7 @@ export function BracketEditor({ participantId }: Props) {
 
       {/* ── Legend ─────────────────────────────────────────────────────── */}
       <div
-        className="px-4 mt-5 flex flex-wrap gap-x-5 gap-y-2"
+        className="px-4 mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2"
         style={{ fontSize: '0.78rem', color: 'var(--nba-text-muted)' }}
       >
         {LEGEND.map(({ color, label, dashed }) => (
