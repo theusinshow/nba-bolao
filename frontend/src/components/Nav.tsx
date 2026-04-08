@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, GitBranch, Trophy, BarChart2, LogOut } from 'lucide-react'
+import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut } from 'lucide-react'
 import type { AuthState } from '../hooks/useAuth'
 
 interface Props {
@@ -10,8 +10,9 @@ interface Props {
 const links = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/bracket', icon: GitBranch, label: 'Bracket' },
-  { to: '/ranking', icon: Trophy, label: 'Ranking' },
-  { to: '/compare', icon: BarChart2, label: 'Comparar' },
+  { to: '/games', icon: Calendar, label: 'Jogos' },
+  { to: '/ranking', icon: BarChart2, label: 'Ranking' },
+  { to: '/compare', icon: ArrowLeftRight, label: 'Comparar' },
 ]
 
 export function Nav({ auth, onSignOut }: Props) {
@@ -38,7 +39,7 @@ export function Nav({ auth, onSignOut }: Props) {
           }
         >
           <Icon size={20} />
-          <span className="font-condensed">{label}</span>
+          <span className="font-condensed text-[0.7rem]">{label}</span>
         </NavLink>
       ))}
 

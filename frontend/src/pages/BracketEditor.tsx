@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Trophy } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
 import { SeriesModal } from '../components/SeriesModal'
 import { GamePickModal } from '../components/GamePickModal'
@@ -31,11 +33,20 @@ export function BracketEditor({ participantId }: Props) {
 
   return (
     <div className="pb-20 pt-4">
-      <div className="px-4 mb-4">
-        <h1 className="title text-4xl text-nba-gold">Meu Bracket</h1>
-        <p className="text-nba-muted text-sm">
-          {completedCount}/{totalSeries} séries palpitadas — Clique em uma série para editar
-        </p>
+      <div className="px-4 mb-4 flex items-start justify-between">
+        <div>
+          <h1 className="title text-4xl text-nba-gold">Meu Bracket</h1>
+          <p className="text-nba-muted text-sm">
+            {completedCount}/{totalSeries} séries palpitadas — Clique em uma série para editar
+          </p>
+        </div>
+        <Link
+          to="/official"
+          className="flex items-center gap-1.5 text-xs text-nba-muted hover:text-nba-gold transition-colors mt-1 shrink-0"
+        >
+          <Trophy size={14} />
+          Bracket Oficial
+        </Link>
       </div>
 
       <div className="px-2">

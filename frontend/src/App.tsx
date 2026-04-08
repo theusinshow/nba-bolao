@@ -10,6 +10,7 @@ import { BracketEditor } from './pages/BracketEditor'
 import { OfficialBracket } from './pages/OfficialBracket'
 import { Ranking } from './pages/Ranking'
 import { Compare } from './pages/Compare'
+import { Games } from './pages/Games'
 
 export default function App() {
   const { auth, signInWithGoogle, signOut } = useAuth()
@@ -56,6 +57,14 @@ export default function App() {
           element={
             <ProtectedRoute auth={auth}>
               <BracketEditor participantId={participantId} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/games"
+          element={
+            <ProtectedRoute auth={auth}>
+              <Games participantId={participantId} />
             </ProtectedRoute>
           }
         />

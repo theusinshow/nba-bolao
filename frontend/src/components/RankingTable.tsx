@@ -24,7 +24,7 @@ export function RankingTable({ ranking, highlightId }: Props) {
           </tr>
         </thead>
         <tbody>
-          {ranking.map((e) => {
+          {ranking.map((e, idx) => {
             const isHighlight = e.participant_id === highlightId
             const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : 0
             const seriesPct = e.series_total > 0 ? Math.round((e.series_correct / e.series_total) * 100) : 0
@@ -32,9 +32,14 @@ export function RankingTable({ ranking, highlightId }: Props) {
             return (
               <tr
                 key={e.participant_id}
-                className={`border-b border-nba-border transition-colors ${
-                  isHighlight ? 'bg-nba-surface-2' : 'hover:bg-nba-surface-2'
-                }`}
+                className="border-b border-nba-border transition-colors hover:bg-nba-surface-2"
+                style={{
+                  background: isHighlight
+                    ? 'var(--nba-surface-2)'
+                    : idx % 2 === 1
+                    ? 'rgba(255,255,255,0.02)'
+                    : 'transparent',
+                }}
               >
                 <td className="py-3 px-3 font-condensed font-bold text-nba-gold">{e.rank}</td>
                 <td className="py-3 px-3 flex items-center gap-2">
