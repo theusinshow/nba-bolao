@@ -15,118 +15,197 @@ interface Props {
 type InjuryStatus = 'out' | 'questionable' | 'probable' | 'available'
 
 const INJURIES: { player: string; team: string; status: InjuryStatus; detail: string }[] = [
-  { player: 'Nikola Jokic', team: 'DEN', status: 'questionable', detail: 'Joelho direito' },
-  { player: 'Victor Wembanyama', team: 'SAS', status: 'probable', detail: 'Fadiga' },
-  { player: 'Jayson Tatum', team: 'BOS', status: 'available', detail: 'Retorno confirmado' },
-  { player: 'LeBron James', team: 'LAL', status: 'questionable', detail: 'Tornozelo' },
-  { player: 'Shai Gilgeous-Alexander', team: 'OKC', status: 'available', detail: '' },
+  { player: 'Nikola Jokic',              team: 'DEN', status: 'questionable', detail: 'Joelho direito' },
+  { player: 'Victor Wembanyama',         team: 'SAS', status: 'probable',     detail: 'Fadiga' },
+  { player: 'Jayson Tatum',              team: 'BOS', status: 'available',    detail: 'Retorno confirmado' },
+  { player: 'LeBron James',              team: 'LAL', status: 'questionable', detail: 'Tornozelo' },
+  { player: 'Shai Gilgeous-Alexander',   team: 'OKC', status: 'available',    detail: '' },
 ]
 
 const NEXT_GAMES = [
   { home: 'OKC', away: 'IND', date: '18/04', time: '21:30', round: 'Finals' },
-  { home: 'BOS', away: 'NYK', date: '19/04', time: '15:00', round: 'R1' },
-  { home: 'DEN', away: 'MIN', date: '19/04', time: '17:30', round: 'R1' },
-  { home: 'NYK', away: 'DET', date: '20/04', time: '14:00', round: 'R1' },
-  { home: 'GSW', away: 'HOU', date: '20/04', time: '18:00', round: 'R1' },
+  { home: 'BOS', away: 'NYK', date: '19/04', time: '15:00', round: 'R1'     },
+  { home: 'DEN', away: 'MIN', date: '19/04', time: '17:30', round: 'R1'     },
+  { home: 'NYK', away: 'DET', date: '20/04', time: '14:00', round: 'R1'     },
+  { home: 'GSW', away: 'HOU', date: '20/04', time: '18:00', round: 'R1'     },
 ]
 
 const ODDS = [
-  { abbr: 'OKC', name: 'Thunder',  odds: '+180', favorite: true,  color: '#007AC1' },
-  { abbr: 'BOS', name: 'Celtics',  odds: '+220', favorite: true,  color: '#007A33' },
-  { abbr: 'DET', name: 'Pistons',  odds: '+300', favorite: false, color: '#C8102E' },
-  { abbr: 'SAS', name: 'Spurs',    odds: '+350', favorite: false, color: '#C4CED4' },
-  { abbr: 'DEN', name: 'Nuggets',  odds: '+400', favorite: false, color: '#FEC524' },
+  { abbr: 'OKC', name: 'Thunder', odds: '+180', favorite: true,  color: '#007AC1' },
+  { abbr: 'BOS', name: 'Celtics', odds: '+220', favorite: true,  color: '#007A33' },
+  { abbr: 'DET', name: 'Pistons', odds: '+300', favorite: false, color: '#C8102E' },
+  { abbr: 'SAS', name: 'Spurs',   odds: '+350', favorite: false, color: '#C4CED4' },
+  { abbr: 'DEN', name: 'Nuggets', odds: '+400', favorite: false, color: '#FEC524' },
 ]
 
-const INJURY_STATUS: Record<InjuryStatus, { label: string; color: string }> = {
-  out:          { label: 'Out',         color: '#e74c3c' },
+const INJURY_META: Record<InjuryStatus, { label: string; color: string }> = {
+  out:          { label: 'Out',          color: '#e74c3c' },
   questionable: { label: 'Questionável', color: '#f39c12' },
-  probable:     { label: 'Provável',    color: '#27ae60' },
-  available:    { label: 'Disponível',  color: '#2ecc71' },
+  probable:     { label: 'Provável',     color: '#27ae60' },
+  available:    { label: 'Disponível',   color: '#2ecc71' },
 }
 
-const MEDAL = ['🥇', '🥈', '🥉']
+const ROUND_BADGE_COLOR: Record<string, string> = {
+  Finals: 'var(--nba-gold)',
+  R1:     '#4a90d9',
+  R2:     '#9b59b6',
+  CF:     '#e05c3a',
+}
 
-// ─── Reusable mini-components ─────────────────────────────────────────────────
+const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
+
+const MEDALS = [
+  { emoji: '🥇', size: '2.8rem', color: '#FFD700', bgAlpha: '15' },
+  { emoji: '🥈', size: '2rem',   color: '#C0C0C0', bgAlpha: '10' },
+  { emoji: '🥉', size: '2rem',   color: '#CD7F32', bgAlpha: '10' },
+]
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
+const card: React.CSSProperties = {
+  background: 'var(--nba-surface)',
+  border: '1px solid var(--nba-border)',
+  borderRadius: 8,
+  padding: '1rem',
+}
 
 function CardTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      {icon && <span style={{ color: 'var(--nba-gold)' }}>{icon}</span>}
-      <h2 className="title text-base tracking-widest" style={{ color: 'var(--nba-gold)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      {icon && <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>{icon}</span>}
+      <h2
+        className="title"
+        style={{ color: 'var(--nba-gold)', fontSize: '1rem', letterSpacing: '0.1em', lineHeight: 1 }}
+      >
         {children}
       </h2>
     </div>
   )
 }
 
-function StatusBadge({ status }: { status: InjuryStatus }) {
-  const { label, color } = INJURY_STATUS[status]
+function Divider() {
+  return <div style={{ height: 1, background: 'var(--nba-border)' }} />
+}
+
+function Badge({
+  label,
+  color,
+  small,
+}: {
+  label: string
+  color: string
+  small?: boolean
+}) {
   return (
-    <span style={{
-      background: `${color}22`,
-      color,
-      borderRadius: 4,
-      padding: '1px 6px',
-      fontSize: '0.68rem',
-      fontWeight: 700,
-      whiteSpace: 'nowrap' as const,
-      flexShrink: 0,
-    }}>
+    <span
+      style={{
+        background: `${color}22`,
+        color,
+        borderRadius: 4,
+        padding: small ? '1px 6px' : '2px 8px',
+        fontSize: small ? '0.65rem' : '0.7rem',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+    >
       {label}
     </span>
   )
 }
 
-function Divider() {
-  return <div style={{ borderBottom: '1px solid var(--nba-border)' }} />
-}
-
 function SimNote({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: '0.5rem' }}>
+    <p
+      style={{
+        color: 'var(--nba-text-muted)',
+        fontSize: '0.68rem',
+        marginTop: 8,
+        lineHeight: 1.4,
+      }}
+    >
       {children}
     </p>
   )
 }
 
-// ─── Card components ──────────────────────────────────────────────────────────
+function RankArrow({ diff }: { diff: number }) {
+  if (diff > 0) return <ArrowUp size={10} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />
+  if (diff < 0) return <ArrowDown size={10} style={{ color: 'var(--nba-danger)', flexShrink: 0 }} />
+  return <Minus size={10} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
+}
 
-function RankingCard({ ranking, loading, highlightId }: {
+// ─── Cards ────────────────────────────────────────────────────────────────────
+
+function RankingCard({
+  ranking,
+  loading,
+  highlightId,
+}: {
   ranking: ReturnType<typeof useRanking>['ranking']
   loading: boolean
   highlightId: string
 }) {
   const top5 = ranking.slice(0, 5)
+
   return (
-    <div className="card p-4">
+    <div style={card}>
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
+
       {loading ? (
-        <div className="flex justify-center py-4">
-          <div className="w-5 h-5 border-2 border-nba-gold border-t-transparent rounded-full animate-spin" />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+          <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }} />
         </div>
       ) : (
-        <div className="flex flex-col">
+        <div>
           {top5.map((e, i) => {
             const isMe = e.participant_id === highlightId
-            const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : 0
+            const diff = e.prev_rank != null ? e.prev_rank - e.rank : null
             return (
               <div key={e.participant_id}>
                 <div
-                  className="flex items-center gap-2 py-2 px-1 rounded transition-colors"
-                  style={{ background: isMe ? 'var(--nba-surface-2)' : 'transparent', fontSize: '0.85rem' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 6px',
+                    borderRadius: 6,
+                    background: isMe ? 'var(--nba-surface-2)' : 'transparent',
+                    fontSize: '0.85rem',
+                    transition: 'background 0.15s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={(ev) => {
+                    if (!isMe) ev.currentTarget.style.background = 'var(--nba-surface-2)'
+                  }}
+                  onMouseLeave={(ev) => {
+                    if (!isMe) ev.currentTarget.style.background = 'transparent'
+                  }}
                 >
-                  <span className="font-condensed font-bold w-5 text-center" style={{ color: 'var(--nba-gold)' }}>
+                  <span
+                    className="font-condensed font-bold"
+                    style={{ color: 'var(--nba-gold)', width: 20, textAlign: 'center', flexShrink: 0 }}
+                  >
                     {e.rank}
                   </span>
-                  <span className="flex-1 truncate" style={{ color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)' }}>
+                  <span
+                    style={{
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
+                      fontWeight: isMe ? 600 : 400,
+                    }}
+                  >
                     {e.participant_name}
                   </span>
-                  <div className="flex items-center gap-1">
-                    {rankDiff > 0 && <ArrowUp size={10} className="text-nba-success" />}
-                    {rankDiff < 0 && <ArrowDown size={10} className="text-nba-danger" />}
-                    {rankDiff === 0 && e.prev_rank != null && <Minus size={10} className="text-nba-muted" />}
-                    <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {diff !== null && <RankArrow diff={diff} />}
+                    <span
+                      className="font-condensed font-bold"
+                      style={{ color: 'var(--nba-gold)', fontSize: '0.9rem' }}
+                    >
                       {e.total_points}
                     </span>
                   </div>
@@ -137,14 +216,23 @@ function RankingCard({ ranking, loading, highlightId }: {
           })}
         </div>
       )}
+
       <Link
         to="/ranking"
-        className="block mt-3 text-center text-xs font-condensed transition-colors hover:text-nba-gold"
         style={{
-          color: 'var(--nba-text-muted)',
+          display: 'block',
+          marginTop: 12,
+          paddingTop: 10,
           borderTop: '1px solid var(--nba-border)',
-          paddingTop: '0.5rem',
+          textAlign: 'center',
+          fontSize: '0.78rem',
+          color: 'var(--nba-text-muted)',
+          transition: 'color 0.15s',
+          fontFamily: 'var(--font-condensed, sans-serif)',
+          letterSpacing: '0.05em',
         }}
+        onMouseEnter={(ev) => { ev.currentTarget.style.color = 'var(--nba-gold)' }}
+        onMouseLeave={(ev) => { ev.currentTarget.style.color = 'var(--nba-text-muted)' }}
       >
         Ver ranking completo →
       </Link>
@@ -154,53 +242,92 @@ function RankingCard({ ranking, loading, highlightId }: {
 
 function InjuriesCard() {
   return (
-    <div className="card p-4">
+    <div style={card}>
       <CardTitle icon={<AlertTriangle size={14} />}>Lesões e Notícias</CardTitle>
-      <div className="flex flex-col">
-        {INJURIES.map((item, i) => (
-          <div key={item.player}>
-            <div className="flex items-start gap-2 py-2" style={{ fontSize: '0.82rem' }}>
-              <div className="flex-1 min-w-0">
-                <div style={{ color: 'var(--nba-text)', fontWeight: 600 }} className="truncate">
-                  {item.player}
+      <div>
+        {INJURIES.map((item, i) => {
+          const meta = INJURY_META[item.status]
+          return (
+            <div key={item.player}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 4px',
+                  borderRadius: 6,
+                  transition: 'background 0.15s',
+                  cursor: 'default',
+                }}
+                onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--nba-surface-2)' }}
+                onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      color: 'var(--nba-text)',
+                      fontWeight: 600,
+                      fontSize: '0.83rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {item.player}
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                    {item.team}{item.detail ? ` — ${item.detail}` : ''}
+                  </div>
                 </div>
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
-                  {item.team}{item.detail ? ` — ${item.detail}` : ''}
-                </div>
+                <Badge label={meta.label} color={meta.color} small />
               </div>
-              <StatusBadge status={item.status} />
+              {i < INJURIES.length - 1 && <Divider />}
             </div>
-            {i < INJURIES.length - 1 && <Divider />}
-          </div>
-        ))}
+          )
+        })}
       </div>
       <SimNote>Atualizado simulado — integração real em breve</SimNote>
     </div>
   )
 }
 
-function StatsGrid({ participantCount, completedSeries, totalSeries, myEntry }: {
+function StatsGrid({
+  participantCount,
+  completedSeries,
+  totalSeries,
+  myEntry,
+}: {
   participantCount: number
   completedSeries: number
   totalSeries: number
   myEntry?: { rank: number; total_points: number }
 }) {
   const stats = [
-    { icon: <Users size={16} />, label: 'Participantes', value: String(participantCount), gold: false },
-    { icon: <Trophy size={16} />, label: 'Séries Concluídas', value: `${completedSeries}/${totalSeries}`, gold: false },
-    { icon: <Target size={16} />, label: 'Minha Posição', value: myEntry ? `#${myEntry.rank}` : '—', gold: true },
-    { icon: <Star size={16} />, label: 'Meus Pontos', value: myEntry ? String(myEntry.total_points) : '—', gold: false },
+    { icon: <Users size={18} />,   label: 'Participantes',    value: String(participantCount),                   gold: false },
+    { icon: <Trophy size={18} />,  label: 'Séries Concluídas', value: `${completedSeries}/${totalSeries || 15}`, gold: false },
+    { icon: <Target size={18} />,  label: 'Minha Posição',    value: myEntry ? `#${myEntry.rank}` : '—',         gold: true  },
+    { icon: <Star size={18} />,    label: 'Meus Pontos',      value: myEntry ? String(myEntry.total_points) : '—', gold: false },
   ]
+
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
       {stats.map(({ icon, label, value, gold }) => (
-        <div key={label} className="card p-3 flex items-center gap-3">
-          <span style={{ color: 'var(--nba-gold)', flexShrink: 0 }}>{icon}</span>
-          <div className="min-w-0">
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{label}</div>
+        <div
+          key={label}
+          style={{
+            ...card,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '0.85rem',
+          }}
+        >
+          <span style={{ color: 'var(--nba-gold)', flexShrink: 0, display: 'flex' }}>{icon}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', lineHeight: 1.2 }}>{label}</div>
             <div
-              className="font-condensed text-xl font-bold"
-              style={{ color: gold ? 'var(--nba-gold)' : 'var(--nba-text)' }}
+              className="font-condensed font-bold"
+              style={{ color: gold ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '1.4rem', lineHeight: 1.2 }}
             >
               {value}
             </div>
@@ -211,72 +338,108 @@ function StatsGrid({ participantCount, completedSeries, totalSeries, myEntry }: 
   )
 }
 
-function PodiumCard({ ranking, loading, highlightId }: {
+function PodiumCard({
+  ranking,
+  loading,
+  highlightId,
+}: {
   ranking: ReturnType<typeof useRanking>['ranking']
   loading: boolean
   highlightId: string
 }) {
   const top3 = ranking.slice(0, 3)
+
   return (
-    <div className="card p-4">
-      <CardTitle>Pódio</CardTitle>
+    <div style={card}>
+      <CardTitle icon={<Trophy size={14} />}>Pódio</CardTitle>
+
       {loading ? (
-        <div className="flex justify-center py-6">
-          <div className="w-6 h-6 border-2 border-nba-gold border-t-transparent rounded-full animate-spin" />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+          <div
+            className="w-6 h-6 rounded-full border-2 animate-spin"
+            style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }}
+          />
         </div>
       ) : top3.length === 0 ? (
         <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem' }}>Sem dados ainda.</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {top3.map((e, i) => {
-            const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : 0
-            const isFirst = i === 0
+            const medal = MEDALS[i]
+            const diff = e.prev_rank != null ? e.prev_rank - e.rank : null
             const isMe = e.participant_id === highlightId
+            const isFirst = i === 0
+
             return (
               <div
                 key={e.participant_id}
-                className="flex items-center gap-3 p-3 rounded-lg"
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: isFirst ? '14px 12px' : '10px 12px',
+                  borderRadius: 8,
                   background: isFirst
-                    ? 'rgba(200,150,60,0.08)'
+                    ? `${medal.color}${medal.bgAlpha}`
                     : isMe
                     ? 'var(--nba-surface-2)'
-                    : 'transparent',
-                  border: isFirst ? '1px solid rgba(200,150,60,0.25)' : '1px solid transparent',
+                    : 'var(--nba-surface-2)',
+                  border: isFirst
+                    ? `1px solid ${medal.color}33`
+                    : '1px solid transparent',
+                  transition: 'border-color 0.2s',
                 }}
               >
+                {/* Medal */}
                 <span
-                  className="text-center leading-none select-none"
-                  style={{ fontSize: isFirst ? '2.5rem' : '1.5rem', width: 44, flexShrink: 0 }}
+                  style={{
+                    fontSize: medal.size,
+                    lineHeight: 1,
+                    userSelect: 'none',
+                    flexShrink: 0,
+                    filter: isFirst ? 'drop-shadow(0 0 8px rgba(255,215,0,0.4))' : undefined,
+                  }}
                 >
-                  {MEDAL[i]}
+                  {medal.emoji}
                 </span>
-                <div className="flex-1 min-w-0">
+
+                {/* Name + cravadas */}
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
-                    className="font-semibold flex items-center gap-1"
                     style={{
-                      color: isFirst ? 'var(--nba-gold)' : 'var(--nba-text)',
-                      fontSize: isFirst ? '1rem' : '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      color: isFirst ? 'var(--nba-gold)' : isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
+                      fontWeight: 600,
+                      fontSize: isFirst ? '1.05rem' : '0.9rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    <span className="truncate">{e.participant_name}</span>
-                    {rankDiff > 0 && <ArrowUp size={12} className="text-nba-success shrink-0" />}
-                    {rankDiff < 0 && <ArrowDown size={12} className="text-nba-danger shrink-0" />}
-                    {rankDiff === 0 && e.prev_rank != null && <Minus size={12} className="text-nba-muted shrink-0" />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.participant_name}
+                    </span>
+                    {diff !== null && <RankArrow diff={diff} />}
                   </div>
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 2 }}>
                     {e.cravadas} cravada{e.cravadas !== 1 ? 's' : ''}
                   </div>
                 </div>
+
+                {/* Points */}
                 <div
                   className="font-condensed font-bold"
                   style={{
                     color: 'var(--nba-gold)',
-                    fontSize: isFirst ? '1.5rem' : '1.25rem',
+                    fontSize: isFirst ? '1.75rem' : '1.35rem',
+                    lineHeight: 1,
                     flexShrink: 0,
                   }}
                 >
                   {e.total_points}
+                  <span style={{ fontSize: '0.65rem', color: 'var(--nba-text-muted)', marginLeft: 2 }}>pts</span>
                 </div>
               </div>
             )
@@ -289,37 +452,51 @@ function PodiumCard({ ranking, loading, highlightId }: {
 
 function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['series'] }) {
   const completed = series.filter((s) => s.is_complete).slice(-5).reverse()
-  const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
 
   return (
-    <div className="card p-4">
+    <div style={card}>
       <CardTitle>Séries Recentes</CardTitle>
+
       {completed.length === 0 ? (
         <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem' }}>
           Nenhuma série encerrada ainda.
         </p>
       ) : (
-        <div className="flex flex-col">
+        <div>
           {completed.map((s, i) => {
             const winner = s.winner ?? s.home_team
             const loser = s.winner?.id === s.home_team?.id ? s.away_team : s.home_team
-            const label = `${s.conference ?? ''} ${ROUND_LABEL[s.round] ?? ''}`
+            const label = `${s.conference ?? ''} ${ROUND_LABEL[s.round] ?? ''}`.trim()
+            const loses = s.games_played - 4
+
             return (
               <div key={s.id}>
-                <div className="flex items-center justify-between py-2" style={{ fontSize: '0.85rem' }}>
-                  <span className="font-condensed uppercase text-xs" style={{ color: 'var(--nba-text-muted)' }}>
-                    {label.trim()}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 6px',
+                    borderRadius: 6,
+                    fontSize: '0.85rem',
+                    transition: 'background 0.15s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--nba-surface-2)' }}
+                  onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent' }}
+                >
+                  <span
+                    className="font-condensed"
+                    style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}
+                  >
+                    {label}
                   </span>
-                  <span>
-                    <span className="font-bold" style={{ color: winner?.primary_color ?? 'var(--nba-text)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span className="font-condensed font-bold" style={{ color: winner?.primary_color ?? 'var(--nba-text)' }}>
                       {winner?.abbreviation ?? '?'}
                     </span>
-                    <span className="mx-1" style={{ color: 'var(--nba-text-muted)' }}>
-                      4-{s.games_played - 4}
-                    </span>
-                    <span style={{ color: 'var(--nba-text-muted)' }}>
-                      {loser?.abbreviation ?? '?'}
-                    </span>
+                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem' }}>4-{loses}</span>
+                    <span style={{ color: 'var(--nba-text-muted)' }}>{loser?.abbreviation ?? '?'}</span>
                   </span>
                 </div>
                 {i < completed.length - 1 && <Divider />}
@@ -333,42 +510,45 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
 }
 
 function NextGamesCard() {
-  const ROUND_COLORS: Record<string, string> = {
-    Finals: 'var(--nba-gold)',
-    R1: '#4a90d9',
-    R2: '#9b59b6',
-    CF: '#e05c3a',
-  }
   return (
-    <div className="card p-4">
+    <div style={card}>
       <CardTitle icon={<Clock size={14} />}>Próximos Jogos</CardTitle>
-      <div className="flex flex-col">
-        {NEXT_GAMES.map((g, i) => (
-          <div key={i}>
-            <div className="flex items-center gap-2 py-2" style={{ fontSize: '0.85rem' }}>
-              <div className="flex-1 min-w-0">
-                <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)' }}>
-                  {g.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {g.away}
+
+      <div>
+        {NEXT_GAMES.map((g, i) => {
+          const color = ROUND_BADGE_COLOR[g.round] ?? '#888'
+          return (
+            <div key={i}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 4px',
+                  borderRadius: 6,
+                  fontSize: '0.85rem',
+                  transition: 'background 0.15s',
+                  cursor: 'default',
+                }}
+                onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--nba-surface-2)' }}
+                onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem' }}>
+                    {g.home}{' '}
+                    <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span>{' '}
+                    {g.away}
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
+                    {g.date} · {g.time} BRT
+                  </div>
                 </div>
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
-                  {g.date} · {g.time} BRT
-                </div>
+                <Badge label={g.round} color={color} small />
               </div>
-              <span style={{
-                background: `${ROUND_COLORS[g.round] ?? '#888'}22`,
-                color: ROUND_COLORS[g.round] ?? '#888',
-                borderRadius: 4,
-                padding: '1px 6px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                flexShrink: 0,
-              }}>
-                {g.round}
-              </span>
+              {i < NEXT_GAMES.length - 1 && <Divider />}
             </div>
-            {i < NEXT_GAMES.length - 1 && <Divider />}
-          </div>
-        ))}
+          )
+        })}
       </div>
       <SimNote>Jogos reais sincronizados automaticamente</SimNote>
     </div>
@@ -377,19 +557,35 @@ function NextGamesCard() {
 
 function OddsCard() {
   return (
-    <div className="card p-4">
+    <div style={card}>
       <CardTitle icon={<TrendingUp size={14} />}>Favoritos ao Título</CardTitle>
-      <div className="flex flex-col">
+
+      <div>
         {ODDS.map((o, i) => (
           <div key={o.abbr}>
-            <div className="flex items-center gap-2 py-2" style={{ fontSize: '0.85rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 4px',
+                borderRadius: 6,
+                fontSize: '0.85rem',
+                transition: 'background 0.15s',
+                cursor: 'default',
+              }}
+              onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--nba-surface-2)' }}
+              onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent' }}
+            >
               <span
-                className="font-condensed font-bold text-sm w-8 text-center"
-                style={{ color: o.color }}
+                className="font-condensed font-bold"
+                style={{ color: o.color, width: 32, textAlign: 'center', flexShrink: 0, fontSize: '0.85rem' }}
               >
                 {o.abbr}
               </span>
-              <span className="flex-1" style={{ color: 'var(--nba-text)' }}>{o.name}</span>
+              <span style={{ flex: 1, color: 'var(--nba-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {o.name}
+              </span>
               {o.favorite && (
                 <Star size={10} fill="currentColor" style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
               )}
@@ -398,6 +594,7 @@ function OddsCard() {
                 style={{
                   color: o.favorite ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
                   flexShrink: 0,
+                  fontSize: '0.88rem',
                 }}
               >
                 {o.odds}
@@ -412,19 +609,21 @@ function OddsCard() {
   )
 }
 
-function MyPicksCard({ series, picks, participantId }: {
+function MyPicksCard({
+  series,
+  picks,
+}: {
   series: ReturnType<typeof useSeries>['series']
   picks: ReturnType<typeof useSeries>['picks']
-  participantId: string
 }) {
   const STATUS_STYLE = {
     correct: { label: 'Acertou', color: 'var(--nba-success)' },
-    wrong:   { label: 'Errou',   color: 'var(--nba-danger)' },
+    wrong:   { label: 'Errou',   color: 'var(--nba-danger)'  },
     pending: { label: 'Aguarda', color: 'var(--nba-text-muted)' },
-  }
+  } as const
 
   const recent = [...picks].slice(-3).reverse().map((p) => {
-    const s = series.find((s) => s.id === p.series_id)
+    const s = series.find((sr) => sr.id === p.series_id)
     const pickedTeam = s?.home_team?.id === p.winner_id ? s?.home_team : s?.away_team
     const status: keyof typeof STATUS_STYLE = s?.is_complete
       ? p.winner_id === s?.winner_id ? 'correct' : 'wrong'
@@ -433,40 +632,53 @@ function MyPicksCard({ series, picks, participantId }: {
   })
 
   return (
-    <div className="card p-4">
+    <div style={card}>
       <CardTitle>Meus Palpites</CardTitle>
+
       {recent.length === 0 ? (
         <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem' }}>
-          Nenhum palpite registrado ainda.{' '}
-          <Link to="/bracket" style={{ color: 'var(--nba-gold)' }}>Palpitar →</Link>
+          Nenhum palpite registrado.{' '}
+          <Link to="/bracket" style={{ color: 'var(--nba-gold)' }}>
+            Palpitar →
+          </Link>
         </p>
       ) : (
-        <div className="flex flex-col">
+        <div>
           {recent.map(({ pick, series: s, pickedTeam, status }, i) => {
             const { label, color } = STATUS_STYLE[status]
-            const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
             return (
               <div key={pick.id}>
-                <div className="flex items-center gap-2 py-2" style={{ fontSize: '0.85rem' }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-condensed font-bold truncate" style={{ color: pickedTeam?.primary_color ?? 'var(--nba-text)' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 4px',
+                    borderRadius: 6,
+                    fontSize: '0.85rem',
+                    transition: 'background 0.15s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--nba-surface-2)' }}
+                  onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      className="font-condensed font-bold"
+                      style={{
+                        color: pickedTeam?.primary_color ?? 'var(--nba-text)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {pickedTeam?.abbreviation ?? '?'}
                     </div>
-                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
                       {s ? `${s.conference ?? ''} ${ROUND_LABEL[s.round] ?? ''}`.trim() : '—'}
                     </div>
                   </div>
-                  <span style={{
-                    background: `${color}22`,
-                    color,
-                    borderRadius: 4,
-                    padding: '1px 6px',
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}>
-                    {label}
-                  </span>
+                  <Badge label={label} color={color} small />
                 </div>
                 {i < recent.length - 1 && <Divider />}
               </div>
@@ -484,48 +696,81 @@ export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks } = useSeries(participantId)
 
-  const myEntry = ranking.find((r) => r.participant_id === participantId)
+  const myEntry       = ranking.find((r) => r.participant_id === participantId)
   const completedSeries = series.filter((s) => s.is_complete).length
 
   return (
-    <div
-      className="pb-20 pt-4 px-4 mx-auto grid gap-4 grid-cols-1 md:grid-cols-[1fr_280px] xl:grid-cols-[280px_1fr_280px]"
-      style={{ maxWidth: 1400 }}
-    >
-      {/* ── Left column: desktop only ──────────────────────────── */}
-      <div className="hidden xl:flex xl:flex-col gap-4">
-        <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-        <InjuriesCard />
-      </div>
-
-      {/* ── Center column ──────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 min-w-0">
-        {/* Header */}
-        <div>
-          <h1 className="title text-5xl" style={{ color: 'var(--nba-gold)' }}>Bolão NBA 2026</h1>
-          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem', marginTop: 2 }}>
-            Playoffs em andamento · Atualização em tempo real
-          </p>
+    <>
+      {/* Responsive grid via inline style + media query workaround using Tailwind arbitrary values */}
+      <div
+        className={[
+          'pb-24 pt-4 px-4 mx-auto',
+          'grid gap-4',
+          'grid-cols-1',
+          'md:grid-cols-[1fr_280px]',
+          'min-[1200px]:grid-cols-[280px_1fr_280px]',
+        ].join(' ')}
+        style={{ maxWidth: 1400 }}
+      >
+        {/* ── Left column — desktop only (≥1200px) ─────────────────────── */}
+        <div
+          className={[
+            'hidden',
+            'min-[1200px]:flex min-[1200px]:flex-col min-[1200px]:gap-4',
+          ].join(' ')}
+        >
+          <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+          <InjuriesCard />
         </div>
 
-        <StatsGrid
-          participantCount={ranking.length}
-          completedSeries={completedSeries}
-          totalSeries={series.length}
-          myEntry={myEntry}
-        />
+        {/* ── Center column ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 min-w-0">
 
-        <PodiumCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+          {/* Header */}
+          <div>
+            <h1
+              className="title"
+              style={{ color: 'var(--nba-gold)', fontSize: 'clamp(2.5rem, 6vw, 3.5rem)', lineHeight: 1 }}
+            >
+              Bolão NBA 2026
+            </h1>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.83rem', marginTop: 4 }}>
+              Playoffs em andamento · Atualização em tempo real
+            </p>
+          </div>
 
-        <RecentSeriesCard series={series} />
+          {/* Stats 2×2 */}
+          <StatsGrid
+            participantCount={ranking.length}
+            completedSeries={completedSeries}
+            totalSeries={series.length}
+            myEntry={myEntry}
+          />
+
+          {/* Podium */}
+          <PodiumCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+
+          {/* Recent series */}
+          <RecentSeriesCard series={series} />
+
+          {/* On tablet: ranking card appears here (left col hidden) */}
+          <div className="md:hidden">
+            <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+          </div>
+        </div>
+
+        {/* ── Right column ──────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 min-w-0">
+          <NextGamesCard />
+          <OddsCard />
+          <MyPicksCard series={series} picks={picks} />
+
+          {/* On mobile: injuries card moves to bottom */}
+          <div className="md:hidden">
+            <InjuriesCard />
+          </div>
+        </div>
       </div>
-
-      {/* ── Right column ───────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 min-w-0">
-        <NextGamesCard />
-        <OddsCard />
-        <MyPicksCard series={series} picks={picks} participantId={participantId} />
-      </div>
-    </div>
+    </>
   )
 }
