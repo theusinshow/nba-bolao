@@ -25,6 +25,7 @@ As mudancas mais importantes foram:
 - ajuste da temporada usada no sync da API balldontlie;
 - remocao do fallback com jogos simulados em producao;
 - centralizacao da regra de pontuacao em uma camada isolada;
+- inclusao de uma secao visual explicando a pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring;
 - definicao de desempate deterministico no ranking.
 
@@ -38,6 +39,7 @@ As mudancas mais importantes foram:
 - `backend/package.json`
 - `frontend/src/pages/OfficialBracket.tsx`
 - `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/Ranking.tsx`
 - `frontend/src/hooks/useRanking.ts`
 
 ### Arquivos criados
@@ -246,6 +248,33 @@ Impacto:
 - agora existe uma validacao automatizada para a parte mais sensivel da aplicacao;
 - sempre que houver alteracao em scoring, voce pode rodar um teste rapido antes de subir para producao.
 
+### 9. Inclusao de uma secao explicativa de pontuacao na tela de ranking
+
+Arquivo:
+
+- `frontend/src/pages/Ranking.tsx`
+
+Antes:
+
+- a tela de ranking mostrava o grafico e a classificacao, mas nao deixava explicito para os usuarios quantos pontos eram ganhos por acerto em cada rodada;
+- isso podia gerar duvidas sobre a diferenca entre jogo, serie e cravada.
+
+Depois:
+
+- foi adicionada uma secao chamada `Como Funciona a Pontuacao`;
+- essa secao mostra por rodada:
+  - pontos por acerto de jogo;
+  - pontos por acerto de serie;
+  - pontos por cravada;
+- a secao usa a configuracao real do app em `frontend/src/utils/scoring.ts`;
+- tambem foi incluida uma observacao explicando que a cravada substitui a pontuacao da serie e nao soma por cima.
+
+Impacto:
+
+- melhora a transparencia da regra para os participantes;
+- reduz duvidas sobre como o ranking e calculado;
+- melhora a experiencia de uso na tela de ranking.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -253,6 +282,7 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend;
 - `npm run build` no backend;
 - `npm run test:scoring` no backend.
+- `npm run build` no frontend apos a alteracao da aba de ranking.
 
 Resultado:
 
@@ -267,6 +297,7 @@ Os principais riscos mitigados com essas alteracoes foram:
 - producao exibindo jogos simulados;
 - divergencia silenciosa na regra de pontuacao;
 - instabilidade do ranking em cenarios de empate;
+- falta de clareza para os usuarios sobre como a pontuacao e calculada;
 - ausencia de testes automatizados na parte critica do app.
 
 ## Pendencias Relevantes
@@ -304,6 +335,7 @@ Foi realizada uma intervencao focada nos pontos mais criticos para um lancamento
 - remocao de mock em producao;
 - centralizacao da regra de pontuacao;
 - estabilidade de ranking em empate;
+- explicacao visual da regra de pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring.
 
 Com isso, o projeto ficou em uma condicao muito melhor para um lancamento controlado. O maior ganho agora viria de uma validacao operacional final com usuarios e dados reais de teste.

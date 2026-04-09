@@ -1,11 +1,19 @@
-import { BarChart2 } from 'lucide-react'
+import { BarChart2, Info } from 'lucide-react'
 import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
 import { useRanking } from '../hooks/useRanking'
+import { SCORING_CONFIG } from '../utils/scoring'
 
 interface Props {
   participantId: string
 }
+
+const ROUND_LABELS = {
+  1: '1ª rodada',
+  2: '2ª rodada',
+  3: 'Final de conferência',
+  4: 'Finais da NBA',
+} as const
 
 export function Ranking({ participantId }: Props) {
   const { ranking, loading } = useRanking()
@@ -38,6 +46,70 @@ export function Ranking({ participantId }: Props) {
         </div>
       ) : (
         <>
+          <div
+            style={{
+              background: 'var(--nba-surface)',
+              border: '1px solid var(--nba-border)',
+              borderRadius: 8,
+              padding: '1rem',
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Info size={16} style={{ color: 'var(--nba-gold)' }} />
+              <h2
+                className="title"
+                style={{
+                  color: 'var(--nba-gold)',
+                  fontSize: '1rem',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                Como Funciona a Pontuação
+              </h2>
+            </div>
+
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', marginBottom: 12 }}>
+              Você pontua ao acertar o vencedor do jogo ou da série. Se acertar também em quantos jogos a série termina, vira cravada.
+            </p>
+
+            <div style={{ display: 'grid', gap: 10 }}>
+              {([1, 2, 3, 4] as const).map((round) => (
+                <div
+                  key={round}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(120px, 1.4fr) 1fr 1fr 1fr',
+                    gap: 8,
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'var(--nba-surface-2)',
+                    border: '1px solid var(--nba-border)',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  <span style={{ color: 'var(--nba-text)', fontWeight: 600 }}>
+                    {ROUND_LABELS[round]}
+                  </span>
+                  <span style={{ color: 'var(--nba-text-muted)' }}>
+                    Jogo: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerGame[round]} pt</strong>
+                  </span>
+                  <span style={{ color: 'var(--nba-text-muted)' }}>
+                    Série: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerSeries[round]} pts</strong>
+                  </span>
+                  <span style={{ color: 'var(--nba-text-muted)' }}>
+                    Cravada: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerCravada[round]} pts</strong>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 12 }}>
+              Cravada substitui a pontuação da série, ela não soma por cima.
+            </p>
+          </div>
+
           {/* Chart card */}
           <div
             style={{
