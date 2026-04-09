@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Series, SeriesPick } from '../types'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
@@ -90,6 +90,299 @@ function pickStatus(s: Series, pick?: SeriesPick): 'correct' | 'wrong' | 'picked
   return pick.winner_id === s.winner_id ? 'correct' : 'wrong'
 }
 
+// ─── Mobile round labels ──────────────────────────────────────────────────────
+
+const ROUND_LABELS: Record<number, string> = {
+  1: 'PRIMEIRA RODADA',
+  2: 'SEGUNDA RODADA',
+  3: 'CONF FINALS',
+  4: 'NBA FINALS',
+}
+
+// ─── Mobile series card ───────────────────────────────────────────────────────
+
+function MobileSeriesCard({
+  s,
+  pick,
+  comparePick,
+  myPick,
+  isCompareMode,
+  onClick,
+}: {
+  s: Series
+  pick?: SeriesPick
+  comparePick?: SeriesPick
+  myPick?: SeriesPick
+  isCompareMode: boolean
+  onClick?: () => void
+}) {
+  const tA = s.home_team
+  const tB = s.away_team
+  const isComplete = s.is_complete
+  const tAWins = isComplete && s.winner_id === tA?.id
+  const tBWins = isComplete && s.winner_id === tB?.id
+  const score   = isComplete && s.games_played ? `4-${s.games_played - 4}` : null
+
+  const status = pickStatus(s, pick)
+
+  const BADGE: Record<typeof status, { label: string; color: string; bg: string }> = {
+    none:    { label: 'Sem palpite', color: 'var(--nba-text-muted)',  bg: 'rgba(255,255,255,0.04)' },
+    picked:  { label: 'Palpitado',   color: 'var(--nba-gold)',        bg: 'rgba(200,150,60,0.10)'  },
+    correct: { label: 'Acertou',     color: 'var(--nba-success)',     bg: 'rgba(46,204,113,0.10)'  },
+    wrong:   { label: 'Errou',       color: 'var(--nba-danger)',      bg: 'rgba(231,76,60,0.10)'   },
+  }
+  const badge = BADGE[status]
+
+  // Border color: compare mode or pick-status
+  let borderColor: string
+  if (isCompareMode) {
+    if (myPick && comparePick) {
+      borderColor = myPick.winner_id === comparePick.winner_id
+        ? 'rgba(46,204,113,0.7)'
+        : 'rgba(231,76,60,0.7)'
+    } else if (myPick || comparePick) {
+      borderColor = 'rgba(241,196,15,0.7)'
+    } else {
+      borderColor = 'rgba(200,150,60,0.2)'
+    }
+  } else {
+    borderColor =
+      status === 'correct' ? 'rgba(46,204,113,0.7)'  :
+      status === 'wrong'   ? 'rgba(231,76,60,0.7)'   :
+      status === 'picked'  ? 'rgba(200,150,60,0.5)'  :
+      'var(--nba-border)'
+  }
+
+  const pickedTeamId = pick?.winner_id
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      style={{
+        width: '100%',
+        background: 'var(--nba-surface)',
+        border: `1px solid ${borderColor}`,
+        borderRadius: 8,
+        padding: 0,
+        cursor: onClick ? 'pointer' : 'default',
+        textAlign: 'left',
+        overflow: 'hidden',
+        transition: 'border-color 0.2s, box-shadow 0.2s',
+      }}
+    >
+      {/* Teams row */}
+      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 80 }}>
+
+        {/* Team A (home) */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: '14px 12px',
+            background: tAWins ? 'rgba(46,204,113,0.07)' : 'transparent',
+            opacity: isComplete && !tAWins ? 0.4 : 1,
+            transition: 'opacity 0.2s',
+          }}
+        >
+          <span
+            className="font-condensed font-bold"
+            style={{
+              color: tA?.primary_color ?? 'var(--nba-text-muted)',
+              fontSize: '1.9rem',
+              lineHeight: 1,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {tA?.abbreviation ?? '—'}
+          </span>
+          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
+            {tA?.name?.split(' ').pop() ?? ''}
+          </span>
+          {/* Pick star */}
+          {pickedTeamId === tA?.id && !isComplete && (
+            <span style={{ color: 'var(--nba-gold)', fontSize: '0.7rem', marginTop: 4 }}>★ seu palpite</span>
+          )}
+          {/* Winner check */}
+          {tAWins && (
+            <span style={{ color: 'var(--nba-success)', fontSize: '0.72rem', fontWeight: 700, marginTop: 4 }}>✓ vencedor</span>
+          )}
+        </div>
+
+        {/* Center: VS or score */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '10px 8px',
+            minWidth: 52,
+            borderLeft: '1px solid var(--nba-border)',
+            borderRight: '1px solid var(--nba-border)',
+          }}
+        >
+          {score ? (
+            <>
+              <span
+                className="font-condensed font-bold"
+                style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', lineHeight: 1 }}
+              >
+                {score}
+              </span>
+              <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem', marginTop: 3 }}>final</span>
+            </>
+          ) : (
+            <span
+              className="font-condensed"
+              style={{ color: 'var(--nba-text-muted)', fontSize: '1rem', letterSpacing: 1 }}
+            >
+              VS
+            </span>
+          )}
+        </div>
+
+        {/* Team B (away) */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            padding: '14px 12px',
+            background: tBWins ? 'rgba(46,204,113,0.07)' : 'transparent',
+            opacity: isComplete && !tBWins ? 0.4 : 1,
+            transition: 'opacity 0.2s',
+          }}
+        >
+          <span
+            className="font-condensed font-bold"
+            style={{
+              color: tB?.primary_color ?? 'var(--nba-text-muted)',
+              fontSize: '1.9rem',
+              lineHeight: 1,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {tB?.abbreviation ?? '—'}
+          </span>
+          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3, textAlign: 'right' }}>
+            {tB?.name?.split(' ').pop() ?? ''}
+          </span>
+          {pickedTeamId === tB?.id && !isComplete && (
+            <span style={{ color: 'var(--nba-gold)', fontSize: '0.7rem', marginTop: 4 }}>★ seu palpite</span>
+          )}
+          {tBWins && (
+            <span style={{ color: 'var(--nba-success)', fontSize: '0.72rem', fontWeight: 700, marginTop: 4 }}>✓ vencedor</span>
+          )}
+        </div>
+      </div>
+
+      {/* Status footer */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '7px 12px',
+          borderTop: '1px solid var(--nba-border)',
+          background: badge.bg,
+        }}
+      >
+        <span style={{ color: badge.color, fontSize: '0.72rem', fontWeight: 600 }}>
+          {badge.label}
+        </span>
+        {/* Champion badge for Finals */}
+        {s.winner && isComplete && (
+          <span style={{ color: 'var(--nba-gold)', fontSize: '0.68rem' }}>
+            🏆 {s.winner.abbreviation}
+          </span>
+        )}
+        {onClick && (
+          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+            Tocar para palpitar →
+          </span>
+        )}
+      </div>
+    </button>
+  )
+}
+
+// ─── Mobile bracket view ──────────────────────────────────────────────────────
+
+function MobileBracketView({
+  series,
+  picks,
+  comparePicks,
+  onSeriesClick,
+}: {
+  series: Series[]
+  picks: SeriesPick[]
+  comparePicks?: SeriesPick[]
+  onSeriesClick?: (s: Series) => void
+}) {
+  const pickBySeriesId    = Object.fromEntries(picks.map((p) => [p.series_id, p]))
+  const compareBySeriesId = comparePicks
+    ? Object.fromEntries(comparePicks.map((p) => [p.series_id, p]))
+    : null
+  const isCompareMode = !!comparePicks
+
+  const rounds = ([1, 2, 3, 4] as const).map((r) => ({
+    round: r,
+    label: ROUND_LABELS[r],
+    items: series.filter((s) => s.round === r),
+  })).filter((g) => g.items.length > 0)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '4px 0 8px' }}>
+      {rounds.map(({ round, label, items }) => (
+        <div key={round}>
+          {/* Round header */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              marginBottom: 12,
+            }}
+          >
+            <span
+              className="title"
+              style={{
+                color: 'var(--nba-gold)',
+                fontSize: '1rem',
+                letterSpacing: '0.1em',
+              }}
+            >
+              {label}
+            </span>
+            <div style={{ flex: 1, height: 1, background: 'var(--nba-border)' }} />
+          </div>
+
+          {/* Series cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {items.map((s) => (
+              <MobileSeriesCard
+                key={s.id}
+                s={s}
+                pick={pickBySeriesId[s.id]}
+                comparePick={compareBySeriesId?.[s.id]}
+                myPick={pickBySeriesId[s.id]}
+                isCompareMode={isCompareMode}
+                onClick={onSeriesClick ? () => onSeriesClick(s) : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface Props {
@@ -104,6 +397,16 @@ interface Props {
 
 export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full' }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 768)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const seriesById     = Object.fromEntries(series.map((s) => [s.id, s]))
   const pickBySeriesId = Object.fromEntries(picks.map((p) => [p.series_id, p]))
   const compareById    = comparePicks
@@ -128,6 +431,20 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
       behavior: 'smooth',
     })
   }, [focusSection])
+
+  // ── Mobile view ─────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <MobileBracketView
+        series={series}
+        picks={picks}
+        comparePicks={comparePicks}
+        onSeriesClick={onSeriesClick}
+      />
+    )
+  }
+
+  // ── Desktop SVG view (unchanged) ────────────────────────────────────────────
 
   function pickForSlot(id: string): SeriesPick | undefined {
     const s = seriesById[id]
