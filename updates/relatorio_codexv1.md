@@ -48,6 +48,7 @@ As mudancas mais importantes foram:
 - reforco dos cards de jogos com estados mais claros de palpite;
 - reforco da Home com destaque para o proximo foco de palpites;
 - reforco do compare com placar-resumo de duelo;
+- inicio da otimizacao mobile com navegacao inferior mais leve e grids menos densos;
 - inclusao de uma secao visual explicando a pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring;
 - definicao de desempate deterministico no ranking.
@@ -531,6 +532,122 @@ Impacto:
 - deixa a comparacao mais competitiva e divertida;
 - melhora a utilidade da pagina sem exigir analise detalhada imediata.
 
+### 19. Primeira rodada de otimizacao mobile
+
+Arquivos:
+
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Compare.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `frontend/src/pages/BracketEditor.tsx`
+
+Antes:
+
+- a experiencia mobile ainda mantinha alguns padroes mais proximos do desktop, com densidade horizontal alta;
+- a barra inferior concentrava muitas acoes na mesma faixa;
+- varios resumos usavam grades com 3 ou 4 colunas mesmo em telas pequenas;
+- o bracket ainda dependia de descoberta visual para o usuario perceber a rolagem lateral.
+
+Depois:
+
+- a navegacao inferior foi simplificada para quatro destinos principais;
+- `Comparar` e `Sair` passaram para um menu rapido acionado pelo avatar/menu, reduzindo poluicao na barra inferior;
+- os resumos de `Ranking`, `Compare` e `Bracket` passaram a empilhar melhor no mobile, com menos colunas em telas pequenas;
+- o `Bracket` ganhou uma dica explicita de rolagem lateral no mobile.
+
+Impacto:
+
+- melhora conforto de toque na navegacao inferior;
+- reduz a sensacao de tela apertada em celulares;
+- melhora a leitura dos cards-resumo e dos dados principais;
+- deixa o bracket mais facil de entender no primeiro uso mobile.
+
+### 20. Segunda rodada de otimizacao mobile
+
+Arquivos:
+
+- `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/components/RankingChart.tsx`
+
+Antes:
+
+- no mobile, a Home ainda deixava o proximo jogo importante um pouco abaixo do ideal;
+- a tela de jogos ainda usava um topo mais denso em celulares;
+- o grafico do ranking competia demais com o espaco visivel em telas pequenas.
+
+Depois:
+
+- a Home passou a puxar o bloco de proximos jogos para cima no mobile, deixando o proximo foco de palpite mais rapido de encontrar;
+- a pagina de jogos passou a usar resumo superior menos apertado em telas pequenas;
+- o grafico do ranking passou a se adaptar ao mobile com:
+  - menos participantes exibidos;
+  - altura reduzida;
+  - eixos mais compactos;
+  - espacamento mais apropriado para celular.
+
+Impacto:
+
+- melhora a descoberta do proximo passo importante na Home;
+- reduz competicao visual no topo da tela de jogos;
+- torna o grafico do ranking mais legivel no mobile;
+- deixa o app mais focado em acao rapida em vez de excesso de informacao acima da dobra.
+
+### 21. Terceira rodada de otimizacao mobile
+
+Arquivos:
+
+- `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Login.tsx`
+- `frontend/src/pages/Unauthorized.tsx`
+
+Antes:
+
+- algumas telas de entrada e suporte ainda estavam menos consistentes com o restante da experiencia mobile;
+- a Home ainda podia priorizar um pouco melhor os blocos mais importantes no celular;
+- a tela de jogos podia ganhar mais conforto em toque e leitura em detalhes pequenos.
+
+Depois:
+
+- a tela de login passou a usar largura mais fluida, tipografia mais equilibrada e um card mais apropriado para celulares;
+- a tela de acesso negado passou a usar card central mais consistente com o restante do app;
+- na Home, o ranking resumido foi trazido para cima no mobile antes de blocos mais secundarios;
+- a tela de jogos ganhou pequenos ajustes de conforto em cabecalho de data, largura do bloco de proximo fechamento e dimensoes internas dos cards.
+
+Impacto:
+
+- melhora a consistencia do app no mobile desde a entrada;
+- reduz sensacao de tela espremida em login e acesso negado;
+- deixa a Home mais orientada ao que importa primeiro no celular;
+- melhora leitura e toque nos cards de jogos.
+
+### 22. Rodada final de acabamento mobile em bracket e compare
+
+Arquivos:
+
+- `frontend/src/pages/BracketEditor.tsx`
+- `frontend/src/pages/Compare.tsx`
+
+Antes:
+
+- o bracket mobile ja estava mais claro, mas ainda podia orientar melhor o usuario em primeiro uso;
+- o compare mobile ainda precisava de pequenos ajustes para ficar mais leve e didatico em telas pequenas.
+
+Depois:
+
+- o `Bracket` ganhou um CTA mais forte para abrir o bracket oficial mesmo no mobile;
+- a tela passou a mostrar pequenas dicas contextuais antes da chave, reforcando como usar a pagina no celular;
+- o `Compare` recebeu ajustes no bloco de status e no resumo superior para caber melhor em telas menores;
+- a tela de compare tambem ganhou uma dica dedicada de rolagem horizontal no mobile para os brackets lado a lado.
+
+Impacto:
+
+- melhora onboarding visual do bracket no celular;
+- reduz friccao inicial em paginas com rolagem horizontal;
+- deixa o compare mais facil de interpretar no mobile;
+- fecha a experiencia mobile com mais consistencia entre orientacao, toque e leitura.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -551,6 +668,10 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend apos reforcar os cards de jogos com estados de palpite.
 - `npm run build` no frontend apos reforcar a Home com foco no proximo palpite.
 - `npm run build` no frontend apos reforcar o compare com placar-resumo de duelo.
+- `npm run build` no frontend apos a primeira rodada de otimizacao mobile.
+- `npm run build` no frontend apos a segunda rodada de otimizacao mobile.
+- `npm run build` no frontend apos a terceira rodada de otimizacao mobile.
+- `npm run build` no frontend apos a rodada final de acabamento mobile em bracket e compare.
 
 Resultado:
 

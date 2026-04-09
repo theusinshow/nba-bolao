@@ -111,7 +111,8 @@ function CompareHero({
 
           <div
             style={{
-              minWidth: 180,
+              width: '100%',
+              maxWidth: 220,
               padding: '10px 12px',
               borderRadius: 10,
               background: 'rgba(12,12,18,0.34)',
@@ -128,7 +129,7 @@ function CompareHero({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
           {[
             { label: 'Participantes', value: participantsCount, color: 'var(--nba-text)', icon: <Users size={14} /> },
             { label: 'Modo', value: bothSelected && !sameSelected ? 'Duelo' : 'Preparando', color: 'var(--nba-gold)', icon: <Swords size={14} /> },
@@ -341,6 +342,7 @@ function SelectionArena({
             justifyContent: 'center',
             minWidth: 44,
           }}
+          className="sm:flex hidden"
         >
           <div
             style={{
@@ -418,10 +420,10 @@ function SummaryCard({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
           gap: 10,
           marginBottom: 14,
         }}
+        className="grid-cols-2 lg:grid-cols-4"
       >
         {[
           { label: 'Na frente', value: duelLead, color: tied ? 'var(--nba-text)' : 'var(--nba-gold)' },
@@ -452,7 +454,7 @@ function SummaryCard({
           display: 'grid',
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          gap: 12,
+          gap: 8,
           marginBottom: 14,
           paddingBottom: 14,
           borderBottom: '1px solid var(--nba-border)',
@@ -512,6 +514,22 @@ function SummaryCard({
             <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', marginTop: 2 }}>↑ na frente</div>
           )}
         </div>
+      </div>
+
+      <div
+        className="sm:hidden"
+        style={{
+          marginBottom: 12,
+          padding: '8px 10px',
+          borderRadius: 10,
+          background: 'rgba(12,12,18,0.34)',
+          border: '1px solid rgba(200,150,60,0.12)',
+          color: 'var(--nba-text-muted)',
+          fontSize: '0.74rem',
+          textAlign: 'center',
+        }}
+      >
+        Arraste horizontalmente cada bracket para comparar as escolhas completas.
       </div>
 
       {/* Agreement stats */}
@@ -862,7 +880,7 @@ export function Compare() {
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr',
-              gap: 24,
+              gap: 18,
             }}
             className="min-[900px]:grid-cols-2"
           >

@@ -975,6 +975,10 @@ export function Home({ participantId }: Props) {
             totalSeries={series.length}
           />
 
+          <div className="md:hidden">
+            <NextGamesCard />
+          </div>
+
           {/* Stats 2×2 */}
           <StatsGrid
             participantCount={ranking.length}
@@ -983,21 +987,23 @@ export function Home({ participantId }: Props) {
             myEntry={myEntry}
           />
 
+          {/* On tablet: ranking card appears here (left col hidden) */}
+          <div className="md:hidden">
+            <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+          </div>
+
           {/* Podium */}
           <PodiumCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
 
           {/* Recent series */}
           <RecentSeriesCard series={series} />
-
-          {/* On tablet: ranking card appears here (left col hidden) */}
-          <div className="md:hidden">
-            <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-          </div>
         </div>
 
         {/* ── Right column ──────────────────────────────────────────────── */}
         <div className="flex flex-col gap-4 min-w-0">
-          <NextGamesCard />
+          <div className="hidden md:block">
+            <NextGamesCard />
+          </div>
           <OddsCard />
           <MyPicksCard series={series} picks={picks} />
 

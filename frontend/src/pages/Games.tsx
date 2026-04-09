@@ -218,6 +218,7 @@ function DateHeader({ iso, count }: { iso: string; count: number }) {
     <div
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
+        flexWrap: 'wrap',
         marginBottom: 12,
       }}
     >
@@ -250,6 +251,7 @@ function DateHeader({ iso, count }: { iso: string; count: number }) {
       <div
         style={{
           height: 1, flex: 1,
+          minWidth: 32,
           background: 'var(--nba-border)',
         }}
       />
@@ -309,7 +311,7 @@ function TeamSide({
         display: 'flex',
         flexDirection: 'column',
         alignItems: align,
-        padding: '18px 16px',
+        padding: '20px 14px',
         background: resultBg,
         border: 'none',
         cursor: locked ? 'default' : 'pointer',
@@ -376,10 +378,10 @@ function CenterPanel({ game, locked }: { game: GameWithTeams; locked: boolean })
     <div
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '12px 10px', gap: 4,
+        justifyContent: 'center', padding: '12px 8px', gap: 4,
         borderLeft: '1px solid var(--nba-border)',
         borderRight: '1px solid var(--nba-border)',
-        minWidth: 72, flexShrink: 0,
+        minWidth: 64, flexShrink: 0,
       }}
     >
       {hasScore ? (
@@ -803,7 +805,8 @@ function GamesHero({
           {nextGame?.tip_off_at && (
             <div
               style={{
-                minWidth: 170,
+                width: '100%',
+                maxWidth: 220,
                 padding: '10px 12px',
                 borderRadius: 10,
                 background: 'rgba(12,12,18,0.34)',
@@ -821,7 +824,7 @@ function GamesHero({
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
           {[
             { label: 'Jogos abertos', value: openGames.length, tone: 'var(--nba-text)' },
             { label: 'Sem palpite', value: pendingPicks, tone: pendingPicks > 0 ? 'var(--nba-gold)' : 'var(--nba-success)' },
@@ -990,7 +993,7 @@ export function Games({ participantId }: Props) {
   }
 
   return (
-    <div style={{ padding: '16px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ padding: '16px 16px 96px', maxWidth: 680, margin: '0 auto' }}>
       <GamesHero games={games} picks={picks} isMock={isMock} />
 
       {/* Games grouped by date */}

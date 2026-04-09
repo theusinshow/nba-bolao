@@ -33,7 +33,7 @@ function TopThreeCards({
   ]
 
   return (
-    <div style={{ display: 'grid', gap: 12 }} className="md:grid-cols-3">
+    <div style={{ display: 'grid', gap: 12 }} className="grid-cols-1 sm:grid-cols-3">
       {topThree.map((entry, index) => {
         const style = styles[index]
         const isMe = entry.participant_id === participantId
@@ -155,7 +155,7 @@ function RankingHero({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
           {[
             { label: 'Participantes', value: ranking.length, tone: 'var(--nba-text)' },
             { label: 'Líder atual', value: leader ? leader.participant_name.split(' ')[0] : '—', tone: 'var(--nba-gold)' },

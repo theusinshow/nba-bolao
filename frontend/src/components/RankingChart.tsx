@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Cell,
@@ -174,7 +175,17 @@ function CustomLegend() {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function RankingChart({ ranking }: Props) {
-  const data = ranking.slice(0, 9).map((e) => ({
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)')
+    const onChange = () => setIsMobile(media.matches)
+    onChange()
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
+
+  const data = ranking.slice(0, isMobile ? 5 : 9).map((e) => ({
     name:   e.participant_name.split(' ')[0],
     R1:     e.round1_points,
     R2:     e.round2_points,
@@ -183,11 +194,11 @@ export function RankingChart({ ranking }: Props) {
   }))
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
+    <ResponsiveContainer width="100%" height={isMobile ? 220 : 260}>
       <BarChart
         data={data}
-        margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
-        barCategoryGap="22%"
+        margin={{ top: 4, right: isMobile ? 0 : 8, left: isMobile ? -24 : -16, bottom: 0 }}
+        barCategoryGap={isMobile ? '30%' : '22%'}
       >
         <CartesianGrid
           strokeDasharray="3 3"
@@ -196,15 +207,15 @@ export function RankingChart({ ranking }: Props) {
         />
         <XAxis
           dataKey="name"
-          tick={{ fill: '#888899', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif" }}
+          tick={{ fill: '#888899', fontSize: isMobile ? 10 : 11, fontFamily: "'Barlow Condensed', sans-serif" }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={{ fill: '#888899', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif" }}
+          tick={{ fill: '#888899', fontSize: isMobile ? 10 : 11, fontFamily: "'Barlow Condensed', sans-serif" }}
           axisLine={false}
           tickLine={false}
-          width={32}
+          width={isMobile ? 24 : 32}
         />
         <Tooltip
           content={<CustomTooltip />}

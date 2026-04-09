@@ -5,7 +5,7 @@ interface Props {
 export function Login({ onSignIn }: Props) {
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-8"
       style={{ background: 'var(--nba-bg)' }}
     >
       {/* Court lines SVG background */}
@@ -26,30 +26,29 @@ export function Login({ onSignIn }: Props) {
         <circle cx="750" cy="300" r="60" fill="none" stroke="#c8963c" strokeWidth="1" />
       </svg>
 
-      <div className="relative z-10 flex flex-col items-center gap-8 px-8 text-center">
+      <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-[360px] text-center">
         {/* Logo */}
         <div>
           <div
-            className="text-7xl md:text-8xl font-bebas tracking-widest"
+            className="text-5xl sm:text-6xl md:text-8xl font-bebas tracking-[0.08em]"
             style={{ color: 'var(--nba-gold)', textShadow: '0 0 40px rgba(200,150,60,0.4)' }}
           >
             Bolão NBA
           </div>
-          <div className="text-3xl md:text-4xl font-bebas tracking-widest text-nba-text opacity-80">
+          <div className="text-2xl sm:text-3xl md:text-4xl font-bebas tracking-[0.08em] text-nba-text opacity-80">
             2026 Playoffs
           </div>
         </div>
 
         {/* Sign in card */}
         <div
-          className="card flex flex-col items-center gap-6 px-10 py-8"
-          style={{ minWidth: 300 }}
+          className="card flex flex-col items-center gap-5 px-5 sm:px-8 py-7 w-full"
         >
-          <p className="text-nba-muted text-sm">Acesso restrito aos participantes do bolão</p>
+          <p className="text-nba-muted text-sm max-w-[240px]">Acesso restrito aos participantes do bolão</p>
 
           <button
             onClick={onSignIn}
-            className="flex items-center gap-3 bg-white text-gray-800 font-semibold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors w-full justify-center"
+            className="flex items-center gap-3 bg-white text-gray-800 font-semibold px-6 py-3.5 rounded-lg hover:bg-gray-100 transition-colors w-full justify-center"
           >
             {/* Google logo */}
             <svg width="18" height="18" viewBox="0 0 18 18">

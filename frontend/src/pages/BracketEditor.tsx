@@ -100,11 +100,17 @@ function BracketHero({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
+                width: '100%',
+                justifyContent: 'center',
                 fontSize: '0.78rem',
                 color: 'var(--nba-text-muted)',
                 transition: 'color 0.2s ease',
                 flexShrink: 0,
                 marginTop: 4,
+                padding: '9px 12px',
+                borderRadius: 10,
+                border: '1px solid rgba(200,150,60,0.12)',
+                background: 'rgba(12,12,18,0.28)',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--nba-gold)' }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--nba-text-muted)' }}
@@ -114,7 +120,7 @@ function BracketHero({
             </Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
             {items.map((item) => (
               <div
                 key={item.label}
@@ -234,6 +240,59 @@ export function BracketEditor({ participantId }: Props) {
         className="px-2"
         style={{ position: 'relative' }}
       >
+        <div
+          className="md:hidden"
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            margin: '0 8px 10px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            borderRadius: 999,
+            background: 'rgba(12,12,18,0.76)',
+            border: '1px solid rgba(200,150,60,0.14)',
+            color: 'var(--nba-text-muted)',
+            fontSize: '0.72rem',
+          }}
+        >
+          Arraste lateralmente para ver toda a chave
+        </div>
+
+        <div
+          className="md:hidden"
+          style={{
+            margin: '0 8px 12px',
+            display: 'grid',
+            gap: 8,
+            gridTemplateColumns: '1fr 1fr',
+          }}
+        >
+          <div
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.4)',
+              border: '1px solid rgba(200,150,60,0.12)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Dica</div>
+            <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>Toque numa série para palpitar.</div>
+          </div>
+          <div
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.4)',
+              border: '1px solid rgba(200,150,60,0.12)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Leitura</div>
+            <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>Use a legenda para conferir acertos e erros.</div>
+          </div>
+        </div>
+
         {/* Fade hint on right edge for mobile */}
         <div
           className="md:hidden"
