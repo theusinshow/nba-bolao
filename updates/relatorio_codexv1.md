@@ -268,12 +268,14 @@ Depois:
   - pontos por cravada;
 - a secao usa a configuracao real do app em `frontend/src/utils/scoring.ts`;
 - tambem foi incluida uma observacao explicando que a cravada substitui a pontuacao da serie e nao soma por cima.
+- posteriormente, a secao foi reorganizada para funcionar como uma caixa lateral da area principal do ranking, deixando o grafico e a tabela mais livres e mantendo a explicacao visivel de forma separada.
 
 Impacto:
 
 - melhora a transparencia da regra para os participantes;
 - reduz duvidas sobre como o ranking e calculado;
-- melhora a experiencia de uso na tela de ranking.
+- melhora a experiencia de uso na tela de ranking;
+- organiza melhor a hierarquia visual da pagina.
 
 ## Validacoes Executadas
 
@@ -283,6 +285,7 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no backend;
 - `npm run test:scoring` no backend.
 - `npm run build` no frontend apos a alteracao da aba de ranking.
+- `npm run build` no frontend apos reorganizar a explicacao de pontuacao para uma caixa lateral.
 
 Resultado:
 
