@@ -25,6 +25,7 @@ As mudancas mais importantes foram:
 - ajuste da temporada usada no sync da API balldontlie;
 - remocao do fallback com jogos simulados em producao;
 - centralizacao da regra de pontuacao em uma camada isolada;
+- reforco visual da Home com painel principal focado no usuario;
 - inclusao de uma secao visual explicando a pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring;
 - definicao de desempate deterministico no ranking.
@@ -39,6 +40,7 @@ As mudancas mais importantes foram:
 - `backend/package.json`
 - `frontend/src/pages/OfficialBracket.tsx`
 - `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/Home.tsx`
 - `frontend/src/pages/Ranking.tsx`
 - `frontend/src/hooks/useRanking.ts`
 
@@ -281,6 +283,33 @@ Impacto:
 - mantem a leitura do ranking mais limpa no centro da tela;
 - melhora a usabilidade da pagina em telas pequenas.
 
+### 10. Reforco visual da Home com painel principal e atalhos rapidos
+
+Arquivo:
+
+- `frontend/src/pages/Home.tsx`
+
+Antes:
+
+- a Home tinha boas informacoes, mas a abertura da pagina era mais simples e menos orientada para a acao imediata;
+- faltava um bloco principal que resumisse rapidamente situacao, progresso e proximos passos do usuario.
+
+Depois:
+
+- foi criado um painel principal em destaque no topo da Home;
+- esse painel passou a mostrar:
+  - posicao atual do usuario;
+  - pontuacao atual;
+  - progresso do preenchimento do bracket;
+  - atalhos rapidos para bracket, jogos e ranking;
+- a abertura da Home ficou mais forte visualmente e com foco em orientar o usuario para a proxima acao importante.
+
+Impacto:
+
+- melhora a primeira impressao da pagina;
+- aumenta a clareza sobre o estado atual do usuario no bolao;
+- deixa a Home mais util e mais proxima de um dashboard real.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -292,6 +321,7 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend apos reorganizar a explicacao de pontuacao para uma caixa lateral.
 - `npm run build` no frontend apos reposicionar a caixa de pontuacao para a esquerda e ajustar a largura da pagina.
 - `npm run build` no frontend apos adicionar o botao mobile e o painel lateral de pontuacao.
+- `npm run build` no frontend apos reforcar visualmente a Home com painel principal e atalhos rapidos.
 
 Resultado:
 

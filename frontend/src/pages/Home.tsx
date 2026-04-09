@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   ArrowUp, ArrowDown, Minus, Trophy, Users, Target,
-  AlertTriangle, Clock, TrendingUp, Star,
+  AlertTriangle, Clock, TrendingUp, Star, ChevronRight, Sparkles, GitBranch, BarChart3,
 } from 'lucide-react'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
@@ -133,6 +133,216 @@ function RankArrow({ diff }: { diff: number }) {
   if (diff > 0) return <ArrowUp size={10} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />
   if (diff < 0) return <ArrowDown size={10} style={{ color: 'var(--nba-danger)', flexShrink: 0 }} />
   return <Minus size={10} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
+}
+
+function HeroPanel({
+  myEntry,
+  pickedSeries,
+  totalSeries,
+}: {
+  myEntry?: { rank: number; total_points: number; participant_name: string }
+  pickedSeries: number
+  totalSeries: number
+}) {
+  const progress = totalSeries > 0 ? Math.round((pickedSeries / totalSeries) * 100) : 0
+
+  const actions = [
+    {
+      to: '/bracket',
+      label: 'Completar bracket',
+      sublabel: `${pickedSeries}/${totalSeries || 15} séries palpitadas`,
+      icon: <GitBranch size={16} />,
+    },
+    {
+      to: '/games',
+      label: 'Ver jogos',
+      sublabel: 'Acompanhe os próximos palpites',
+      icon: <Clock size={16} />,
+    },
+    {
+      to: '/ranking',
+      label: 'Abrir ranking',
+      sublabel: 'Confira sua posição no bolão',
+      icon: <BarChart3 size={16} />,
+    },
+  ]
+
+  return (
+    <section
+      style={{
+        background: 'linear-gradient(135deg, rgba(200,150,60,0.18), rgba(74,144,217,0.10) 45%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.22)',
+        borderRadius: 12,
+        padding: '1.1rem',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at top right, rgba(232,180,90,0.18), transparent 34%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div style={{ position: 'relative', display: 'grid', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
+          <Sparkles size={15} />
+          <span
+            className="font-condensed"
+            style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+          >
+            Painel do participante
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }} className="md:grid-cols-[1.4fr_1fr]">
+          <div>
+            <h1
+              className="title"
+              style={{ color: 'var(--nba-gold)', fontSize: 'clamp(2.5rem, 6vw, 3.6rem)', lineHeight: 0.95, margin: 0 }}
+            >
+              Bolão NBA 2026
+            </h1>
+            <p style={{ color: 'var(--nba-text)', fontSize: '1rem', margin: '10px 0 6px' }}>
+              {myEntry
+                ? `${myEntry.participant_name.split(' ')[0]}, você está no jogo.`
+                : 'Seu painel está pronto para os playoffs.'}
+            </p>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', maxWidth: 560, margin: 0 }}>
+              Acompanhe sua posição, veja o andamento do bracket e entre nos palpites mais importantes antes do bloqueio.
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+              alignSelf: 'start',
+            }}
+          >
+            <div
+              style={{
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+                borderRadius: 10,
+                padding: '12px 14px',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Minha posição</div>
+              <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '2rem', lineHeight: 1.05 }}>
+                {myEntry ? `#${myEntry.rank}` : '—'}
+              </div>
+            </div>
+            <div
+              style={{
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+                borderRadius: 10,
+                padding: '12px 14px',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Meus pontos</div>
+              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '2rem', lineHeight: 1.05 }}>
+                {myEntry?.total_points ?? 0}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gap: 12,
+            alignItems: 'start',
+          }}
+          className="md:grid-cols-[1.1fr_1fr]"
+        >
+          <div
+            style={{
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+              borderRadius: 10,
+              padding: '12px 14px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <span style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.88rem' }}>Progresso do bracket</span>
+              <span className="font-condensed font-bold" style={{ color: progress === 100 ? 'var(--nba-success)' : 'var(--nba-gold)' }}>
+                {progress}%
+              </span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.06)',
+                overflow: 'hidden',
+                marginBottom: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress}%`,
+                  height: '100%',
+                  borderRadius: 999,
+                  background: progress === 100
+                    ? 'linear-gradient(90deg, #2ecc71, #7ae6a5)'
+                    : 'linear-gradient(90deg, var(--nba-gold), var(--nba-gold-light))',
+                }}
+              />
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem' }}>
+              {pickedSeries} de {totalSeries || 15} séries preenchidas.
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 8 }}>
+            {actions.map((action) => (
+              <Link
+                key={action.to}
+                to={action.to}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  textDecoration: 'none',
+                  background: 'rgba(12,12,18,0.34)',
+                  border: '1px solid rgba(200,150,60,0.16)',
+                  color: 'var(--nba-text)',
+                  transition: 'transform 0.15s ease, border-color 0.15s ease, background 0.15s ease',
+                }}
+                onMouseEnter={(ev) => {
+                  ev.currentTarget.style.transform = 'translateY(-1px)'
+                  ev.currentTarget.style.borderColor = 'rgba(200,150,60,0.35)'
+                  ev.currentTarget.style.background = 'rgba(28,28,38,0.9)'
+                }}
+                onMouseLeave={(ev) => {
+                  ev.currentTarget.style.transform = 'translateY(0)'
+                  ev.currentTarget.style.borderColor = 'rgba(200,150,60,0.16)'
+                  ev.currentTarget.style.background = 'rgba(12,12,18,0.34)'
+                }}
+              >
+                <span style={{ color: 'var(--nba-gold)', display: 'flex', flexShrink: 0 }}>{action.icon}</span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', fontWeight: 600, fontSize: '0.86rem' }}>{action.label}</span>
+                  <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
+                    {action.sublabel}
+                  </span>
+                </span>
+                <ChevronRight size={16} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 // ─── Cards ────────────────────────────────────────────────────────────────────
@@ -698,6 +908,7 @@ export function Home({ participantId }: Props) {
 
   const myEntry       = ranking.find((r) => r.participant_id === participantId)
   const completedSeries = series.filter((s) => s.is_complete).length
+  const pickedSeries = picks.length
 
   return (
     <>
@@ -727,17 +938,11 @@ export function Home({ participantId }: Props) {
         <div className="flex flex-col gap-4 min-w-0">
 
           {/* Header */}
-          <div>
-            <h1
-              className="title"
-              style={{ color: 'var(--nba-gold)', fontSize: 'clamp(2.5rem, 6vw, 3.5rem)', lineHeight: 1 }}
-            >
-              Bolão NBA 2026
-            </h1>
-            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.83rem', marginTop: 4 }}>
-              Playoffs em andamento · Atualização em tempo real
-            </p>
-          </div>
+          <HeroPanel
+            myEntry={myEntry}
+            pickedSeries={pickedSeries}
+            totalSeries={series.length}
+          />
 
           {/* Stats 2×2 */}
           <StatsGrid
