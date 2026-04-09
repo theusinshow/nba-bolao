@@ -452,9 +452,14 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   async function handleSave() {
     if (!pending) return
     setSaving(true)
-    await onSave(game.id, pending)
-    setPending(null)
-    setSaving(false)
+    try {
+      await onSave(game.id, pending)
+      setPending(null)
+    } catch (err) {
+      console.error('[GameCard] handleSave threw:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Result helpers
@@ -917,8 +922,9 @@ export function Games({ participantId }: Props) {
   }
 
   async function savePick(gameId: string, winnerId: string) {
+    console.log('[savePick] chamado', { gameId, winnerId, participantId, isMock })
+
     if (isMock) {
-      // Simulate pick in mock mode (no DB write)
       const fake: GamePick = {
         id: `mock-pick-${gameId}`,
         participant_id: participantId,
@@ -936,24 +942,49 @@ export function Games({ participantId }: Props) {
       return
     }
 
-    const existing = picks.find((p) => p.game_id === gameId)
-    if (existing) {
-      const { data, error } = await supabase
-        .from('game_picks')
-        .update({ winner_id: winnerId })
-        .eq('id', existing.id)
-        .select().single()
-      if (error) { addToast('Erro ao salvar palpite', 'error'); return }
-      if (data) setPicks((prev) => prev.map((p) => p.id === existing.id ? data as GamePick : p))
-    } else {
-      const { data, error } = await supabase
-        .from('game_picks')
-        .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
-        .select().single()
-      if (error) { addToast('Erro ao salvar palpite', 'error'); return }
-      if (data) setPicks((prev) => [...prev, data as GamePick])
+    if (!participantId) {
+      console.error('[savePick] participantId ausente!')
+      addToast('Erro: participante não identificado', 'error')
+      return
     }
-    addToast('Palpite salvo! ✓', 'success')
+
+    try {
+      const existing = picks.find((p) => p.game_id === gameId)
+      console.log('[savePick] pick existente:', existing ?? 'nenhum')
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('game_picks')
+          .update({ winner_id: winnerId })
+          .eq('id', existing.id)
+          .select()
+          .single()
+        console.log('[savePick] update result:', { data, error })
+        if (error) {
+          addToast(`Erro ao salvar: ${error.message}`, 'error')
+          return
+        }
+        if (data) setPicks((prev) => prev.map((p) => p.id === existing.id ? data as GamePick : p))
+      } else {
+        const { data, error } = await supabase
+          .from('game_picks')
+          .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
+          .select()
+          .single()
+        console.log('[savePick] insert result:', { data, error })
+        if (error) {
+          addToast(`Erro ao salvar: ${error.message}`, 'error')
+          return
+        }
+        if (data) setPicks((prev) => [...prev, data as GamePick])
+      }
+
+      console.log('[savePick] sucesso!')
+      addToast('Palpite salvo!', 'success')
+    } catch (err) {
+      console.error('[savePick] exceção inesperada:', err)
+      addToast(`Erro inesperado: ${err instanceof Error ? err.message : String(err)}`, 'error')
+    }
   }
 
   if (loading) {
