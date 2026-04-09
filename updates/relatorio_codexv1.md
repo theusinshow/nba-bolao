@@ -648,6 +648,58 @@ Impacto:
 - deixa o compare mais facil de interpretar no mobile;
 - fecha a experiencia mobile com mais consistencia entre orientacao, toque e leitura.
 
+### 23. Navegacao dedicada do bracket mobile com icone de chave
+
+Arquivos:
+
+- `frontend/src/components/BracketSVG.tsx`
+- `frontend/src/pages/BracketEditor.tsx`
+
+Antes:
+
+- mesmo com melhorias anteriores, o bracket ainda exigia rolagem horizontal mais livre para encontrar rapidamente a area desejada;
+- faltava um atalho claro para quem quisesse ver os confrontos de forma resumida no celular.
+
+Depois:
+
+- o bracket mobile passou a ter navegacao rapida por secoes:
+  - Oeste
+  - Finais
+  - Leste
+- a visualizacao da chave agora pode ser reposicionada automaticamente para essas partes da estrutura;
+- foi adicionado um botao com icone de chave/bracket no mobile;
+- esse botao abre uma visao simplificada da chave, listando confrontos e informacoes resumidas sem depender da rolagem horizontal completa.
+
+Impacto:
+
+- melhora muito a descoberta da estrutura da chave no mobile;
+- reduz a frustracao de navegacao horizontal manual;
+- ajuda usuarios que querem apenas conferir os confrontos de forma rapida;
+- deixa a aba bracket muito mais utilizavel em tela pequena.
+
+### 24. Refinamento visual da experiencia do bracket mobile
+
+Arquivos:
+
+- `frontend/src/pages/BracketEditor.tsx`
+
+Antes:
+
+- a nova navegacao mobile do bracket ja estava funcional, mas ainda podia ficar mais autoexplicativa para quem abre a tela pela primeira vez;
+- o acesso ao bracket oficial e a leitura da chave simplificada ainda podiam ganhar um pouco mais de presenca visual.
+
+Depois:
+
+- o CTA para abrir o bracket oficial ganhou mais destaque no mobile;
+- a area superior do bracket recebeu orientacoes contextuais mais claras;
+- a experiencia de leitura do bracket em tela pequena ficou mais guiada antes mesmo da interacao com a chave.
+
+Impacto:
+
+- melhora onboarding da aba bracket no celular;
+- ajuda usuarios menos familiarizados com a navegacao horizontal;
+- deixa a area principal mais convidativa e mais facil de entender.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -672,6 +724,8 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend apos a segunda rodada de otimizacao mobile.
 - `npm run build` no frontend apos a terceira rodada de otimizacao mobile.
 - `npm run build` no frontend apos a rodada final de acabamento mobile em bracket e compare.
+- `npm run build` no frontend apos adicionar navegacao dedicada e icone de chave no bracket mobile.
+- `npm run build` no frontend apos refinamento visual adicional do bracket mobile.
 
 Resultado:
 

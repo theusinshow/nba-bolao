@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trophy, GitBranch, Target, BadgeCheck, Hourglass } from 'lucide-react'
+import { Trophy, GitBranch, Target, BadgeCheck, Hourglass, X } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
 import { SeriesModal } from '../components/SeriesModal'
 import { GamePickModal } from '../components/GamePickModal'
@@ -17,6 +17,167 @@ const LEGEND = [
   { color: '#c8963c', label: 'Palpitado'  },
   { color: 'rgba(200,150,60,0.2)', label: 'Sem palpite', dashed: true },
 ]
+
+const MOBILE_SECTIONS = [
+  { key: 'west', label: 'Oeste' },
+  { key: 'finals', label: 'Finais' },
+  { key: 'east', label: 'Leste' },
+] as const
+
+function MobileBracketSheet({
+  series,
+  picks,
+  onClose,
+}: {
+  series: Series[]
+  picks: ReturnType<typeof useSeries>['picks']
+  onClose: () => void
+}) {
+  const pickBySeries = Object.fromEntries(picks.map((pick) => [pick.series_id, pick]))
+  const roundLabels: Record<number, string> = {
+    1: '1ª rodada',
+    2: '2ª rodada',
+    3: 'Final de conferência',
+    4: 'Finais da NBA',
+  }
+
+  const ordered = [...series].sort((a, b) => {
+    if (a.round !== b.round) return a.round - b.round
+    return (a.slot ?? '').localeCompare(b.slot ?? '')
+  })
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.68)',
+          zIndex: 45,
+        }}
+      />
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 46,
+          borderTopLeftRadius: 18,
+          borderTopRightRadius: 18,
+          background: 'rgba(19,19,26,0.98)',
+          borderTop: '1px solid rgba(200,150,60,0.18)',
+          padding: '16px 16px calc(16px + env(safe-area-inset-bottom))',
+          maxHeight: '78vh',
+          overflowY: 'auto',
+          boxShadow: '0 -14px 40px rgba(0,0,0,0.32)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div>
+            <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.2rem', letterSpacing: '0.08em' }}>
+              Chave Mobile
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem' }}>
+              Veja os confrontos sem depender da rolagem horizontal
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              border: '1px solid rgba(200,150,60,0.12)',
+              background: 'rgba(28,28,38,0.9)',
+              color: 'var(--nba-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {ordered.map((item) => {
+            const home = item.home_team?.abbreviation ?? '—'
+            const away = item.away_team?.abbreviation ?? '—'
+            const pick = pickBySeries[item.id]
+            const pickTeam = pick?.winner_id === item.home_team?.id
+              ? item.home_team?.abbreviation
+              : pick?.winner_id === item.away_team?.id
+              ? item.away_team?.abbreviation
+              : null
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  padding: '12px 12px',
+                  borderRadius: 12,
+                  background: 'rgba(12,12,18,0.4)',
+                  border: '1px solid rgba(200,150,60,0.12)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
+                    {roundLabels[item.round]}
+                  </span>
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                    {item.conference ?? 'NBA'} {item.slot ?? ''}
+                  </span>
+                </div>
+
+                <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1 }}>
+                  {home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {away}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                  {pickTeam && (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        background: 'rgba(200,150,60,0.1)',
+                        border: '1px solid rgba(200,150,60,0.18)',
+                        color: 'var(--nba-gold)',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Seu palpite: {pickTeam}
+                    </span>
+                  )}
+                  {item.is_complete && item.winner && (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        background: 'rgba(46,204,113,0.1)',
+                        border: '1px solid rgba(46,204,113,0.18)',
+                        color: 'var(--nba-success)',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Vencedor: {item.winner.abbreviation}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
 
 function BracketHero({
   pickedCount,
@@ -215,6 +376,8 @@ export function BracketEditor({ participantId }: Props) {
   const { series, picks, loading, savePick, getPickForSeries } = useSeries(participantId)
   const [selectedSeries, setSelectedSeries]   = useState<Series | null>(null)
   const [gamePickSeries, setGamePickSeries]    = useState<Series | null>(null)
+  const [mobileFocus, setMobileFocus] = useState<'west' | 'finals' | 'east' | 'full'>('west')
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
 
   if (loading) {
     return (
@@ -240,6 +403,58 @@ export function BracketEditor({ participantId }: Props) {
         className="px-2"
         style={{ position: 'relative' }}
       >
+        <div
+          className="md:hidden"
+          style={{
+            margin: '0 8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+            {MOBILE_SECTIONS.map((section) => (
+              <button
+                key={section.key}
+                onClick={() => setMobileFocus(section.key)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  border: mobileFocus === section.key ? '1px solid rgba(200,150,60,0.28)' : '1px solid rgba(200,150,60,0.12)',
+                  background: mobileFocus === section.key ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.4)',
+                  color: mobileFocus === section.key ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setMobileSheetOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              borderRadius: 999,
+              border: '1px solid rgba(74,144,217,0.26)',
+              background: 'rgba(74,144,217,0.12)',
+              color: 'var(--nba-east)',
+              fontSize: '0.76rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <GitBranch size={14} />
+            Chave
+          </button>
+        </div>
+
         <div
           className="md:hidden"
           style={{
@@ -311,6 +526,7 @@ export function BracketEditor({ participantId }: Props) {
           series={series}
           picks={picks}
           onSeriesClick={(s) => setSelectedSeries(s)}
+          focusSection={mobileFocus}
         />
       </div>
 
@@ -329,6 +545,14 @@ export function BracketEditor({ participantId }: Props) {
           series={gamePickSeries}
           participantId={participantId}
           onClose={() => setGamePickSeries(null)}
+        />
+      )}
+
+      {mobileSheetOpen && (
+        <MobileBracketSheet
+          series={series}
+          picks={picks}
+          onClose={() => setMobileSheetOpen(false)}
         />
       )}
     </div>

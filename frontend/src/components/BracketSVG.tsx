@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { Series, SeriesPick } from '../types'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
@@ -98,14 +99,35 @@ interface Props {
   // Compare mode — when provided, border colours reflect agreement instead of pick outcome
   comparePicks?: SeriesPick[]
   onSeriesHover?: (series: Series | null, clientX: number, clientY: number) => void
+  focusSection?: 'west' | 'finals' | 'east' | 'full'
 }
 
-export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, onSeriesHover }: Props) {
+export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full' }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const seriesById     = Object.fromEntries(series.map((s) => [s.id, s]))
   const pickBySeriesId = Object.fromEntries(picks.map((p) => [p.series_id, p]))
   const compareById    = comparePicks
     ? Object.fromEntries(comparePicks.map((p) => [p.series_id, p]))
     : null
+
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container) return
+
+    const maxScroll = Math.max(container.scrollWidth - container.clientWidth, 0)
+
+    const targets = {
+      west: 0,
+      finals: Math.max((container.scrollWidth - container.clientWidth) / 2, 0),
+      east: maxScroll,
+      full: 0,
+    } as const
+
+    container.scrollTo({
+      left: targets[focusSection],
+      behavior: 'smooth',
+    })
+  }, [focusSection])
 
   function pickForSlot(id: string): SeriesPick | undefined {
     const s = seriesById[id]
@@ -380,6 +402,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
 
   return (
     <div
+      ref={scrollRef}
       style={{
         overflowX: 'auto',
         overflowY: 'visible',
