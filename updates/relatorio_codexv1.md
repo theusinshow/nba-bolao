@@ -27,6 +27,9 @@ As mudancas mais importantes foram:
 - centralizacao da regra de pontuacao em uma camada isolada;
 - reforco visual da Home com painel principal focado no usuario;
 - reforco visual da pagina de jogos com resumo e urgencia de palpites;
+- reforco visual da navegacao inferior para melhorar uso no mobile;
+- reforco visual da pagina de comparacao com arena de duelo e selecao mais clara;
+- reforco visual do bracket do usuario e do bracket oficial com paineis-resumo;
 - inclusao de uma secao visual explicando a pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring;
 - definicao de desempate deterministico no ranking.
@@ -40,8 +43,11 @@ As mudancas mais importantes foram:
 - `backend/src/scoring/engine.ts`
 - `backend/package.json`
 - `frontend/src/pages/OfficialBracket.tsx`
+- `frontend/src/pages/BracketEditor.tsx`
 - `frontend/src/pages/Games.tsx`
 - `frontend/src/pages/Home.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Compare.tsx`
 - `frontend/src/pages/Ranking.tsx`
 - `frontend/src/hooks/useRanking.ts`
 
@@ -339,6 +345,81 @@ Impacto:
 - ajuda o usuario a priorizar palpites urgentes;
 - deixa a experiencia de jogos mais viva e orientada para acao.
 
+### 12. Reforco visual da navegacao inferior
+
+Arquivo:
+
+- `frontend/src/components/Nav.tsx`
+
+Antes:
+
+- a navegacao inferior era funcional, mas tinha um estado ativo discreto e um bloco de perfil mais solto visualmente;
+- no mobile, a barra tinha menos sensacao de produto acabado.
+
+Depois:
+
+- a navegacao passou a usar um container mais refinado, com fundo mais forte e acabamento visual melhor;
+- o item ativo ficou mais destacado;
+- os icones e labels ficaram mais equilibrados visualmente;
+- o bloco de perfil e sair foi integrado ao conjunto com um acabamento mais consistente.
+
+Impacto:
+
+- melhora a percepcao de qualidade do app no mobile;
+- aumenta a clareza da navegacao ativa;
+- deixa o rodape mais coeso com o restante da interface.
+
+### 13. Reforco visual da pagina de comparacao
+
+Arquivo:
+
+- `frontend/src/pages/Compare.tsx`
+
+Antes:
+
+- a pagina de comparacao funcionava, mas a abertura era mais seca e o fluxo de escolha dos participantes parecia mais tecnico do que visual;
+- faltava um contexto claro de duelo, status da comparacao e uma apresentacao mais forte para incentivar o uso da pagina.
+
+Depois:
+
+- foi criado um hero no topo da pagina com status atual da comparacao;
+- a tela passou a mostrar uma `arena de comparacao` com resumo do modo duelo, quantidade de participantes e objetivo da tela;
+- a area de selecao dos dois participantes ganhou acabamento visual melhor, com hierarquia mais clara entre os lados e foco maior na comparacao frente a frente;
+- o conjunto ficou mais consistente com o estilo das outras paginas que ja tinham recebido reforco visual.
+
+Impacto:
+
+- melhora a leitura e a apresentacao da pagina;
+- deixa o fluxo de selecao mais intuitivo;
+- reforca a sensacao de duelo entre os brackets comparados;
+- aumenta a consistencia visual geral do app.
+
+### 14. Reforco visual do bracket do usuario e do bracket oficial
+
+Arquivos:
+
+- `frontend/src/pages/BracketEditor.tsx`
+- `frontend/src/pages/OfficialBracket.tsx`
+
+Antes:
+
+- as telas de bracket eram funcionais, mas a abertura de ambas era mais simples e com pouca contextualizacao;
+- faltava um resumo visual mais forte para ajudar o usuario a entender rapidamente progresso, estado geral da chave e proximo foco de uso.
+
+Depois:
+
+- a tela `Meu Bracket` passou a ter um hero com contexto mais claro, indicadores de progresso e cards-resumo para palpites feitos, series em aberto e percentual preenchido;
+- a mesma tela ganhou um bloco de progresso e legenda mais integrados ao topo, deixando a leitura do bracket mais organizada;
+- a tela `Bracket Oficial` passou a usar um painel-resumo com series concluidas, series ainda em aberto e status do campeao atual;
+- o botao de sync admin foi integrado visualmente ao hero do bracket oficial para ficar mais natural dentro da pagina.
+
+Impacto:
+
+- melhora a leitura rapida das telas de bracket;
+- deixa mais claro o que o usuario ja preencheu e o que ainda falta;
+- reforca a diferenca entre acompanhar o bracket oficial e editar o proprio bracket;
+- aumenta a consistencia visual do produto nas paginas principais.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -352,6 +433,9 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend apos adicionar o botao mobile e o painel lateral de pontuacao.
 - `npm run build` no frontend apos reforcar visualmente a Home com painel principal e atalhos rapidos.
 - `npm run build` no frontend apos reforcar visualmente a pagina de jogos com resumo e urgencia.
+- `npm run build` no frontend apos reforcar visualmente a navegacao inferior.
+- `npm run build` no frontend apos reforcar visualmente a pagina de comparacao.
+- `npm run build` no frontend apos reforcar visualmente o bracket do usuario e o bracket oficial.
 
 Resultado:
 

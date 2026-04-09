@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeftRight, AlertTriangle } from 'lucide-react'
+import { ArrowLeftRight, AlertTriangle, Sparkles, Swords, ShieldCheck, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { BracketSVG } from '../components/BracketSVG'
 import { useSeries } from '../hooks/useSeries'
@@ -46,6 +46,115 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
     >
       {initials(name)}
     </span>
+  )
+}
+
+function CompareHero({
+  participantsCount,
+  bothSelected,
+  sameSelected,
+}: {
+  participantsCount: number
+  bothSelected: boolean
+  sameSelected: boolean
+}) {
+  const statusLabel = sameSelected
+    ? 'Seleções inválidas'
+    : bothSelected
+    ? 'Comparação pronta'
+    : 'Escolha os participantes'
+
+  const statusColor = sameSelected
+    ? 'var(--nba-danger)'
+    : bothSelected
+    ? 'var(--nba-success)'
+    : 'var(--nba-gold)'
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(74,144,217,0.18), rgba(224,92,58,0.12) 52%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+        borderRadius: 12,
+        padding: '1rem',
+        marginBottom: 18,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at top right, rgba(232,180,90,0.16), transparent 34%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div style={{ position: 'relative', display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
+          <Sparkles size={15} />
+          <span className="font-condensed" style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Arena de comparação
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: '2.2rem', lineHeight: 0.95, margin: 0 }}>
+              Comparar Brackets
+            </h1>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', margin: '8px 0 0', maxWidth: 580 }}>
+              Coloque dois participantes frente a frente e veja onde eles concordam, divergem e quem está levando vantagem no bolão.
+            </p>
+          </div>
+
+          <div
+            style={{
+              minWidth: 180,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Status atual</div>
+            <div className="font-condensed font-bold" style={{ color: statusColor, fontSize: '1.05rem', lineHeight: 1 }}>
+              {statusLabel}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 5 }}>
+              {participantsCount} participante{participantsCount !== 1 ? 's' : ''} disponíveis
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+          {[
+            { label: 'Participantes', value: participantsCount, color: 'var(--nba-text)', icon: <Users size={14} /> },
+            { label: 'Modo', value: bothSelected && !sameSelected ? 'Duelo' : 'Preparando', color: 'var(--nba-gold)', icon: <Swords size={14} /> },
+            { label: 'Objetivo', value: 'Ver diferenças', color: 'var(--nba-success)', icon: <ShieldCheck size={14} /> },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginBottom: 6 }}>
+                <span style={{ display: 'flex' }}>{item.icon}</span>
+                {item.label}
+              </div>
+              <div className="font-condensed font-bold" style={{ color: item.color, fontSize: '1.25rem', lineHeight: 1.1 }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -155,12 +264,12 @@ function StyledSelect({
         onChange={(e) => onChange(e.target.value)}
         style={{
           width: '100%',
-          background: 'var(--nba-surface)',
-          border: `1px solid ${value ? accent + '88' : 'var(--nba-border)'}`,
+          background: 'rgba(19,19,26,0.95)',
+          border: `1px solid ${value ? accent + '88' : 'rgba(200,150,60,0.12)'}`,
           color: value ? 'var(--nba-text)' : 'var(--nba-text-muted)',
-          borderRadius: 8,
-          padding: '9px 12px',
-          fontSize: '0.88rem',
+          borderRadius: 10,
+          padding: '11px 12px',
+          fontSize: '0.9rem',
           outline: 'none',
           cursor: 'pointer',
           transition: 'border-color 0.2s ease',
@@ -182,6 +291,82 @@ function StyledSelect({
             </option>
           ))}
       </select>
+    </div>
+  )
+}
+
+function SelectionArena({
+  participants,
+  leftId,
+  rightId,
+  onLeft,
+  onRight,
+}: {
+  participants: Participant[]
+  leftId: string
+  rightId: string
+  onLeft: (id: string) => void
+  onRight: (id: string) => void
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--nba-surface)',
+        border: '1px solid var(--nba-border)',
+        borderRadius: 12,
+        padding: '1rem',
+        marginBottom: 20,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <ArrowLeftRight size={16} style={{ color: 'var(--nba-gold)' }} />
+        <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', letterSpacing: '0.1em', margin: 0 }}>
+          Montar duelo
+        </h2>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12 }} className="flex-col sm:flex-row">
+        <StyledSelect
+          value={leftId}
+          onChange={onLeft}
+          participants={participants}
+          label="Participante 1"
+          excludeId={rightId}
+          accent="var(--nba-east)"
+        />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 44,
+          }}
+        >
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: '999px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(200,150,60,0.1)',
+              border: '1px solid rgba(200,150,60,0.18)',
+              color: 'var(--nba-gold)',
+            }}
+          >
+            <Swords size={16} />
+          </div>
+        </div>
+        <StyledSelect
+          value={rightId}
+          onChange={onRight}
+          participants={participants}
+          label="Participante 2"
+          excludeId={leftId}
+          accent="var(--nba-west)"
+        />
+      </div>
     </div>
   )
 }
@@ -576,42 +761,19 @@ export function Compare() {
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1400 }}>
+      <CompareHero
+        participantsCount={participants.length}
+        bothSelected={bothSelected}
+        sameSelected={!!sameSelected}
+      />
 
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <ArrowLeftRight size={20} style={{ color: 'var(--nba-gold)' }} />
-          <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: '2rem', lineHeight: 1 }}>
-            Comparar
-          </h1>
-        </div>
-        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>
-          Compare os brackets de dois participantes lado a lado
-        </p>
-      </div>
-
-      {/* Dropdowns */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }} className="flex-col sm:flex-row">
-        <StyledSelect
-          value={leftId}
-          onChange={handleLeft}
-          participants={participants}
-          label="Participante 1"
-          excludeId={rightId}
-          accent="var(--nba-east)"
-        />
-        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 10, flexShrink: 0 }}>
-          <ArrowLeftRight size={18} style={{ color: 'var(--nba-text-muted)' }} />
-        </div>
-        <StyledSelect
-          value={rightId}
-          onChange={handleRight}
-          participants={participants}
-          label="Participante 2"
-          excludeId={leftId}
-          accent="var(--nba-west)"
-        />
-      </div>
+      <SelectionArena
+        participants={participants}
+        leftId={leftId}
+        rightId={rightId}
+        onLeft={handleLeft}
+        onRight={handleRight}
+      />
 
       {/* Same participant warning */}
       {sameSelected && (

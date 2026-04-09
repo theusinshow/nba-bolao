@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Activity, Trophy, Clock3 } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
 import { SeriesModal } from '../components/SeriesModal'
 import { useSeries } from '../hooks/useSeries'
@@ -16,6 +16,10 @@ export function OfficialBracket({ isAdmin }: Props) {
   const { addToast } = useUIStore()
   const [selectedSeries, setSelectedSeries] = useState<Series | null>(null)
   const [syncing, setSyncing] = useState(false)
+
+  const completedSeries = series.filter((item) => item.is_complete).length
+  const openSeries = Math.max(series.length - completedSeries, 0)
+  const champion = series.find((item) => item.slot === 'FIN' && item.is_complete)?.winner?.abbreviation ?? 'Em disputa'
 
   async function handleSync() {
     setSyncing(true)
@@ -63,21 +67,72 @@ export function OfficialBracket({ isAdmin }: Props) {
 
   return (
     <div className="pb-20 pt-4">
-      <div className="px-4 mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="title text-4xl text-nba-gold">Bracket Oficial</h1>
-          <p className="text-nba-muted text-sm">Resultados reais dos playoffs</p>
+      <div className="px-4 mb-5">
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(224,92,58,0.18), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)',
+            border: '1px solid rgba(200,150,60,0.18)',
+            borderRadius: 12,
+            padding: '1rem',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'radial-gradient(circle at top right, rgba(232,180,90,0.18), transparent 35%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div style={{ position: 'relative', display: 'grid', gap: 14 }}>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="title text-4xl text-nba-gold">Bracket Oficial</h1>
+                <p className="text-nba-muted text-sm">Resultados reais dos playoffs e panorama atualizado da chave.</p>
+              </div>
+              {isAdmin && (
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="flex items-center gap-2 text-sm text-nba-gold border border-nba-border rounded-lg px-3 py-2 hover:bg-nba-surface-2 transition-colors disabled:opacity-50"
+                  style={{ background: 'rgba(12,12,18,0.34)' }}
+                >
+                  <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                  {syncing ? 'Sincronizando...' : 'Sync'}
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+              {[
+                { label: 'Séries concluídas', value: completedSeries, icon: <Activity size={14} />, color: 'var(--nba-success)' },
+                { label: 'Ainda em aberto', value: openSeries, icon: <Clock3 size={14} />, color: 'var(--nba-gold)' },
+                { label: 'Campeão atual', value: champion, icon: <Trophy size={14} />, color: 'var(--nba-text)' },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: 'rgba(12,12,18,0.34)',
+                    border: '1px solid rgba(200,150,60,0.16)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginBottom: 6 }}>
+                    {item.icon}
+                    {item.label}
+                  </div>
+                  <div className="font-condensed font-bold" style={{ color: item.color, fontSize: '1.32rem', lineHeight: 1 }}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        {isAdmin && (
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-2 text-sm text-nba-gold border border-nba-border rounded-lg px-3 py-2 hover:bg-nba-surface-2 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-            Sync
-          </button>
-        )}
       </div>
 
       <div className="px-2">
