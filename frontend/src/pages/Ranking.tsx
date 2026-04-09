@@ -1,4 +1,5 @@
-import { BarChart2, Info } from 'lucide-react'
+import { useState } from 'react'
+import { BarChart2, Info, X } from 'lucide-react'
 import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
 import { useRanking } from '../hooks/useRanking'
@@ -15,11 +16,97 @@ const ROUND_LABELS = {
   4: 'Finais da NBA',
 } as const
 
+function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }) {
+  return (
+    <div
+      style={{
+        background: 'var(--nba-surface)',
+        border: '1px solid var(--nba-border)',
+        borderRadius: 8,
+        padding: '1rem',
+        position: mobile ? 'relative' : 'sticky',
+        top: mobile ? undefined : 16,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Info size={16} style={{ color: 'var(--nba-gold)' }} />
+          <h2
+            className="title"
+            style={{
+              color: 'var(--nba-gold)',
+              fontSize: '1rem',
+              letterSpacing: '0.1em',
+            }}
+          >
+            Pontuação
+          </h2>
+        </div>
+
+        {mobile && onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--nba-text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', marginBottom: 12 }}>
+        Acertar o vencedor do jogo ou da série gera pontos. Se acertar também em quantos jogos a série termina, vira cravada.
+      </p>
+
+      <div style={{ display: 'grid', gap: 10 }}>
+        {([1, 2, 3, 4] as const).map((round) => (
+          <div
+            key={round}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: 'var(--nba-surface-2)',
+              border: '1px solid var(--nba-border)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.82rem', marginBottom: 6 }}>
+              {ROUND_LABELS[round]}
+            </div>
+            <div style={{ display: 'grid', gap: 4, fontSize: '0.78rem' }}>
+              <span style={{ color: 'var(--nba-text-muted)' }}>
+                Jogo: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerGame[round]} pt</strong>
+              </span>
+              <span style={{ color: 'var(--nba-text-muted)' }}>
+                Série: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerSeries[round]} pts</strong>
+              </span>
+              <span style={{ color: 'var(--nba-text-muted)' }}>
+                Cravada: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerCravada[round]} pts</strong>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 12 }}>
+        Cravada substitui a pontuação da série, ela não soma por cima.
+      </p>
+    </div>
+  )
+}
+
 export function Ranking({ participantId }: Props) {
   const { ranking, loading } = useRanking()
+  const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
 
   return (
-    <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 860 }}>
+    <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1180 }}>
 
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
@@ -46,14 +133,64 @@ export function Ranking({ participantId }: Props) {
         </div>
       ) : (
         <>
+          <div className="lg:hidden" style={{ marginBottom: 16 }}>
+            <button
+              onClick={() => setMobileScoringOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 14px',
+                background: 'var(--nba-surface)',
+                border: '1px solid var(--nba-border)',
+                borderRadius: 8,
+                color: 'var(--nba-gold)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Info size={15} />
+              Ver pontuação
+            </button>
+          </div>
+
+          {mobileScoringOpen && (
+            <div className="lg:hidden">
+              <div
+                onClick={() => setMobileScoringOpen(false)}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.65)',
+                  zIndex: 40,
+                }}
+              />
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: 'min(88vw, 320px)',
+                  padding: 16,
+                  zIndex: 41,
+                  overflowY: 'auto',
+                }}
+              >
+                <ScoringGuide mobile onClose={() => setMobileScoringOpen(false)} />
+              </div>
+            </div>
+          )}
+
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr)',
-              gap: 16,
-              alignItems: 'start',
-            }}
+            className="grid lg:grid-cols-[280px_minmax(0,1fr)]"
+            style={{ gap: 16, alignItems: 'start' }}
           >
+            <aside className="hidden lg:block">
+              <ScoringGuide />
+            </aside>
+
             <div
               style={{
                 display: 'grid',
@@ -117,68 +254,6 @@ export function Ranking({ participantId }: Props) {
                 <RankingTable ranking={ranking} highlightId={participantId} />
               </div>
             </div>
-
-            <aside
-              style={{
-                background: 'var(--nba-surface)',
-                border: '1px solid var(--nba-border)',
-                borderRadius: 8,
-                padding: '1rem',
-                position: 'sticky',
-                top: 16,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <Info size={16} style={{ color: 'var(--nba-gold)' }} />
-                <h2
-                  className="title"
-                  style={{
-                    color: 'var(--nba-gold)',
-                    fontSize: '1rem',
-                    letterSpacing: '0.1em',
-                  }}
-                >
-                  Pontuação
-                </h2>
-              </div>
-
-              <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', marginBottom: 12 }}>
-                Acertar o vencedor do jogo ou da série gera pontos. Se acertar também em quantos jogos a série termina, vira cravada.
-              </p>
-
-              <div style={{ display: 'grid', gap: 10 }}>
-                {([1, 2, 3, 4] as const).map((round) => (
-                  <div
-                    key={round}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      background: 'var(--nba-surface-2)',
-                      border: '1px solid var(--nba-border)',
-                    }}
-                  >
-                    <div style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.82rem', marginBottom: 6 }}>
-                      {ROUND_LABELS[round]}
-                    </div>
-                    <div style={{ display: 'grid', gap: 4, fontSize: '0.78rem' }}>
-                      <span style={{ color: 'var(--nba-text-muted)' }}>
-                        Jogo: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerGame[round]} pt</strong>
-                      </span>
-                      <span style={{ color: 'var(--nba-text-muted)' }}>
-                        Série: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerSeries[round]} pts</strong>
-                      </span>
-                      <span style={{ color: 'var(--nba-text-muted)' }}>
-                        Cravada: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerCravada[round]} pts</strong>
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 12 }}>
-                Cravada substitui a pontuação da série, ela não soma por cima.
-              </p>
-            </aside>
           </div>
         </>
       )}

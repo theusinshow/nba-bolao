@@ -268,14 +268,18 @@ Depois:
   - pontos por cravada;
 - a secao usa a configuracao real do app em `frontend/src/utils/scoring.ts`;
 - tambem foi incluida uma observacao explicando que a cravada substitui a pontuacao da serie e nao soma por cima.
-- posteriormente, a secao foi reorganizada para funcionar como uma caixa lateral da area principal do ranking, deixando o grafico e a tabela mais livres e mantendo a explicacao visivel de forma separada.
+- posteriormente, a secao foi reorganizada para funcionar como uma caixa lateral a esquerda da area principal do ranking;
+- a largura util da pagina tambem foi ampliada para preservar o fluxo central do grafico e da tabela sem empurrar o conteudo para baixo.
+- para o mobile, a tela passou a usar um botao dedicado que abre a pontuacao em um painel lateral sobreposto, evitando que a explicacao ocupe espaco demais no fluxo principal.
 
 Impacto:
 
 - melhora a transparencia da regra para os participantes;
 - reduz duvidas sobre como o ranking e calculado;
 - melhora a experiencia de uso na tela de ranking;
-- organiza melhor a hierarquia visual da pagina.
+- organiza melhor a hierarquia visual da pagina;
+- mantem a leitura do ranking mais limpa no centro da tela;
+- melhora a usabilidade da pagina em telas pequenas.
 
 ## Validacoes Executadas
 
@@ -286,6 +290,8 @@ Foram executadas as seguintes validacoes:
 - `npm run test:scoring` no backend.
 - `npm run build` no frontend apos a alteracao da aba de ranking.
 - `npm run build` no frontend apos reorganizar a explicacao de pontuacao para uma caixa lateral.
+- `npm run build` no frontend apos reposicionar a caixa de pontuacao para a esquerda e ajustar a largura da pagina.
+- `npm run build` no frontend apos adicionar o botao mobile e o painel lateral de pontuacao.
 
 Resultado:
 
