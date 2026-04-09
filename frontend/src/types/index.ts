@@ -35,6 +35,7 @@ export interface Game {
   team_b_id: string
   winner_id: string | null
   home_team_id: string
+  away_team_id: string
   score_a: number | null
   score_b: number | null
   played: boolean
