@@ -26,6 +26,7 @@ As mudancas mais importantes foram:
 - remocao do fallback com jogos simulados em producao;
 - centralizacao da regra de pontuacao em uma camada isolada;
 - reforco visual da Home com painel principal focado no usuario;
+- reforco visual da pagina de jogos com resumo e urgencia de palpites;
 - inclusao de uma secao visual explicando a pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring;
 - definicao de desempate deterministico no ranking.
@@ -310,6 +311,34 @@ Impacto:
 - aumenta a clareza sobre o estado atual do usuario no bolao;
 - deixa a Home mais util e mais proxima de um dashboard real.
 
+### 11. Reforco visual da pagina de jogos com resumo e urgencia
+
+Arquivo:
+
+- `frontend/src/pages/Games.tsx`
+
+Antes:
+
+- a pagina de jogos era funcional, mas a abertura era mais simples e os cards nao destacavam bem urgencia e contexto geral;
+- faltava uma visao resumida de quantos jogos estavam abertos, quantos palpites faltavam e quais fechavam em breve.
+
+Depois:
+
+- foi criado um painel principal no topo da pagina de jogos;
+- esse painel passou a mostrar:
+  - quantidade de jogos abertos;
+  - quantos jogos ainda estao sem palpite;
+  - quantos fecham em breve;
+  - o proximo fechamento;
+- os cards de jogos ganharam faixa de urgencia para partidas proximas do bloqueio;
+- os grupos por data passaram a exibir destaque de `Hoje` e `Amanha` quando aplicavel.
+
+Impacto:
+
+- melhora a leitura rapida da pagina;
+- ajuda o usuario a priorizar palpites urgentes;
+- deixa a experiencia de jogos mais viva e orientada para acao.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -322,6 +351,7 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend apos reposicionar a caixa de pontuacao para a esquerda e ajustar a largura da pagina.
 - `npm run build` no frontend apos adicionar o botao mobile e o painel lateral de pontuacao.
 - `npm run build` no frontend apos reforcar visualmente a Home com painel principal e atalhos rapidos.
+- `npm run build` no frontend apos reforcar visualmente a pagina de jogos com resumo e urgencia.
 
 Resultado:
 

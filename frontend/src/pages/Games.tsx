@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Lock, Calendar, CheckCircle, XCircle, Save } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useUIStore } from '../store/useUIStore'
@@ -132,6 +132,31 @@ function formatTimeBRT(iso: string): string {
   })
 }
 
+function getRelativeDateLabel(iso: string): string | null {
+  const target = new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const now = new Date()
+  const today = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+
+  const tomorrowDate = new Date(now)
+  tomorrowDate.setDate(now.getDate() + 1)
+  const tomorrow = tomorrowDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+
+  if (target === today) return 'Hoje'
+  if (target === tomorrow) return 'Amanhã'
+  return null
+}
+
+function getUrgency(game: GameWithTeams) {
+  if (game.played || !game.tip_off_at) return { label: null, color: 'var(--nba-text-muted)' }
+
+  const diff = new Date(game.tip_off_at).getTime() - Date.now()
+  if (diff <= 0) return { label: 'Fechado', color: 'var(--nba-danger)' }
+  if (diff <= 3_600_000) return { label: 'Fecha em breve', color: 'var(--nba-danger)' }
+  if (diff <= 10_800_000) return { label: 'Hoje ainda', color: 'var(--nba-gold)' }
+
+  return { label: null, color: 'var(--nba-text-muted)' }
+}
+
 const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
 const ROUND_COLOR: Record<number, string> = {
   1: '#4a90d9', 2: '#9b59b6', 3: '#e05c3a', 4: '#c8963c',
@@ -168,6 +193,7 @@ function EmptyState() {
 // ─── Date group header ────────────────────────────────────────────────────────
 
 function DateHeader({ iso, count }: { iso: string; count: number }) {
+  const relative = getRelativeDateLabel(iso)
   return (
     <div
       style={{
@@ -184,6 +210,23 @@ function DateHeader({ iso, count }: { iso: string; count: number }) {
       >
         {formatDateHeader(iso)}
       </h2>
+      {relative && (
+        <span
+          className="font-condensed"
+          style={{
+            color: relative === 'Hoje' ? 'var(--nba-gold)' : 'var(--nba-east)',
+            background: relative === 'Hoje' ? 'rgba(200,150,60,0.12)' : 'rgba(74,144,217,0.14)',
+            border: `1px solid ${relative === 'Hoje' ? 'rgba(200,150,60,0.3)' : 'rgba(74,144,217,0.3)'}`,
+            borderRadius: 4,
+            padding: '2px 8px',
+            fontSize: '0.68rem',
+            letterSpacing: '0.05em',
+            flexShrink: 0,
+          }}
+        >
+          {relative}
+        </span>
+      )}
       <div
         style={{
           height: 1, flex: 1,
@@ -402,6 +445,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
 
   const round = game.round as 1 | 2 | 3 | 4
   const roundColor = ROUND_COLOR[round]
+  const urgency = getUrgency(game)
 
   // Border: gold when selected or saved, else default
   const cardBorder =
@@ -415,6 +459,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
         borderRadius: 8,
         overflow: 'hidden',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+        boxShadow: urgency.label && !game.played ? '0 10px 24px rgba(0,0,0,0.16)' : 'none',
       }}
       onMouseEnter={(e) => {
         if (!displayId) {
@@ -430,6 +475,42 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
       }}
     >
       {/* ── Teams row ── */}
+      {urgency.label && !game.played && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '7px 12px',
+            borderBottom: '1px solid var(--nba-border)',
+            background: urgency.color === 'var(--nba-danger)'
+              ? 'rgba(231,76,60,0.08)'
+              : 'rgba(200,150,60,0.08)',
+          }}
+        >
+          <span
+            className="font-condensed font-bold"
+            style={{
+              color: urgency.color,
+              fontSize: '0.72rem',
+              letterSpacing: '0.06em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Flame size={12} />
+            {urgency.label}
+          </span>
+          {game.tip_off_at && (
+            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+              {formatTimeBRT(game.tip_off_at)} BRT
+            </span>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'flex' }}>
         <TeamSide
           team={tA}
@@ -551,6 +632,117 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
           {saving ? 'Salvando...' : 'SALVAR PALPITE'}
         </button>
       )}
+    </div>
+  )
+}
+
+function GamesHero({
+  games,
+  picks,
+  isMock,
+}: {
+  games: GameWithTeams[]
+  picks: GamePick[]
+  isMock: boolean
+}) {
+  const openGames = games.filter((game) => !game.played)
+  const lockedSoon = openGames.filter((game) => {
+    if (!game.tip_off_at) return false
+    const diff = new Date(game.tip_off_at).getTime() - Date.now()
+    return diff > 0 && diff <= 10_800_000
+  }).length
+
+  const pickedIds = new Set(picks.map((pick) => pick.game_id))
+  const pendingPicks = openGames.filter((game) => !pickedIds.has(game.id)).length
+  const nextGame = openGames
+    .filter((game) => game.tip_off_at)
+    .sort((a, b) => new Date(a.tip_off_at!).getTime() - new Date(b.tip_off_at!).getTime())[0]
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(200,150,60,0.18), rgba(224,92,58,0.10) 55%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.22)',
+        borderRadius: 12,
+        padding: '1rem',
+        marginBottom: 18,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at top right, rgba(232,180,90,0.18), transparent 35%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div style={{ position: 'relative', display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
+          <Sparkles size={15} />
+          <span className="font-condensed" style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Central de palpites
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: '2.2rem', lineHeight: 0.95, margin: 0 }}>
+              Jogos
+            </h1>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', margin: '8px 0 0' }}>
+              {isMock
+                ? 'Dados simulados para validar layout e fluxo de palpites'
+                : 'Fique de olho nos horários para não perder nenhum fechamento'}
+            </p>
+          </div>
+
+          {nextGame?.tip_off_at && (
+            <div
+              style={{
+                minWidth: 170,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Próximo fechamento</div>
+              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1 }}>
+                {formatTimeBRT(nextGame.tip_off_at)}
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                {nextGame.team_a?.abbreviation ?? nextGame.team_a_id} vs {nextGame.team_b?.abbreviation ?? nextGame.team_b_id}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+          {[
+            { label: 'Jogos abertos', value: openGames.length, tone: 'var(--nba-text)' },
+            { label: 'Sem palpite', value: pendingPicks, tone: pendingPicks > 0 ? 'var(--nba-gold)' : 'var(--nba-success)' },
+            { label: 'Fecham hoje', value: lockedSoon, tone: lockedSoon > 0 ? 'var(--nba-danger)' : 'var(--nba-text)' },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{item.label}</div>
+              <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.7rem', lineHeight: 1.1 }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -698,38 +890,7 @@ export function Games({ participantId }: Props) {
 
   return (
     <div style={{ padding: '16px 16px 96px', maxWidth: 640, margin: '0 auto' }}>
-
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Calendar size={20} style={{ color: 'var(--nba-gold)' }} />
-          <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: '2rem', lineHeight: 1 }}>
-            Jogos
-          </h1>
-          {isMock && (
-            <span
-              style={{
-                background: 'rgba(241,196,15,0.15)',
-                color: '#f1c40f',
-                border: '1px solid rgba(241,196,15,0.3)',
-                borderRadius: 4,
-                padding: '1px 8px',
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                fontFamily: "'Barlow Condensed', sans-serif",
-                letterSpacing: '0.08em',
-              }}
-            >
-              SIMULADO
-            </span>
-          )}
-        </div>
-        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>
-          {isMock
-            ? 'Dados simulados · Os jogos reais aparecerão automaticamente'
-            : 'Clique no time que você acha que vai vencer'}
-        </p>
-      </div>
+      <GamesHero games={games} picks={picks} isMock={isMock} />
 
       {/* Games grouped by date */}
       {[...grouped.entries()].map(([key, { iso, games: dayGames }]) => (
