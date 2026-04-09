@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useUIStore } from '../store/useUIStore'
@@ -155,6 +155,26 @@ function getUrgency(game: GameWithTeams) {
   if (diff <= 10_800_000) return { label: 'Hoje ainda', color: 'var(--nba-gold)' }
 
   return { label: null, color: 'var(--nba-text-muted)' }
+}
+
+function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPendingPick: boolean) {
+  if (game.played) {
+    return { label: 'Finalizado', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <BadgeCheck size={12} /> }
+  }
+
+  if (game.tip_off_at && new Date(game.tip_off_at) <= new Date()) {
+    return { label: 'Bloqueado', color: 'var(--nba-danger)', bg: 'rgba(231,76,60,0.08)', icon: <Lock size={12} /> }
+  }
+
+  if (hasPendingPick) {
+    return { label: 'Pronto para salvar', color: 'var(--nba-gold)', bg: 'rgba(200,150,60,0.1)', icon: <Save size={12} /> }
+  }
+
+  if (hasSavedPick) {
+    return { label: 'Palpite salvo', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <BadgeCheck size={12} /> }
+  }
+
+  return { label: 'Aguardando palpite', color: 'var(--nba-text-muted)', bg: 'rgba(255,255,255,0.04)', icon: <CircleOff size={12} /> }
 }
 
 const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
@@ -446,6 +466,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const round = game.round as 1 | 2 | 3 | 4
   const roundColor = ROUND_COLOR[round]
   const urgency = getUrgency(game)
+  const stateMeta = getGameStateMeta(game, !!savedId, hasPending)
 
   // Border: gold when selected or saved, else default
   const cardBorder =
@@ -474,6 +495,60 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
         }
       }}
     >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          padding: '9px 12px',
+          borderBottom: '1px solid var(--nba-border)',
+          background: 'rgba(12,12,18,0.45)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span
+            className="font-condensed font-bold"
+            style={{
+              color: roundColor,
+              fontSize: '0.72rem',
+              letterSpacing: '0.06em',
+              background: `${roundColor}1f`,
+              border: `1px solid ${roundColor}40`,
+              padding: '2px 7px',
+              borderRadius: 999,
+              flexShrink: 0,
+            }}
+          >
+            {ROUND_LABEL[round]}
+          </span>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: stateMeta.color,
+              background: stateMeta.bg,
+              borderRadius: 999,
+              padding: '2px 8px',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              minWidth: 0,
+            }}
+          >
+            {stateMeta.icon}
+            {stateMeta.label}
+          </span>
+        </div>
+
+        {game.tip_off_at && !game.played && (
+          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', flexShrink: 0 }}>
+            <Clock3 size={11} style={{ display: 'inline-flex', verticalAlign: 'text-bottom', marginRight: 4 }} />
+            {formatTimeBRT(game.tip_off_at)}
+          </span>
+        )}
+      </div>
+
       {/* ── Teams row ── */}
       {urgency.label && !game.played && (
         <div
@@ -601,36 +676,62 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
         </div>
       </div>
 
-      {/* ── Save action (appears when pending) ── */}
-      {hasPending && (
-        <button
-          onClick={handleSave}
-          disabled={saving}
+      {!hasPending && !game.played && savedId && (
+        <div
           style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            width: '100%',
-            padding: '10px 16px',
-            background: saving ? 'rgba(200,150,60,0.3)' : 'var(--nba-gold)',
-            border: 'none',
-            color: saving ? 'rgba(255,255,255,0.6)' : '#0a0a0f',
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            fontFamily: "'Barlow Condensed', sans-serif",
-            letterSpacing: '0.08em',
-            cursor: saving ? 'default' : 'pointer',
-            transition: 'background 0.2s ease, opacity 0.2s ease',
-            borderTop: '1px solid rgba(200,150,60,0.3)',
-          }}
-          onMouseEnter={(e) => {
-            if (!saving) e.currentTarget.style.background = '#e8b45a'
-          }}
-          onMouseLeave={(e) => {
-            if (!saving) e.currentTarget.style.background = 'var(--nba-gold)'
+            padding: '10px 12px',
+            borderTop: '1px solid rgba(46,204,113,0.15)',
+            background: 'rgba(46,204,113,0.06)',
+            color: 'var(--nba-text-muted)',
+            fontSize: '0.74rem',
           }}
         >
-          <Save size={13} />
-          {saving ? 'Salvando...' : 'SALVAR PALPITE'}
-        </button>
+          Palpite atual: <strong style={{ color: 'var(--nba-success)' }}>{savedId === tA?.id ? tA?.abbreviation : tB?.abbreviation}</strong>
+        </div>
+      )}
+
+      {/* ── Save action (appears when pending) ── */}
+      {hasPending && (
+        <div style={{ padding: 12, borderTop: '1px solid rgba(200,150,60,0.18)', background: 'rgba(200,150,60,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: 'var(--nba-text)', fontSize: '0.8rem', fontWeight: 700 }}>
+                Palpite pronto para envio
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                Toque em salvar para confirmar {displayId === tA?.id ? tA?.abbreviation : tB?.abbreviation}.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              width: '100%',
+              padding: '10px 16px',
+              background: saving ? 'rgba(200,150,60,0.3)' : 'var(--nba-gold)',
+              border: 'none',
+              color: saving ? 'rgba(255,255,255,0.6)' : '#0a0a0f',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.08em',
+              cursor: saving ? 'default' : 'pointer',
+              transition: 'background 0.2s ease, opacity 0.2s ease',
+              borderRadius: 8,
+            }}
+            onMouseEnter={(e) => {
+              if (!saving) e.currentTarget.style.background = '#e8b45a'
+            }}
+            onMouseLeave={(e) => {
+              if (!saving) e.currentTarget.style.background = 'var(--nba-gold)'
+            }}
+          >
+            <Save size={13} />
+            {saving ? 'Salvando...' : 'SALVAR PALPITE'}
+          </button>
+        </div>
       )}
     </div>
   )

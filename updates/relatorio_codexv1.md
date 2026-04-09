@@ -12,6 +12,20 @@ O foco principal foi:
 - deixar a regra de pontuacao mais confiavel e testavel;
 - estabilizar o ranking em cenarios de empate.
 
+## Contexto do Projeto
+
+Este app esta sendo desenvolvido para uma brincadeira privada entre amigos de confianca, e nao como produto comercial aberto ao publico.
+
+Por causa disso, as decisoes tecnicas foram priorizadas assim:
+
+- confiabilidade da pontuacao;
+- estabilidade do ranking;
+- boa experiencia no mobile;
+- clareza visual e facilidade de uso;
+- protecoes basicas para evitar bagunca acidental.
+
+A seguranca foi tratada em nivel suficiente para reduzir erros e acionamentos indevidos, mas sem a necessidade de endurecimento extremo de um produto publico em escala.
+
 ## Resumo Executivo
 
 Foram implementadas melhorias em duas frentes:
@@ -30,6 +44,10 @@ As mudancas mais importantes foram:
 - reforco visual da navegacao inferior para melhorar uso no mobile;
 - reforco visual da pagina de comparacao com arena de duelo e selecao mais clara;
 - reforco visual do bracket do usuario e do bracket oficial com paineis-resumo;
+- reforco premium do ranking com hero e destaque para o top 3;
+- reforco dos cards de jogos com estados mais claros de palpite;
+- reforco da Home com destaque para o proximo foco de palpites;
+- reforco do compare com placar-resumo de duelo;
 - inclusao de uma secao visual explicando a pontuacao na aba de ranking;
 - criacao de teste automatizado de scoring;
 - definicao de desempate deterministico no ranking.
@@ -420,6 +438,99 @@ Impacto:
 - reforca a diferenca entre acompanhar o bracket oficial e editar o proprio bracket;
 - aumenta a consistencia visual do produto nas paginas principais.
 
+### 15. Reforco premium da pagina de ranking
+
+Arquivo:
+
+- `frontend/src/pages/Ranking.tsx`
+
+Antes:
+
+- a pagina de ranking era funcional, mas a abertura ainda era mais direta e com menos sensacao de competicao;
+- faltava um destaque forte para o top 3 e um resumo mais claro da situacao atual do usuario em relacao ao lider.
+
+Depois:
+
+- foi criado um hero no topo do ranking com contexto da disputa, situacao atual do usuario e resumo do lider;
+- a pagina passou a destacar o top 3 em cards premium, com mais presenca visual;
+- os cards do topo agora mostram pontuacao, cravadas e aproveitamento de series para os primeiros colocados.
+
+Impacto:
+
+- o ranking ficou mais social e mais interessante de acompanhar;
+- melhora a percepcao de competicao entre os participantes;
+- valoriza os lideres e deixa a pagina com mais cara de produto final.
+
+### 16. Reforco dos cards de jogos com estados mais claros
+
+Arquivo:
+
+- `frontend/src/pages/Games.tsx`
+
+Antes:
+
+- os cards de jogos ja estavam melhores, mas ainda faltava comunicar com mais clareza o estado operacional de cada palpite;
+- o usuario precisava interpretar mais elementos para entender se o jogo estava aberto, salvo, bloqueado ou pronto para salvar.
+
+Depois:
+
+- cada card passou a ter uma faixa superior com rodada e estado do palpite;
+- foram adicionados estados visuais como `Palpite salvo`, `Pronto para salvar`, `Bloqueado` e `Finalizado`;
+- quando existe uma alteracao pendente, o card mostra uma area de confirmacao mais clara antes do botao salvar;
+- quando o jogo ainda esta aberto e ja existe palpite salvo, o card mostra esse palpite atual de forma explicita.
+
+Impacto:
+
+- reduz ambiguidade na tela de jogos;
+- melhora a confianca do usuario na hora de palpitar;
+- deixa o fluxo de salvar mais claro e mais orientado.
+
+### 17. Reforco da Home com foco no proximo palpite
+
+Arquivo:
+
+- `frontend/src/pages/Home.tsx`
+
+Antes:
+
+- a Home ja tinha um painel principal forte, mas o bloco de proximos jogos ainda era mais linear;
+- faltava um destaque maior para o proximo jogo que merece atencao imediata.
+
+Depois:
+
+- a area de proximos jogos ganhou um destaque principal de `proximo foco`;
+- esse bloco passou a evidenciar o jogo mais imediato, com horario e CTA direto para a pagina de palpites.
+
+Impacto:
+
+- a Home ficou mais orientada para acao;
+- ajuda o usuario a entender rapidamente qual e o proximo passo relevante dentro do bolao.
+
+### 18. Reforco do compare com placar-resumo de duelo
+
+Arquivo:
+
+- `frontend/src/pages/Compare.tsx`
+
+Antes:
+
+- a pagina de compare ja tinha uma boa base visual, mas ainda faltava um quadro mais direto mostrando quem estava na frente e o tamanho das divergencias;
+- boa parte dessa leitura dependia de interpretar o restante da pagina.
+
+Depois:
+
+- o resumo do compare passou a trazer um placar superior com:
+  - quem esta na frente;
+  - quantas series os dois concordam;
+  - quantas series divergem;
+  - quantas series tiveram palpite de apenas um participante.
+
+Impacto:
+
+- acelera a leitura do duelo;
+- deixa a comparacao mais competitiva e divertida;
+- melhora a utilidade da pagina sem exigir analise detalhada imediata.
+
 ## Validacoes Executadas
 
 Foram executadas as seguintes validacoes:
@@ -436,6 +547,10 @@ Foram executadas as seguintes validacoes:
 - `npm run build` no frontend apos reforcar visualmente a navegacao inferior.
 - `npm run build` no frontend apos reforcar visualmente a pagina de comparacao.
 - `npm run build` no frontend apos reforcar visualmente o bracket do usuario e o bracket oficial.
+- `npm run build` no frontend apos reforcar premium da pagina de ranking.
+- `npm run build` no frontend apos reforcar os cards de jogos com estados de palpite.
+- `npm run build` no frontend apos reforcar a Home com foco no proximo palpite.
+- `npm run build` no frontend apos reforcar o compare com placar-resumo de duelo.
 
 Resultado:
 

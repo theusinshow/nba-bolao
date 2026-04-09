@@ -403,6 +403,7 @@ function SummaryCard({
   const p1Winning = pts1 > pts2
   const p2Winning = pts2 > pts1
   const tied = pts1 === pts2 && pts1 > 0
+  const duelLead = p1Winning ? p1.name.split(' ')[0] : p2Winning ? p2.name.split(' ')[0] : 'Empate'
 
   return (
     <div
@@ -414,6 +415,37 @@ function SummaryCard({
         marginBottom: 20,
       }}
     >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 10,
+          marginBottom: 14,
+        }}
+      >
+        {[
+          { label: 'Na frente', value: duelLead, color: tied ? 'var(--nba-text)' : 'var(--nba-gold)' },
+          { label: 'Concordam', value: agree, color: 'var(--nba-success)' },
+          { label: 'Divergem', value: disagree, color: 'var(--nba-danger)' },
+          { label: 'Só um palpitou', value: onlyOne, color: 'var(--nba-text)' },
+        ].map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 5 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.color, fontSize: '1.2rem', lineHeight: 1.05 }}>
+              {item.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Points comparison */}
       <div
         style={{

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart2, Info, X } from 'lucide-react'
+import { BarChart2, Crown, Flame, Info, Medal, Trophy, X } from 'lucide-react'
 import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
 import { useRanking } from '../hooks/useRanking'
@@ -15,6 +15,172 @@ const ROUND_LABELS = {
   3: 'Final de conferência',
   4: 'Finais da NBA',
 } as const
+
+function TopThreeCards({
+  ranking,
+  participantId,
+}: {
+  ranking: ReturnType<typeof useRanking>['ranking']
+  participantId: string
+}) {
+  const topThree = ranking.slice(0, 3)
+  if (topThree.length === 0) return null
+
+  const styles = [
+    { label: 'Líder', icon: <Crown size={16} />, color: '#ffd166', glow: 'rgba(255,209,102,0.18)' },
+    { label: 'Vice', icon: <Medal size={16} />, color: '#c9d1d9', glow: 'rgba(201,209,217,0.14)' },
+    { label: '3º lugar', icon: <Trophy size={16} />, color: '#d68c45', glow: 'rgba(214,140,69,0.14)' },
+  ]
+
+  return (
+    <div style={{ display: 'grid', gap: 12 }} className="md:grid-cols-3">
+      {topThree.map((entry, index) => {
+        const style = styles[index]
+        const isMe = entry.participant_id === participantId
+
+        return (
+          <div
+            key={entry.participant_id}
+            style={{
+              background: `linear-gradient(180deg, ${style.glow}, rgba(19,19,26,0.96))`,
+              border: `1px solid ${style.color}33`,
+              borderRadius: 12,
+              padding: '1rem',
+              boxShadow: isMe ? '0 0 0 1px rgba(200,150,60,0.28) inset' : 'none',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: style.color, fontSize: '0.78rem', fontWeight: 700 }}>
+                {style.icon}
+                {style.label}
+              </span>
+              <span className="font-condensed font-bold" style={{ color: style.color, fontSize: '1rem' }}>
+                #{entry.rank}
+              </span>
+            </div>
+
+            <div style={{ color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)', fontWeight: 700, fontSize: '0.96rem', marginBottom: 6 }}>
+              {entry.participant_name}
+            </div>
+            <div className="font-condensed font-bold" style={{ color: style.color, fontSize: '2.2rem', lineHeight: 1, marginBottom: 10 }}>
+              {entry.total_points}
+            </div>
+
+            <div style={{ display: 'grid', gap: 6, fontSize: '0.76rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--nba-text-muted)' }}>
+                <span>Cravadas</span>
+                <strong style={{ color: 'var(--nba-text)' }}>{entry.cravadas}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--nba-text-muted)' }}>
+                <span>Acertos de série</span>
+                <strong style={{ color: 'var(--nba-text)' }}>{entry.series_correct}/{entry.series_total}</strong>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function RankingHero({
+  ranking,
+  participantId,
+}: {
+  ranking: ReturnType<typeof useRanking>['ranking']
+  participantId: string
+}) {
+  const myEntry = ranking.find((entry) => entry.participant_id === participantId)
+  const leader = ranking[0]
+  const myGap = myEntry && leader ? Math.max(leader.total_points - myEntry.total_points, 0) : null
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(200,150,60,0.18), rgba(74,144,217,0.10) 55%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.22)',
+        borderRadius: 12,
+        padding: '1rem',
+        position: 'relative',
+        overflow: 'hidden',
+        marginBottom: 18,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at top right, rgba(232,180,90,0.18), transparent 35%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div style={{ position: 'relative', display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
+          <Flame size={15} />
+          <span className="font-condensed" style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Corrida pelo topo
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <BarChart2 size={20} style={{ color: 'var(--nba-gold)' }} />
+              <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: '2rem', lineHeight: 1, margin: 0 }}>
+                Ranking
+              </h1>
+            </div>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', margin: 0 }}>
+              Atualizado em tempo real via Supabase Realtime
+            </p>
+          </div>
+
+          <div
+            style={{
+              minWidth: 190,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Seu cenário atual</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', lineHeight: 1 }}>
+              {myEntry ? `#${myEntry.rank} com ${myEntry.total_points} pts` : 'Aguardando pontuação'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+              {myGap == null ? 'Entre na disputa para aparecer aqui.' : myGap === 0 ? 'Você está empatado na liderança.' : `${myGap} ponto${myGap !== 1 ? 's' : ''} para alcançar o topo`}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+          {[
+            { label: 'Participantes', value: ranking.length, tone: 'var(--nba-text)' },
+            { label: 'Líder atual', value: leader ? leader.participant_name.split(' ')[0] : '—', tone: 'var(--nba-gold)' },
+            { label: 'Maior pontuação', value: leader?.total_points ?? 0, tone: 'var(--nba-success)' },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{item.label}</div>
+              <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.65rem', lineHeight: 1.1 }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }) {
   return (
@@ -107,22 +273,7 @@ export function Ranking({ participantId }: Props) {
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1180 }}>
-
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <BarChart2 size={20} style={{ color: 'var(--nba-gold)' }} />
-          <h1
-            className="title"
-            style={{ color: 'var(--nba-gold)', fontSize: '2rem', lineHeight: 1 }}
-          >
-            Ranking
-          </h1>
-        </div>
-        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>
-          Atualizado em tempo real via Supabase Realtime
-        </p>
-      </div>
+      <RankingHero ranking={ranking} participantId={participantId} />
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
@@ -198,6 +349,8 @@ export function Ranking({ participantId }: Props) {
                 gap: 16,
               }}
             >
+              <TopThreeCards ranking={ranking} participantId={participantId} />
+
               {/* Chart card */}
               <div
                 style={{

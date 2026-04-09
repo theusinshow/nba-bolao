@@ -720,9 +720,40 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
 }
 
 function NextGamesCard() {
+  const featured = NEXT_GAMES[0]
+
   return (
     <div style={card}>
       <CardTitle icon={<Clock size={14} />}>Próximos Jogos</CardTitle>
+
+      {featured && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(74,144,217,0.16), rgba(200,150,60,0.08))',
+            border: '1px solid rgba(200,150,60,0.14)',
+            borderRadius: 10,
+            padding: '12px 14px',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
+              PRÓXIMO FOCO
+            </span>
+            <Badge label={featured.round} color={ROUND_BADGE_COLOR[featured.round] ?? '#888'} small />
+          </div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.25rem', lineHeight: 1 }}>
+            {featured.home} vs {featured.away}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+            {featured.date} às {featured.time} BRT
+          </div>
+          <Link to="/games" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--nba-gold)', fontSize: '0.78rem', marginTop: 10, textDecoration: 'none' }}>
+            Ir para palpites
+            <ChevronRight size={14} />
+          </Link>
+        </div>
+      )}
 
       <div>
         {NEXT_GAMES.map((g, i) => {
