@@ -437,7 +437,8 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const [pending, setPending] = useState<string | null>(null)
   const [saving,  setSaving]  = useState(false)
 
-  const locked     = game.tip_off_at ? new Date(game.tip_off_at) <= new Date() : true
+  // Se não há tip_off_at assumimos que o jogo ainda não foi agendado → não bloqueado
+  const locked     = game.tip_off_at ? new Date(game.tip_off_at) <= new Date() : false
   const savedId    = pick?.winner_id ?? null
   const displayId  = pending ?? savedId
   const hasPending = pending !== null && pending !== savedId
@@ -445,12 +446,17 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const tB = game.team_b
 
   function handleClick(teamId: string) {
+    console.log('[GameCard] handleClick', { teamId, locked, played: game.played })
     if (locked || game.played) return
     setPending((prev) => (prev === teamId ? null : teamId))
   }
 
   async function handleSave() {
-    if (!pending) return
+    console.log('[GameCard] handleSave chamado', { pending, saving })
+    if (!pending) {
+      console.warn('[GameCard] handleSave: pending é null, abortando')
+      return
+    }
     setSaving(true)
     try {
       await onSave(game.id, pending)
@@ -711,7 +717,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
             </div>
           </div>
           <button
-            onClick={handleSave}
+            onClick={() => { console.log('clicou salvar', pending); handleSave(); }}
             disabled={saving}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
