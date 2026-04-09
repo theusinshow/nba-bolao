@@ -3,6 +3,14 @@ import { supabase } from '../lib/supabase'
 import type { RankingEntry, Series, SeriesPick, GamePick, Participant } from '../types'
 import { calculateSeriesPickPoints, calculateGamePickPoints } from '../utils/scoring'
 
+function compareRankingEntries(a: RankingEntry, b: RankingEntry): number {
+  if (b.total_points !== a.total_points) {
+    return b.total_points - a.total_points
+  }
+
+  return a.participant_name.localeCompare(b.participant_name, 'pt-BR', { sensitivity: 'base' })
+}
+
 export function useRanking() {
   const [ranking, setRanking] = useState<RankingEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -109,7 +117,7 @@ export function useRanking() {
         }
       })
 
-      entries.sort((a, b) => b.total_points - a.total_points)
+      entries.sort(compareRankingEntries)
       entries.forEach((e, i) => { e.rank = i + 1 })
 
       setRanking(entries)

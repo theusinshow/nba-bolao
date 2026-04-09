@@ -36,10 +36,18 @@ const SLOT_BY_TEAMS: Record<string, string> = {
   'OKC-IND': 'FINALS', 'IND-OKC': 'FINALS',
 }
 
+function getDefaultSeason(): number {
+  const now = new Date()
+  return now.getUTCMonth() >= 8 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
+}
+
 export async function syncNBA(): Promise<void> {
   console.log('[syncNBA] Starting sync...')
   try {
-    const bdlGames = await fetchPostseasonGames(2024)
+    const season = Number(process.env.BALLDONTLIE_SEASON ?? getDefaultSeason())
+    console.log('[syncNBA] Using season', season)
+
+    const bdlGames = await fetchPostseasonGames(season)
     const finished = bdlGames.filter((g) => g.status === 'Final')
 
     for (const bdlGame of finished) {

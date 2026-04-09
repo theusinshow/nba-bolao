@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:scoring": "npm run build && node dist/scoring/selftest.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

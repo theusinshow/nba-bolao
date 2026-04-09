@@ -562,6 +562,7 @@ export function Games({ participantId }: Props) {
   const [picks,   setPicks]   = useState<GamePick[]>([])
   const [loading, setLoading] = useState(true)
   const [isMock,  setIsMock]  = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const { addToast } = useUIStore()
 
   useEffect(() => {
@@ -574,10 +575,19 @@ export function Games({ participantId }: Props) {
 
   async function fetchAll() {
     setLoading(true)
-    const [{ data: gamesData }, { data: teamsData }] = await Promise.all([
+    setLoadError(null)
+    const [{ data: gamesData, error: gamesError }, { data: teamsData, error: teamsError }] = await Promise.all([
       supabase.from('games').select('*').order('tip_off_at', { ascending: true }),
       supabase.from('teams').select('*'),
     ])
+
+    if (gamesError || teamsError) {
+      setGames([])
+      setIsMock(false)
+      setLoadError('Nao foi possivel carregar os jogos agora.')
+      setLoading(false)
+      return
+    }
 
     if (gamesData && gamesData.length > 0) {
       const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
@@ -588,10 +598,13 @@ export function Games({ participantId }: Props) {
       }))
       setGames(merged as GameWithTeams[])
       setIsMock(false)
-    } else {
+    } else if (import.meta.env.DEV) {
       // No real games yet — use mock data for layout testing
       setGames(MOCK_GAMES)
       setIsMock(true)
+    } else {
+      setGames([])
+      setIsMock(false)
     }
     setLoading(false)
   }
@@ -659,6 +672,18 @@ export function Games({ participantId }: Props) {
   }
 
   if (games.length === 0) {
+    if (loadError) {
+      return (
+        <div style={{ padding: '40px 16px 96px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
+          <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.4rem', marginBottom: 8 }}>
+            Jogos indisponiveis
+          </h2>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.9rem' }}>
+            {loadError}
+          </p>
+        </div>
+      )
+    }
     return <EmptyState />
   }
 

@@ -4,6 +4,7 @@ import { BracketSVG } from '../components/BracketSVG'
 import { SeriesModal } from '../components/SeriesModal'
 import { useSeries } from '../hooks/useSeries'
 import { useUIStore } from '../store/useUIStore'
+import { supabase } from '../lib/supabase'
 import type { Series } from '../types'
 
 interface Props {
@@ -19,12 +20,32 @@ export function OfficialBracket({ isAdmin }: Props) {
   async function handleSync() {
     setSyncing(true)
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.access_token) {
+        addToast('Sessão expirada. Faça login novamente.', 'error')
+        return
+      }
+
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3001'}/admin/sync`,
-        { method: 'POST' }
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       )
-      if (res.ok) addToast('Sync iniciado!', 'success')
-      else addToast('Erro no sync', 'error')
+
+      if (res.ok) {
+        addToast('Sync iniciado!', 'success')
+        return
+      }
+
+      const payload = await res.json().catch(() => null)
+      addToast(payload?.error ?? 'Erro no sync', 'error')
     } catch {
       addToast('Backend indisponível', 'error')
     } finally {
