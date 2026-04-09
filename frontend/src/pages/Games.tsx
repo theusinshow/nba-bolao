@@ -446,7 +446,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const tB = game.team_b
 
   function handleClick(teamId: string) {
-    console.log('[GameCard] handleClick', { teamId, locked, played: game.played })
+    console.log('time selecionado:', teamId)
     if (locked || game.played) return
     setPending((prev) => (prev === teamId ? null : teamId))
   }
@@ -607,7 +607,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
           isWinner={tAWins}
           isLoser={tAWrong}
           locked={locked || game.played}
-          onClick={() => handleClick(game.team_a_id)}
+          onClick={() => handleClick(tA?.id ?? game.home_team_id)}
         />
         <CenterPanel game={game} locked={locked} />
         <TeamSide
@@ -617,7 +617,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
           isWinner={tBWins}
           isLoser={tBWrong}
           locked={locked || game.played}
-          onClick={() => handleClick(game.team_b_id)}
+          onClick={() => handleClick(tB?.id ?? game.away_team_id)}
         />
       </div>
 
