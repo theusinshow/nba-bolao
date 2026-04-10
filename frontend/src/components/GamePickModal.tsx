@@ -92,8 +92,8 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
 
                   <div className="flex gap-2">
                     {[
-                      { team: teamA, id: homeId },
-                      { team: teamB, id: awayId },
+                      { team: getTeam(homeId) ?? teamA, id: homeId },
+                      { team: getTeam(awayId) ?? teamB, id: awayId },
                     ].map(({ team, id }) => {
                       if (!team) return null
                       const isPicked = pick?.winner_id === id

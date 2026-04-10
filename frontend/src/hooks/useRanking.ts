@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Game, GamePick, Participant, ParticipantScoreBreakdown, RankingEntry, Series, SeriesPick, Team } from '../types'
 import { buildRankingState } from '../utils/ranking'
@@ -7,6 +7,7 @@ export function useRanking() {
   const [ranking, setRanking] = useState<RankingEntry[]>([])
   const [breakdowns, setBreakdowns] = useState<Record<string, ParticipantScoreBreakdown>>({})
   const [loading, setLoading] = useState(true)
+  const previousRankingRef = useRef<RankingEntry[]>([])
 
   useEffect(() => {
     computeRanking()
@@ -43,19 +44,18 @@ export function useRanking() {
 
       if (!participants || !allSeries || !allSeriesPicks || !allGames || !allGamePicks || !teams) return
 
-      setRanking((previousRanking) => {
-        const { ranking: nextRanking, breakdowns: nextBreakdowns } = buildRankingState({
-          participants: participants as Participant[],
-          series: allSeries as Series[],
-          games: allGames as Game[],
-          seriesPicks: allSeriesPicks as SeriesPick[],
-          gamePicks: allGamePicks as GamePick[],
-          teams: teams as Team[],
-          previousRanking,
-        })
-        setBreakdowns(nextBreakdowns)
-        return nextRanking
+      const { ranking: nextRanking, breakdowns: nextBreakdowns } = buildRankingState({
+        participants: participants as Participant[],
+        series: allSeries as Series[],
+        games: allGames as Game[],
+        seriesPicks: allSeriesPicks as SeriesPick[],
+        gamePicks: allGamePicks as GamePick[],
+        teams: teams as Team[],
+        previousRanking: previousRankingRef.current,
       })
+      previousRankingRef.current = nextRanking
+      setRanking(nextRanking)
+      setBreakdowns(nextBreakdowns)
     } finally {
       setLoading(false)
     }

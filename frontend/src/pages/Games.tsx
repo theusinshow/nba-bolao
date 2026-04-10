@@ -532,17 +532,12 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const tB = game.team_b
 
   function handleClick(teamId: string) {
-    console.log('time selecionado:', teamId)
     if (locked || game.played) return
     setPending((prev) => (prev === teamId ? null : teamId))
   }
 
   async function handleSave() {
-    console.log('[GameCard] handleSave chamado', { pending, saving })
-    if (!pending) {
-      console.warn('[GameCard] handleSave: pending é null, abortando')
-      return
-    }
+    if (!pending) return
     setSaving(true)
     try {
       await onSave(game.id, pending)
@@ -803,7 +798,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
             </div>
           </div>
           <button
-            onClick={() => { console.log('clicou salvar', pending); handleSave(); }}
+            onClick={handleSave}
             disabled={saving}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -1060,14 +1055,12 @@ export function Games({ participantId }: Props) {
     }
 
     if (!participantId) {
-      console.error('[savePick] participantId ausente!')
       addToast('Erro: participante não identificado', 'error')
       return
     }
 
     try {
       const existing = picks.find((p) => p.game_id === gameId)
-      console.log('[savePick] pick existente:', existing ?? 'nenhum')
 
       if (existing) {
         const { data, error } = await supabase
@@ -1076,7 +1069,6 @@ export function Games({ participantId }: Props) {
           .eq('id', existing.id)
           .select()
           .single()
-        console.log('[savePick] update result:', { data, error })
         if (error) {
           addToast(`Erro ao salvar: ${error.message}`, 'error')
           return
@@ -1088,7 +1080,6 @@ export function Games({ participantId }: Props) {
           .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
           .select()
           .single()
-        console.log('[savePick] insert result:', { data, error })
         if (error) {
           addToast(`Erro ao salvar: ${error.message}`, 'error')
           return
@@ -1096,7 +1087,6 @@ export function Games({ participantId }: Props) {
         if (data) setPicks((prev) => [...prev, data as GamePick])
       }
 
-      console.log('[savePick] sucesso!')
       addToast('Palpite salvo!', 'success')
     } catch (err) {
       console.error('[savePick] exceção inesperada:', err)

@@ -122,7 +122,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
           <div className="mb-4 p-3 rounded-lg bg-nba-surface-2 text-center">
             <span className="text-nba-muted text-xs">Resultado: </span>
             <span className="font-condensed font-bold text-nba-text">
-              {getTeam(series.winner_id)?.abbreviation} 4x{series.games_played - 4}
+              {(series.winner ?? getTeam(series.winner_id))?.abbreviation ?? series.winner_id} 4x{series.games_played - 4}
             </span>
           </div>
         )}

@@ -80,21 +80,17 @@ export async function syncNBA(): Promise<void> {
       const awayWon = bdlGame.visitor_team_score > bdlGame.home_team_score
       const winnerId = played ? (homeWon ? homeAbbr : awayWon ? awayAbbr : null) : null
 
-      // Upsert game
-      const { data: existingGame } = await supabase
-        .from('games')
-        .select('id')
-        .eq('nba_game_id', bdlGame.id)
-        .single()
-
+      // Load existing games for this series (used for series completion check)
       const { data: existingGames } = await supabase
         .from('games')
-        .select('id, winner_id, game_number, played')
+        .select('id, nba_game_id, winner_id, game_number, played')
         .eq('series_id', series.id)
         .order('game_number')
 
+      const existingGame = existingGames?.find((g) => g.nba_game_id === bdlGame.id) ?? null
+
       const gameNumber = existingGame
-        ? existingGames?.find((game) => game.id === existingGame.id)?.game_number ?? (existingGames?.length ?? 0)
+        ? existingGame.game_number
         : (existingGames?.length ?? 0) + 1
 
       const payload = {
