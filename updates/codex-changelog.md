@@ -131,3 +131,38 @@
 ### Pendências
 - O relatório usa o mesmo snapshot em memória do ranking; se você quiser links compartilháveis, histórico ou persistência por data, será preciso desenhar isso em outra rodada.
 - O desktop hoje mostra o relatório abaixo da tabela, não em painel lateral fixo; a implementação priorizou encaixe rápido e coerente com a página atual.
+
+## 2026-04-09 23:55 - Jogos agrupados por série com expansão
+
+### Objetivo
+- Reduzir o scroll excessivo da aba `Jogos` agrupando os cards por série e exibindo o jogo a jogo apenas sob demanda.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+- A tela `Jogos` deixou de renderizar uma lista longa de jogos soltos e passou a organizar o conteúdo em cards por série.
+- Cada card de série agora mostra um resumo compacto com:
+  - confronto;
+  - rodada;
+  - quantidade de jogos cadastrados;
+  - quantidade de jogos abertos;
+  - quantidade de palpites feitos;
+  - pontos acumulados naquela série de jogos;
+  - próximo fechamento, quando existir.
+- Ao tocar/clicar em uma série, o card expande e revela os jogos daquela série usando os `GameCard`s existentes.
+- A ordenação das séries prioriza:
+  - séries com jogos ainda abertos;
+  - séries com fechamento mais próximo;
+  - depois rodada e id da série.
+- A primeira série relevante abre automaticamente por padrão, reduzindo fricção para o usuário.
+- O fluxo de salvar palpites jogo a jogo foi preservado; a mudança foi concentrada na organização visual da página.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+### Pendências
+- Se você quiser reduzir ainda mais o tamanho vertical, dá para fazer uma segunda rodada compactando o próprio `GameCard`.
+- A tela ainda usa muitos blocos ricos visualmente; a principal melhora desta rodada foi estrutural, não de densidade extrema.

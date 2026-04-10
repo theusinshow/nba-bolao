@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useUIStore } from '../store/useUIStore'
 import type { Game, GamePick, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
+import { calculateGamePickPoints } from '../utils/scoring'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,20 @@ interface GameWithTeams extends Game {
 
 interface Props {
   participantId: string
+}
+
+interface SeriesGroup {
+  key: string
+  seriesId: string
+  round: 1 | 2 | 3 | 4
+  games: GameWithTeams[]
+  teamA: Team | null
+  teamB: Team | null
+  openGames: number
+  playedGames: number
+  pickedGames: number
+  points: number
+  nextTipOff: string | null
 }
 
 // ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
@@ -189,6 +204,68 @@ function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPending
 const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
 const ROUND_COLOR: Record<number, string> = {
   1: '#4a90d9', 2: '#9b59b6', 3: '#e05c3a', 4: '#c8963c',
+}
+
+function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesGroup[] {
+  const picksByGameId = Object.fromEntries(picks.map((pick) => [pick.game_id, pick]))
+  const grouped = new Map<string, GameWithTeams[]>()
+
+  for (const game of games) {
+    const key = game.series_id || `mock-series-${game.home_team_id}-${game.away_team_id}`
+    if (!grouped.has(key)) grouped.set(key, [])
+    grouped.get(key)!.push(game)
+  }
+
+  return [...grouped.entries()]
+    .map(([seriesId, seriesGames]) => {
+      const orderedGames = [...seriesGames].sort((left, right) => left.game_number - right.game_number)
+      const firstGame = orderedGames[0]
+      const round = (firstGame.round ?? 1) as 1 | 2 | 3 | 4
+      const openGames = orderedGames.filter((game) => !game.played).length
+      const playedGames = orderedGames.filter((game) => game.played).length
+      const pickedGames = orderedGames.filter((game) => !!picksByGameId[game.id]).length
+      const points = orderedGames.reduce((sum, game) => {
+        const pick = picksByGameId[game.id]
+        if (!pick) return sum
+        return sum + calculateGamePickPoints(
+          { winnerId: pick.winner_id },
+          { winnerId: game.winner_id ?? undefined, played: game.played, round: game.round }
+        )
+      }, 0)
+
+      const nextTipOff = orderedGames
+        .filter((game) => !game.played && game.tip_off_at)
+        .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]?.tip_off_at ?? null
+
+      return {
+        key: seriesId,
+        seriesId,
+        round,
+        games: orderedGames,
+        teamA: firstGame.team_a ?? null,
+        teamB: firstGame.team_b ?? null,
+        openGames,
+        playedGames,
+        pickedGames,
+        points,
+        nextTipOff,
+      }
+    })
+    .sort((left, right) => {
+      if ((left.openGames > 0) !== (right.openGames > 0)) {
+        return left.openGames > 0 ? -1 : 1
+      }
+
+      if (left.nextTipOff && right.nextTipOff) {
+        return new Date(left.nextTipOff).getTime() - new Date(right.nextTipOff).getTime()
+      }
+
+      if (left.nextTipOff) return -1
+      if (right.nextTipOff) return 1
+
+      if (left.round !== right.round) return left.round - right.round
+      return left.seriesId.localeCompare(right.seriesId)
+    })
 }
 
 // ─── Empty state (no games) ───────────────────────────────────────────────────
@@ -879,6 +956,7 @@ export function Games({ participantId }: Props) {
   const [loading, setLoading] = useState(true)
   const [isMock,  setIsMock]  = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [expandedSeriesIds, setExpandedSeriesIds] = useState<string[]>([])
   const { addToast } = useUIStore()
 
   useEffect(() => {
@@ -888,6 +966,23 @@ export function Games({ participantId }: Props) {
   useEffect(() => {
     if (games.length > 0) fetchPicks()
   }, [games, participantId])
+
+  const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
+
+  useEffect(() => {
+    if (seriesGroups.length === 0) {
+      setExpandedSeriesIds([])
+      return
+    }
+
+    setExpandedSeriesIds((current) => {
+      const validCurrent = current.filter((seriesId) => seriesGroups.some((group) => group.seriesId === seriesId))
+      if (validCurrent.length > 0) return validCurrent
+
+      const firstOpenSeries = seriesGroups.find((group) => group.openGames > 0)
+      return [firstOpenSeries?.seriesId ?? seriesGroups[0].seriesId]
+    })
+  }, [seriesGroups])
 
   async function fetchAll() {
     setLoading(true)
@@ -1036,91 +1131,241 @@ export function Games({ participantId }: Props) {
     return <EmptyState />
   }
 
-  // Group games by date in BRT
-  const grouped = new Map<string, { iso: string; games: GameWithTeams[] }>()
-  const unscheduledGames: GameWithTeams[] = []
-  for (const g of games) {
-    if (!g.tip_off_at) {
-      unscheduledGames.push(g)
-      continue
-    }
-    const key = dateKeyBRT(g.tip_off_at)
-    if (!grouped.has(key)) grouped.set(key, { iso: g.tip_off_at, games: [] })
-    grouped.get(key)!.games.push(g)
+  function toggleSeries(seriesId: string) {
+    setExpandedSeriesIds((current) =>
+      current.includes(seriesId)
+        ? current.filter((id) => id !== seriesId)
+        : [...current, seriesId]
+    )
   }
 
   return (
     <div style={{ padding: '16px 16px 96px', maxWidth: 680, margin: '0 auto' }}>
       <GamesHero games={games} picks={picks} isMock={isMock} />
 
-      {/* Games grouped by date */}
-      {[...grouped.entries()].map(([key, { iso, games: dayGames }]) => (
-        <div key={key} style={{ marginBottom: 28 }}>
-          <DateHeader iso={iso} count={dayGames.length} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {dayGames.map((game) => (
-              <GameCard
-                key={game.id}
-                game={game}
-                pick={picks.find((p) => p.game_id === game.id)}
-                onSave={savePick}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 12,
+        }}
+      >
+        <h2
+          className="title"
+          style={{
+            color: 'var(--nba-gold)',
+            fontSize: '1rem',
+            letterSpacing: '0.14em',
+            lineHeight: 1,
+          }}
+        >
+          SÉRIES
+        </h2>
+        <div
+          style={{
+            height: 1,
+            flex: 1,
+            minWidth: 32,
+            background: 'var(--nba-border)',
+          }}
+        />
+        <span
+          className="font-condensed"
+          style={{
+            color: 'var(--nba-text-muted)',
+            fontSize: '0.72rem',
+            background: 'var(--nba-surface-2)',
+            border: '1px solid var(--nba-border)',
+            borderRadius: 4,
+            padding: '2px 8px',
+          }}
+        >
+          {seriesGroups.length} série{seriesGroups.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
-      {unscheduledGames.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {seriesGroups.map((group) => (
+          <SeriesCard
+            key={group.key}
+            group={group}
+            picks={picks}
+            expanded={expandedSeriesIds.includes(group.seriesId)}
+            onToggle={() => toggleSeries(group.seriesId)}
+            onSave={savePick}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SeriesCard({
+  group,
+  picks,
+  expanded,
+  onToggle,
+  onSave,
+}: {
+  group: SeriesGroup
+  picks: GamePick[]
+  expanded: boolean
+  onToggle: () => void
+  onSave: (gameId: string, winnerId: string) => Promise<void>
+}) {
+  const completionPct = group.games.length > 0 ? Math.round((group.pickedGames / group.games.length) * 100) : 0
+  const roundColor = ROUND_COLOR[group.round]
+  const hasOpenGames = group.openGames > 0
+
+  return (
+    <div
+      style={{
+        background: 'var(--nba-surface)',
+        border: `1px solid ${expanded ? 'rgba(200,150,60,0.24)' : 'var(--nba-border)'}`,
+        borderRadius: 12,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          border: 'none',
+          background: 'transparent',
+          color: 'inherit',
+          cursor: 'pointer',
+          padding: '14px 14px 12px',
+          textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+              <span
+                className="font-condensed font-bold"
+                style={{
+                  color: roundColor,
+                  fontSize: '0.72rem',
+                  letterSpacing: '0.08em',
+                  background: `${roundColor}20`,
+                  border: `1px solid ${roundColor}40`,
+                  borderRadius: 999,
+                  padding: '2px 8px',
+                }}
+              >
+                {ROUND_LABEL[group.round]}
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  color: hasOpenGames ? 'var(--nba-gold)' : 'var(--nba-success)',
+                  background: hasOpenGames ? 'rgba(200,150,60,0.1)' : 'rgba(46,204,113,0.1)',
+                  borderRadius: 999,
+                  padding: '2px 8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                }}
+              >
+                <Layers3 size={12} />
+                {hasOpenGames ? `${group.openGames} aberto${group.openGames !== 1 ? 's' : ''}` : 'Série encerrada'}
+              </span>
+            </div>
+
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1 }}>
+              {group.teamA?.abbreviation ?? group.games[0]?.home_team_id ?? '—'} vs {group.teamB?.abbreviation ?? group.games[0]?.away_team_id ?? '—'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+              {group.games.length} jogo{group.games.length !== 1 ? 's' : ''} cadastrados • {group.playedGames} finalizado{group.playedGames !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <span
             style={{
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              border: '1px solid rgba(200,150,60,0.12)',
+              background: 'rgba(28,28,38,0.9)',
+              color: expanded ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              flexWrap: 'wrap',
-              marginBottom: 12,
+              justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            <h2
-              className="title"
-              style={{
-                color: 'var(--nba-gold)',
-                fontSize: '1rem',
-                letterSpacing: '0.14em',
-                lineHeight: 1,
-              }}
-            >
-              SEM HORÁRIO DEFINIDO
-            </h2>
-            <div
-              style={{
-                height: 1,
-                flex: 1,
-                minWidth: 32,
-                background: 'var(--nba-border)',
-              }}
-            />
-            <span
-              className="font-condensed"
-              style={{
-                color: 'var(--nba-text-muted)',
-                fontSize: '0.72rem',
-                background: 'var(--nba-surface-2)',
-                border: '1px solid var(--nba-border)',
-                borderRadius: 4,
-                padding: '2px 8px',
-              }}
-            >
-              {unscheduledGames.length} jogo{unscheduledGames.length !== 1 ? 's' : ''}
-            </span>
+            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-2 sm:grid-cols-4">
+          <div
+            style={{
+              padding: '9px 10px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.12)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>Palpites feitos</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>
+              {group.pickedGames}/{group.games.length}
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {unscheduledGames.map((game) => (
+          <div
+            style={{
+              padding: '9px 10px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.12)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>Pontos da série</div>
+            <div className="font-condensed font-bold" style={{ color: group.points > 0 ? 'var(--nba-success)' : 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>
+              {group.points}
+            </div>
+          </div>
+          <div
+            style={{
+              padding: '9px 10px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.12)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>Cobertura</div>
+            <div className="font-condensed font-bold" style={{ color: completionPct === 100 ? 'var(--nba-success)' : 'var(--nba-gold)', fontSize: '1.1rem', lineHeight: 1.1 }}>
+              {completionPct}%
+            </div>
+          </div>
+          <div
+            style={{
+              padding: '9px 10px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.12)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>Próximo fechamento</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>
+              {group.nextTipOff ? formatTimeBRT(group.nextTipOff) : '—'}
+            </div>
+          </div>
+        </div>
+      </button>
+
+      {expanded && (
+        <div style={{ padding: '0 12px 12px', borderTop: '1px solid var(--nba-border)', background: 'rgba(0,0,0,0.12)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12 }}>
+            {group.games.map((game) => (
               <GameCard
                 key={game.id}
                 game={game}
-                pick={picks.find((p) => p.game_id === game.id)}
-                onSave={savePick}
+                pick={picks.find((pick) => pick.game_id === game.id)}
+                onSave={onSave}
               />
             ))}
           </div>
