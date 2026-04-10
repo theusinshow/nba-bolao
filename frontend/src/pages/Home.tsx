@@ -484,6 +484,7 @@ function RankingCard({
   highlightId: string
 }) {
   const top5 = ranking.slice(0, 5)
+  const podium = ranking.slice(0, 3)
 
   return (
     <div style={card}>
@@ -495,6 +496,62 @@ function RankingCard({
         </div>
       ) : (
         <div>
+          {podium.length > 0 && (
+            <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+              {podium.map((entry, index) => {
+                const medal = MEDALS[index]
+                const isMe = entry.participant_id === highlightId
+                const diff = entry.prev_rank != null ? entry.prev_rank - entry.rank : null
+
+                return (
+                  <div
+                    key={`podium-${entry.participant_id}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'auto 1fr auto',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: index === 0 ? '12px 10px' : '9px 10px',
+                      borderRadius: 10,
+                      background: index === 0 ? `${medal.color}${medal.bgAlpha}` : 'var(--nba-surface-2)',
+                      border: index === 0 ? `1px solid ${medal.color}44` : '1px solid rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    <span style={{ fontSize: index === 0 ? '1.5rem' : '1.2rem', lineHeight: 1, flexShrink: 0 }}>
+                      {medal.emoji}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
+                          fontWeight: 700,
+                          fontSize: index === 0 ? '0.92rem' : '0.84rem',
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {entry.participant_name}
+                        </span>
+                        {diff !== null && <RankArrow diff={diff} />}
+                      </div>
+                      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
+                        #{entry.rank} • {entry.cravadas} cravada{entry.cravadas !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <div
+                      className="font-condensed font-bold"
+                      style={{ color: index === 0 ? medal.color : 'var(--nba-gold)', fontSize: index === 0 ? '1.5rem' : '1.15rem', lineHeight: 1 }}
+                    >
+                      {entry.total_points}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {top5.map((e, i) => {
             const isMe = e.participant_id === highlightId
             const diff = e.prev_rank != null ? e.prev_rank - e.rank : null
@@ -1248,9 +1305,6 @@ export function Home({ participantId }: Props) {
           <div className="md:hidden">
             <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
           </div>
-
-          {/* Podium */}
-          <PodiumCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
 
           {/* Recent series */}
           <RecentSeriesCard series={series} />

@@ -5,7 +5,7 @@ begin;
 
 update games
 set
-  winner_id = case nba_game_id
+  winner_id = case cast(nba_game_id as bigint)
     when 700001 then 'OKC'
     when 700002 then 'OKC'
     when 700003 then 'MEM'
@@ -64,7 +64,7 @@ set
     when 700056 then 'IND'
     else winner_id
   end,
-  home_score = case nba_game_id
+  home_score = case cast(nba_game_id as bigint)
     when 700001 then 118
     when 700002 then 121
     when 700003 then 101
@@ -123,7 +123,7 @@ set
     when 700056 then 118
     else home_score
   end,
-  away_score = case nba_game_id
+  away_score = case cast(nba_game_id as bigint)
     when 700001 then 103
     when 700002 then 97
     when 700003 then 108
@@ -184,7 +184,7 @@ set
   end,
   played = true,
   tip_off_at = coalesce(tip_off_at, now() - interval '5 minutes')
-where nba_game_id between 700001 and 700056;
+where cast(nba_game_id as bigint) between 700001 and 700056;
 
 update series
 set

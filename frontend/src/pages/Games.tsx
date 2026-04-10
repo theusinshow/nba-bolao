@@ -811,16 +811,19 @@ function TeamSide({
   const abbr  = team?.abbreviation ?? '?'
   const name  = team?.name ?? '—'
 
+  const teamTint = color === 'var(--nba-text-muted)' ? 'rgba(200,150,60,0.18)' : `${color}22`
+  const teamOutline = color === 'var(--nba-text-muted)' ? 'rgba(200,150,60,0.5)' : `${color}88`
+
   const resultBg =
     isWinner ? 'rgba(46,204,113,0.10)' :
     isLoser  ? 'rgba(231,76,60,0.08)'  :
-    isSelected ? 'rgba(200,150,60,0.22)' :
+    isSelected ? `linear-gradient(180deg, ${teamTint}, rgba(12,12,18,0.72))` :
     'transparent'
 
   const borderColor =
     isWinner ? 'rgba(46,204,113,0.45)' :
     isLoser ? 'rgba(231,76,60,0.28)' :
-    isSelected ? 'rgba(200,150,60,0.78)' :
+    isSelected ? teamOutline :
     'transparent'
 
   const align = side === 'left' ? 'flex-start' : 'flex-end'
@@ -843,12 +846,12 @@ function TeamSide({
         outline: 'none',
         opacity: isLoser ? 0.45 : 1,
         borderRadius: side === 'left' ? '7px 0 0 0' : '0 7px 0 0',
-        boxShadow: isSelected ? 'inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 0 2px rgba(200,150,60,0.18)' : 'none',
+        boxShadow: isSelected ? `inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 0 2px ${teamTint}, 0 10px 24px ${teamTint}` : 'none',
         transform: isSelected ? 'translateY(-1px)' : 'translateY(0)',
       }}
       onMouseEnter={(e) => {
         if (!locked && !isSelected && !isWinner && !isLoser) {
-          e.currentTarget.style.background = 'rgba(200,150,60,0.06)'
+          e.currentTarget.style.background = teamTint
         }
       }}
       onMouseLeave={(e) => {
@@ -860,11 +863,11 @@ function TeamSide({
       <span
         className="font-condensed font-bold"
         style={{
-          color: isSelected ? 'var(--nba-gold)' : abbr === 'TBD' ? 'var(--nba-text-muted)' : color,
+          color: abbr === 'TBD' ? 'var(--nba-text-muted)' : color,
           fontSize: 'clamp(1.6rem, 4vw, 2.2rem)',
           lineHeight: 1,
           letterSpacing: '-0.01em',
-          textShadow: isSelected ? '0 0 18px rgba(200,150,60,0.24)' : 'none',
+          textShadow: isSelected ? `0 0 18px ${teamTint}` : 'none',
         }}
       >
         {abbr}
@@ -892,9 +895,9 @@ function TeamSide({
             marginTop: 8,
             padding: '3px 8px',
             borderRadius: 999,
-            background: 'rgba(200,150,60,0.18)',
-            border: '1px solid rgba(200,150,60,0.36)',
-            color: 'var(--nba-gold)',
+            background: teamTint,
+            border: `1px solid ${teamOutline}`,
+            color: abbr === 'TBD' ? 'var(--nba-gold)' : color,
             fontSize: '0.68rem',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
@@ -1311,7 +1314,10 @@ function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
               </div>
               <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem', marginTop: 4 }}>
                 Você está escolhendo{' '}
-                <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.9rem' }}>
+                <span
+                  className="font-condensed font-bold"
+                  style={{ color: selectedTeam?.primary_color ?? 'var(--nba-gold)', fontSize: '0.9rem' }}
+                >
                   {selectedTeam?.abbreviation ?? (displayId === tA?.id ? tA?.abbreviation : tB?.abbreviation)}
                 </span>
                 {selectedTeam?.name ? (
@@ -1324,14 +1330,14 @@ function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
             <div
               className="font-condensed font-bold"
               style={{
-                color: 'var(--nba-gold)',
+                color: selectedTeam?.primary_color ?? 'var(--nba-gold)',
                 fontSize: '0.82rem',
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 padding: '4px 9px',
                 borderRadius: 999,
-                background: 'rgba(12,12,18,0.34)',
-                border: '1px solid rgba(200,150,60,0.22)',
+                background: selectedTeam?.primary_color ? `${selectedTeam.primary_color}22` : 'rgba(12,12,18,0.34)',
+                border: selectedTeam?.primary_color ? `1px solid ${selectedTeam.primary_color}66` : '1px solid rgba(200,150,60,0.22)',
               }}
             >
               {selectedTeam?.abbreviation ?? 'Pronto'}

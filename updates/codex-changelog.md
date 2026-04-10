@@ -1,5 +1,92 @@
 # Codex Changelog
 
+## 2026-04-10 - Home com pódio mais visível e seleção de times respeitando identidade visual
+
+### Objetivo
+- Dar mais destaque ao top 3 diretamente no ranking da Home e corrigir o destaque visual da aba `Jogos` para não amarelar siglas de times selecionados.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+
+#### Pódio incorporado ao ranking da Home — `Home.tsx`
+- O card `Ranking Geral` da Home agora abre com um bloco de pódio já destacado no topo.
+- Os três primeiros colocados passaram a aparecer com:
+  - medalha visual;
+  - pontos em maior evidência;
+  - indicação de posição;
+  - cravadas;
+  - seta de variação de posição quando disponível.
+- O card separado de pódio foi removido da composição da Home para evitar redundância e concentrar o destaque onde o usuário já olha naturalmente.
+
+#### Seleção por cor do time — `Games.tsx`
+- O estado selecionado no jogo a jogo deixou de pintar as siglas com o amarelo do sistema.
+- Agora o destaque principal passa a acontecer por:
+  - fundo translúcido usando a cor do time;
+  - borda reforçada na cor do time;
+  - glow suave do contêiner;
+  - selo `Selecionado` também colorido conforme a franquia.
+- O texto da sigla do time selecionado volta a respeitar a identidade visual original da equipe.
+- O bloco de confirmação abaixo do card também passou a refletir a cor real do time escolhido.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+## 2026-04-10 - Plano de backup do bolão adicionado ao backlog futuro
+
+### Objetivo
+- Registrar no backlog uma estratégia de contingência para manter o bolão operável mesmo se o app ficar fora do ar durante os playoffs.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `updates/futuras-implementacoes.md`
+
+### Mudanças feitas
+
+#### Nova frente de contingência operacional — `futuras-implementacoes.md`
+- Foi adicionada uma nova proposta de implementação focada em backup operacional do bolão.
+- A ideia prevê snapshots exportáveis com:
+  - palpites de séries;
+  - palpites jogo a jogo;
+  - ranking consolidado;
+  - resumo legível por rodada.
+
+#### Estrutura sugerida para continuidade manual
+- O backlog agora registra a recomendação de gerar arquivos em formatos complementares:
+  - `CSV` para planilha e conferência técnica;
+  - `Markdown` para leitura humana e operação manual no grupo.
+- Também ficou anotado um plano para reduzir erros de contingência, incluindo timestamp, identificação clara dos participantes e snapshots por data ou rodada.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi apenas documental.
+
+## 2026-04-10 - Scripts de cenário ajustados para `nba_game_id` em texto
+
+### Objetivo
+- Corrigir a incompatibilidade dos scripts de cenário com o banco de teste, onde `games.nba_game_id` está tipado como `text` em vez de numérico.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `supabase/test-scenarios/reveal-first-round-results.sql`
+
+### Mudanças feitas
+
+#### Compatibilidade de tipo no reveal — `reveal-first-round-results.sql`
+- O filtro final do script deixou de usar `where nba_game_id between 700001 and 700056`.
+- Agora o script faz cast explícito:
+  - `where cast(nba_game_id as bigint) between 700001 and 700056`
+- Isso evita o erro `operator does not exist: text >= integer` no Supabase do ambiente de teste atual.
+- Além do `where`, os blocos de `case` para `winner_id`, `home_score` e `away_score` também passaram a usar:
+  - `case cast(nba_game_id as bigint)`
+- Isso corrige o segundo erro de comparação `text = integer` ao publicar os resultados fictícios.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi apenas em script SQL de operação.
+
 ## 2026-04-10 - Palpites do Vai na fé passaram a ficar marcados na aba Jogos
 
 ### Objetivo

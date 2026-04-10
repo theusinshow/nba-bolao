@@ -76,7 +76,65 @@ Objetivos:
 Observação:
 - implementar com cuidado para não prejudicar legibilidade nem performance.
 
-### 7. Melhorar o gráfico do ranking com vários modos de visualização
+### 7. Criar plano de backup operacional do bolão
+
+Motivo:
+- se o app cair, o bolão não pode ficar sem referência de palpites, resultados e pontuação;
+- como o projeto será usado com amigos durante os playoffs, faz sentido ter um plano simples de continuidade manual;
+- um backup legível evita depender 100% da interface para manter a brincadeira viva.
+
+Objetivos:
+- exportar palpites de séries em formato fácil de consultar;
+- exportar palpites jogo a jogo em formato fácil de consultar;
+- exportar ranking consolidado com pontuação por participante;
+- gerar um resumo humano por rodada para servir como documento de contingência;
+- permitir que o bolão continue manualmente em grupo caso o app fique fora do ar.
+
+Escopo recomendado:
+- gerar arquivos `CSV` para segurança e planilha;
+- gerar um arquivo `Markdown` de leitura humana;
+- organizar snapshots por data ou por rodada;
+- registrar horário do backup para fins de conferência.
+
+Formato sugerido:
+- `backups/palpites-series-YYYY-MM-DD.csv`
+- `backups/palpites-jogos-YYYY-MM-DD.csv`
+- `backups/ranking-YYYY-MM-DD.csv`
+- `backups/resumo-rodada-YYYY-MM-DD.md`
+
+Plano para evitar erros:
+
+1. Não depender de um único formato
+- manter versão exportável para planilha e versão legível para consulta rápida.
+
+2. Incluir identificação clara dos participantes
+- nome;
+- email;
+- id quando necessário.
+
+3. Incluir contexto de rodada e timestamp
+- deixar explícito quando o snapshot foi gerado;
+- identificar se o backup cobre rodada em andamento ou rodada encerrada.
+
+4. Garantir leitura humana
+- o resumo em `Markdown` deve ser útil mesmo para consulta fora do app.
+
+5. Pensar em operação simples
+- a solução ideal não deve exigir passos técnicos complexos em momento de emergência;
+- se possível, um script único deve gerar todos os arquivos de uma vez.
+
+Riscos principais:
+- exportar dados incompletos;
+- gerar arquivos técnicos demais e pouco úteis no grupo;
+- esquecer de incluir ranking junto com os palpites;
+- ausência de histórico por data.
+
+Mitigação:
+- padronizar estrutura dos backups;
+- incluir resumo executivo por rodada;
+- registrar snapshots recorrentes em momentos importantes do bolão.
+
+### 8. Melhorar o gráfico do ranking com vários modos de visualização
 
 Motivo:
 - usuários diferentes podem preferir leituras diferentes da evolução do ranking.
@@ -91,7 +149,7 @@ Observação:
 
 ## Ideia com identidade de produto
 
-### 8. Botão `Vai na fé` para palpites aleatórios dos jogos do dia
+### 9. Botão `Vai na fé` para palpites aleatórios dos jogos do dia
 
 Motivo:
 - alguns usuários participam mais pela resenha do que pela análise detalhada;
@@ -167,4 +225,5 @@ Durante o teste de pontuação simulada, o fluxo geral foi considerado bem-suced
 5. Trazer informações reais para a Home via APIs
 6. Botão `Vai na fé` para palpites aleatórios dos jogos do dia
 7. Mostrar resultados da última noite na Home com animação horizontal
-8. Melhorar o gráfico do ranking com vários modos de visualização
+8. Criar plano de backup operacional do bolão
+9. Melhorar o gráfico do ranking com vários modos de visualização
