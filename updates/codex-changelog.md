@@ -74,3 +74,60 @@
 - O fluxo de `GamePickModal` continua sem gatilho explícito a partir do `BracketEditor`; o modal existe e foi alinhado ao schema, mas a navegação para ele ainda merece decisão de produto.
 - O ranking segue sendo um snapshot em memória no frontend e um snapshot em log no backend; se você quiser persistência histórica real de ranking/variação, será preciso definir novas colunas ou uma tabela própria no banco.
 - O banco pode conter séries já criadas com IDs antigos; a UI agora tolera aliases, mas vale conferir se você quer migrar esses IDs para o padrão canônico.
+
+## 2026-04-09 23:35 - Relatório de pontuação dentro do ranking
+
+### Objetivo
+- Adicionar um relatório explicável de pontuação dentro da tela de ranking, permitindo abrir o breakdown de qualquer participante sem criar rota nova.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/types/index.ts`
+- `frontend/src/utils/ranking.ts`
+- `frontend/src/hooks/useRanking.ts`
+- `frontend/src/components/RankingTable.tsx`
+- `frontend/src/components/ParticipantScoreReport.tsx`
+- `frontend/src/pages/Ranking.tsx`
+
+### Mudanças feitas
+- Novos tipos adicionados em `frontend/src/types/index.ts` para suportar o relatório:
+  - `ScoreBreakdownSummary`
+  - `SeriesScoreBreakdownItem`
+  - `GameScoreBreakdownItem`
+  - `ParticipantScoreBreakdown`
+- Novo util compartilhado criado em `frontend/src/utils/ranking.ts` para centralizar:
+  - ordenação do ranking;
+  - cálculo do ranking;
+  - cálculo do breakdown de pontuação por participante;
+  - subtotais de séries, jogos, rodadas e cravadas;
+  - labels de confronto e vencedores para relatório.
+- `useRanking` foi refatorado para usar o util compartilhado e agora expõe:
+  - `ranking`
+  - `breakdowns`
+  - `getBreakdownForParticipant`
+  - `loading`
+  - `refetch`
+- `RankingTable` foi expandida para suportar:
+  - linha selecionada para o participante atualmente inspecionado;
+  - callback `onParticipantClick`;
+  - coluna/botão `Relatório` por participante;
+  - clique na linha para abrir o breakdown.
+- Novo componente `ParticipantScoreReport` criado para renderizar o relatório detalhado:
+  - hero com nome do participante;
+  - cards de resumo: total, séries, jogos, cravadas;
+  - pontos por rodada;
+  - seção detalhada de séries com status (`cravada`, `vencedor`, `erro`, `pendente`);
+  - seção detalhada de jogos com status (`acertou`, `errou`, `pendente`).
+- `Ranking.tsx` foi atualizado para incorporar o relatório no fluxo atual:
+  - desktop: card fixo abaixo da tabela com o relatório do participante selecionado;
+  - mobile: bottom sheet com o relatório;
+  - participante logado vem selecionado por padrão;
+  - qualquer linha da tabela pode trocar o relatório exibido.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+### Pendências
+- O relatório usa o mesmo snapshot em memória do ranking; se você quiser links compartilháveis, histórico ou persistência por data, será preciso desenhar isso em outra rodada.
+- O desktop hoje mostra o relatório abaixo da tabela, não em painel lateral fixo; a implementação priorizou encaixe rápido e coerente com a página atual.

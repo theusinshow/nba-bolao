@@ -93,6 +93,57 @@ export interface RankingEntry {
   prev_rank: number | null
 }
 
+export interface ScoreBreakdownSummary {
+  total_points: number
+  series_points: number
+  game_points: number
+  round_points: [number, number, number, number]
+  cravadas: number
+  series_correct: number
+  series_total: number
+  games_correct: number
+  games_total: number
+}
+
+export interface SeriesScoreBreakdownItem {
+  id: string
+  series_id: string
+  round: RoundNumber
+  position: number | null
+  matchup_label: string
+  picked_winner_id: string
+  picked_winner_label: string
+  actual_winner_id: string | null
+  actual_winner_label: string | null
+  picked_games_count: number
+  actual_games_played: number
+  status: 'cravada' | 'winner' | 'wrong' | 'pending'
+  points: number
+}
+
+export interface GameScoreBreakdownItem {
+  id: string
+  game_id: string
+  series_id: string
+  round: RoundNumber
+  game_number: number
+  matchup_label: string
+  picked_winner_id: string
+  picked_winner_label: string
+  actual_winner_id: string | null
+  actual_winner_label: string | null
+  status: 'correct' | 'wrong' | 'pending'
+  points: number
+  played: boolean
+}
+
+export interface ParticipantScoreBreakdown {
+  participant: Participant
+  summary: ScoreBreakdownSummary
+  series_breakdown: SeriesScoreBreakdownItem[]
+  game_breakdown: GameScoreBreakdownItem[]
+}
+
 // Bracket slot IDs
 export type BracketSlot =
   | 'W1-1' | 'W1-2' | 'W1-3' | 'W1-4'

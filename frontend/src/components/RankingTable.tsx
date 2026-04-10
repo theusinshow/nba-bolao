@@ -1,9 +1,11 @@
-import { ArrowUp, ArrowDown, Minus, Star } from 'lucide-react'
+import { ArrowUp, ArrowDown, ChevronRight, Minus, Star } from 'lucide-react'
 import type { RankingEntry } from '../types'
 
 interface Props {
   ranking: RankingEntry[]
   highlightId?: string
+  selectedId?: string
+  onParticipantClick?: (participantId: string) => void
 }
 
 // ─── Avatar com iniciais ──────────────────────────────────────────────────────
@@ -118,7 +120,7 @@ const RANK_COLOR: Record<number, string> = {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function RankingTable({ ranking, highlightId }: Props) {
+export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick }: Props) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -151,6 +153,7 @@ export function RankingTable({ ranking, highlightId }: Props) {
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden md:table-cell">
               Acerto
             </th>
+            <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>Relatório</th>
           </tr>
         </thead>
 
@@ -158,6 +161,7 @@ export function RankingTable({ ranking, highlightId }: Props) {
         <tbody>
           {ranking.map((e, idx) => {
             const isMe     = e.participant_id === highlightId
+            const isSelected = e.participant_id === selectedId
             const isMedal  = e.rank <= 3
             const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : null
             const seriesPct = e.series_total > 0
@@ -167,6 +171,7 @@ export function RankingTable({ ranking, highlightId }: Props) {
             // Row background priority: medal > me > zebra
             const rowBg =
               isMedal  ? MEDAL_BG[e.rank] :
+              isSelected ? 'rgba(74,144,217,0.12)' :
               isMe     ? 'var(--nba-surface-2)' :
               idx % 2 === 1 ? 'rgba(255,255,255,0.02)' :
               'transparent'
@@ -174,6 +179,7 @@ export function RankingTable({ ranking, highlightId }: Props) {
             // Left accent: medal glow or user gold
             const rowShadow =
               isMedal  ? MEDAL_GLOW[e.rank] :
+              isSelected ? 'inset 3px 0 0 var(--nba-east)' :
               isMe     ? 'inset 3px 0 0 var(--nba-gold)' :
               'none'
 
@@ -195,6 +201,7 @@ export function RankingTable({ ranking, highlightId }: Props) {
                 onMouseLeave={(ev) => {
                   ev.currentTarget.style.filter = 'none'
                 }}
+                onClick={() => onParticipantClick?.(e.participant_id)}
               >
                 {/* Rank */}
                 <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
@@ -290,6 +297,31 @@ export function RankingTable({ ranking, highlightId }: Props) {
                   style={{ padding: '11px 12px', verticalAlign: 'middle' }}
                 >
                   <PctBar pct={seriesPct} />
+                </td>
+
+                <td style={{ padding: '11px 12px', textAlign: 'right', verticalAlign: 'middle' }}>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onParticipantClick?.(e.participant_id)
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      borderRadius: 999,
+                      border: `1px solid ${isSelected ? 'rgba(74,144,217,0.32)' : 'rgba(200,150,60,0.16)'}`,
+                      background: isSelected ? 'rgba(74,144,217,0.14)' : 'rgba(12,12,18,0.34)',
+                      color: isSelected ? 'var(--nba-east)' : 'var(--nba-gold)',
+                      padding: '6px 10px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Ver
+                    <ChevronRight size={13} />
+                  </button>
                 </td>
               </tr>
             )

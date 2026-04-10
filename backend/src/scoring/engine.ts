@@ -90,9 +90,17 @@ export async function recalculateAllScores(): Promise<void> {
   console.log('[scoring] Starting full recalculation...')
   try {
     const ranking = await computeRankingSnapshot()
-    console.log('[scoring] Snapshot generated for', ranking.length, 'participants.')
+
+    for (let i = 0; i < ranking.length; i++) {
+      await supabase
+        .from('participants')
+        .update({ total_points: ranking[i].total_points, rank: i + 1 })
+        .eq('id', ranking[i].participant_id)
+    }
+
+    console.log('[scoring] Done. Ranked', ranking.length, 'participants.')
     console.table(ranking.slice(0, 10))
   } catch (error) {
-    console.error('[scoring] Failed to build ranking snapshot:', error)
+    console.error('[scoring] Failed to recalculate scores:', error)
   }
 }
