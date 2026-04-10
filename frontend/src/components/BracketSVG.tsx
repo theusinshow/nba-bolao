@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Series, SeriesPick } from '../types'
-import { getSeriesSlot } from '../utils/bracket'
+import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const BOX_W    = 148   // width of each series box
@@ -119,6 +119,9 @@ function MobileSeriesCard({
 }) {
   const tA = s.home_team
   const tB = s.away_team
+  const homeDisplay = getSeriesTeamDisplay(s, 'home')
+  const awayDisplay = getSeriesTeamDisplay(s, 'away')
+  const matchupReady = isSeriesReadyForPick(s)
   const isComplete = s.is_complete
   const tAWins = isComplete && s.winner_id === tA?.id
   const tBWins = isComplete && s.winner_id === tB?.id
@@ -198,10 +201,10 @@ function MobileSeriesCard({
               letterSpacing: '-0.01em',
             }}
           >
-            {tA?.abbreviation ?? '—'}
+            {homeDisplay.abbreviation}
           </span>
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
-            {tA?.name?.split(' ').pop() ?? ''}
+            {homeDisplay.isPlaceholder ? homeDisplay.name : tA?.name?.split(' ').pop() ?? ''}
           </span>
           {/* Pick star */}
           {pickedTeamId === tA?.id && !isComplete && (
@@ -269,10 +272,10 @@ function MobileSeriesCard({
               letterSpacing: '-0.01em',
             }}
           >
-            {tB?.abbreviation ?? '—'}
+            {awayDisplay.abbreviation}
           </span>
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3, textAlign: 'right' }}>
-            {tB?.name?.split(' ').pop() ?? ''}
+            {awayDisplay.isPlaceholder ? awayDisplay.name : tB?.name?.split(' ').pop() ?? ''}
           </span>
           {pickedTeamId === tB?.id && !isComplete && (
             <span style={{ color: 'var(--nba-gold)', fontSize: '0.7rem', marginTop: 4 }}>★ seu palpite</span>
@@ -284,22 +287,27 @@ function MobileSeriesCard({
       </div>
 
       {/* Status footer */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           padding: '7px 12px',
           borderTop: '1px solid var(--nba-border)',
           background: badge.bg,
         }}
-      >
-        <span style={{ color: badge.color, fontSize: '0.72rem', fontWeight: 600 }}>
-          {badge.label}
-        </span>
-        {/* Champion badge for Finals */}
-        {s.winner && isComplete && (
-          <span style={{ color: 'var(--nba-gold)', fontSize: '0.68rem' }}>
+        >
+          <span style={{ color: badge.color, fontSize: '0.72rem', fontWeight: 600 }}>
+            {badge.label}
+          </span>
+          {!matchupReady && (
+            <span style={{ color: 'var(--nba-east)', fontSize: '0.68rem', fontWeight: 600 }}>
+              Aguardando play-in
+            </span>
+          )}
+          {/* Champion badge for Finals */}
+          {s.winner && isComplete && (
+            <span style={{ color: 'var(--nba-gold)', fontSize: '0.68rem' }}>
             🏆 {s.winner.abbreviation}
           </span>
         )}
@@ -486,8 +494,11 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
 
     const tA = s?.home_team
     const tB = s?.away_team
+    const homeDisplay = s ? getSeriesTeamDisplay(s, 'home') : { abbreviation: '—', name: '', isPlaceholder: true }
+    const awayDisplay = s ? getSeriesTeamDisplay(s, 'away') : { abbreviation: '—', name: '', isPlaceholder: true }
     const isComplete  = s?.is_complete ?? false
     const isClickable = !!s && !!onSeriesClick
+    const matchupReady = s ? isSeriesReadyForPick(s) : false
 
     const tAWins = isComplete && s?.winner_id === tA?.id
     const tBWins = isComplete && s?.winner_id === tB?.id
@@ -556,13 +567,13 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         <text
           x={10} y={yA}
           dominantBaseline="middle"
-          fill={tA?.primary_color ?? '#888899'}
+          fill={homeDisplay.isPlaceholder ? '#6f88aa' : tA?.primary_color ?? '#888899'}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"
           opacity={isComplete && !tAWins ? 0.35 : 1}
         >
-          {tA?.abbreviation ?? '—'}
+          {homeDisplay.abbreviation}
         </text>
 
         {/* Score (on winner row) */}
@@ -628,13 +639,13 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         <text
           x={10} y={yB}
           dominantBaseline="middle"
-          fill={tB?.primary_color ?? '#888899'}
+          fill={awayDisplay.isPlaceholder ? '#6f88aa' : tB?.primary_color ?? '#888899'}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"
           opacity={isComplete && !tBWins ? 0.35 : 1}
         >
-          {tB?.abbreviation ?? '—'}
+          {awayDisplay.abbreviation}
         </text>
 
         {score && tBWins && (
@@ -697,6 +708,33 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
               letterSpacing={1.5}
             >
               CAMPEÃO: {s.winner.abbreviation}
+            </text>
+          </g>
+        )}
+
+        {!matchupReady && (
+          <g>
+            <rect
+              x={BOX_W - 38}
+              y={BOX_H / 2 - 10}
+              width={30}
+              height={20}
+              rx={10}
+              fill="rgba(74,144,217,0.12)"
+              stroke="rgba(74,144,217,0.32)"
+              strokeWidth={1}
+            />
+            <text
+              x={BOX_W - 23}
+              y={BOX_H / 2}
+              dominantBaseline="middle"
+              textAnchor="middle"
+              fill="#4a90d9"
+              fontSize={9}
+              fontFamily={baseFont}
+              fontWeight="700"
+            >
+              TBD
             </text>
           </g>
         )}

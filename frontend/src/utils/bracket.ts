@@ -50,3 +50,71 @@ export function normalizeGame(game: Game, round?: RoundNumber): Game {
     balldontlie_id: game.balldontlie_id ?? game.nba_game_id,
   }
 }
+
+type SeriesTeamSide = 'home' | 'away'
+
+interface SeriesTeamDisplay {
+  abbreviation: string
+  name: string
+  isPlaceholder: boolean
+}
+
+const FEEDER_LABELS: Record<string, { home?: string; away?: string }> = {
+  'W2-1': { home: 'Vencedor de W1-1', away: 'Vencedor de W1-2' },
+  'W2-2': { home: 'Vencedor de W1-3', away: 'Vencedor de W1-4' },
+  'E2-1': { home: 'Vencedor de E1-1', away: 'Vencedor de E1-2' },
+  'E2-2': { home: 'Vencedor de E1-3', away: 'Vencedor de E1-4' },
+  WCF: { home: 'Vencedor de W2-1', away: 'Vencedor de W2-2' },
+  ECF: { home: 'Vencedor de E2-1', away: 'Vencedor de E2-2' },
+  FIN: { home: 'Vencedor da final do Oeste', away: 'Vencedor da final do Leste' },
+}
+
+function getRoundOnePlayInLabel(series: Series, side: SeriesTeamSide): string | null {
+  if (series.round !== 1 || side !== 'away') return null
+
+  const seedLabel =
+    series.position === 1 ? 'Seed 8 / play-in' :
+    series.position === 2 ? 'Seed 7 / play-in' :
+    null
+
+  if (!seedLabel) return null
+
+  return series.conference === 'West'
+    ? `${seedLabel} do Oeste`
+    : `${seedLabel} do Leste`
+}
+
+function getFallbackTeamLabel(series: Series, side: SeriesTeamSide): string | null {
+  return getRoundOnePlayInLabel(series, side) ?? FEEDER_LABELS[getSeriesSlot(series)]?.[side] ?? null
+}
+
+export function isSeriesReadyForPick(series: Series): boolean {
+  return !!series.home_team_id && !!series.away_team_id
+}
+
+export function getSeriesTeamDisplay(series: Series, side: SeriesTeamSide): SeriesTeamDisplay {
+  const team = side === 'home' ? series.home_team : series.away_team
+
+  if (team) {
+    return {
+      abbreviation: team.abbreviation,
+      name: team.name,
+      isPlaceholder: false,
+    }
+  }
+
+  const fallback = getFallbackTeamLabel(series, side)
+  if (fallback) {
+    return {
+      abbreviation: side === 'away' && series.round === 1 ? 'PI' : 'TBD',
+      name: fallback,
+      isPlaceholder: true,
+    }
+  }
+
+  return {
+    abbreviation: 'TBD',
+    name: 'Aguardando definição',
+    isPlaceholder: true,
+  }
+}

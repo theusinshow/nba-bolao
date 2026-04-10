@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
 import { getTeam } from '../data/teams2025'
 import { useUIStore } from '../store/useUIStore'
+import { getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
   series: Series
@@ -22,11 +23,14 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
 
   const teamA = series.home_team ?? getTeam(series.home_team_id)
   const teamB = series.away_team ?? getTeam(series.away_team_id)
+  const teamADisplay = getSeriesTeamDisplay(series, 'home')
+  const teamBDisplay = getSeriesTeamDisplay(series, 'away')
+  const matchupReady = isSeriesReadyForPick(series)
 
   const roundLabel = ['R1', 'R2', 'Conf Finals', 'NBA Finals'][series.round - 1]
   const confLabel = series.conference ?? ''
 
-  const canSave = selectedWinner !== '' && selectedGames !== 0 && !readOnly && !series.is_complete
+  const canSave = selectedWinner !== '' && selectedGames !== 0 && !readOnly && !series.is_complete && matchupReady
 
   async function handleSave() {
     if (!canSave) return
@@ -55,6 +59,18 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
         <p className="text-nba-muted text-xs font-condensed uppercase mb-1">{confLabel} — {roundLabel}</p>
         <h2 className="title text-2xl text-nba-gold mb-4">Palpite da Série</h2>
 
+        {!matchupReady && (
+          <div className="mb-4 p-3 rounded-lg border border-nba-gold/20 bg-nba-surface-2">
+            <div className="text-nba-gold text-xs font-condensed uppercase mb-1">Aguardando definição</div>
+            <div className="text-nba-text text-sm">
+              {teamADisplay.abbreviation} vs {teamBDisplay.name}
+            </div>
+            <div className="text-nba-muted text-xs mt-2">
+              Os palpites desta série serão liberados quando o adversário do play-in estiver confirmado.
+            </div>
+          </div>
+        )}
+
         {/* Team picker */}
         <p className="text-nba-muted text-xs mb-2">Quem vai vencer?</p>
         <div className="flex gap-2 mb-4">
@@ -65,7 +81,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
             return (
               <button
                 key={team.id}
-                disabled={readOnly || series.is_complete}
+                disabled={readOnly || series.is_complete || !matchupReady}
                 onClick={() => setSelectedWinner(team.id)}
                 className={`flex-1 py-3 px-2 rounded-lg border text-center transition-all ${
                   isSelected
@@ -88,7 +104,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
           {GAMES_OPTIONS.map((n) => (
             <button
               key={n}
-              disabled={readOnly || series.is_complete}
+              disabled={readOnly || series.is_complete || !matchupReady}
               onClick={() => setSelectedGames(n)}
               className={`flex-1 py-2 rounded-lg border font-condensed text-lg transition-all ${
                 selectedGames === n
@@ -117,7 +133,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
             onClick={handleSave}
             disabled={!canSave || saving}
           >
-            {saving ? 'Salvando...' : existingPick ? 'Atualizar Palpite' : 'Salvar Palpite'}
+            {saving ? 'Salvando...' : !matchupReady ? 'Aguardando definição do confronto' : existingPick ? 'Atualizar Palpite' : 'Salvar Palpite'}
           </button>
         )}
       </div>

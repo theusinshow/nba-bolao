@@ -235,3 +235,37 @@
 ### Pendências
 - Ainda será necessário limpar do Supabase os dados fictícios antes de religar totalmente a operação real.
 - O mapeamento `SERIES_ID_BY_TEAMS` continua estático; ele funciona para a chave esperada, mas não substitui um mapeamento dinâmico de bracket em futuras temporadas.
+
+## 2026-04-10 01:05 - Placeholder de play-in no bracket com bloqueio de palpite
+
+### Objetivo
+- Permitir exibir séries ainda indefinidas com texto de placeholder do play-in, sem liberar palpites antes do confronto real estar formado.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/utils/bracket.ts`
+- `frontend/src/components/SeriesModal.tsx`
+- `frontend/src/components/BracketSVG.tsx`
+
+### Mudanças feitas
+- `frontend/src/utils/bracket.ts` ganhou helpers para:
+  - detectar se uma série já está pronta para receber palpite;
+  - montar labels de placeholder para séries ainda indefinidas;
+  - mostrar “Seed 7/8 / play-in” na primeira rodada quando o adversário ainda não estiver fechado;
+  - mostrar fallback do tipo “Vencedor de W1-1” nas rodadas seguintes quando o participante ainda depende de uma série anterior.
+- `SeriesModal` agora reconhece séries incompletas de confronto:
+  - mostra um bloco explicando que a série ainda aguarda definição;
+  - desabilita escolha de vencedor e quantidade de jogos;
+  - bloqueia o botão de salvar até o confronto existir de verdade.
+- `BracketSVG` foi ajustado em desktop e mobile para:
+  - renderizar `PI` / `TBD` quando um lado da série ainda não existe;
+  - exibir texto explicativo do placeholder no card mobile;
+  - marcar visualmente séries ainda aguardando play-in;
+  - manter a chave navegável sem fingir que o confronto já está pronto.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+
+### Pendências
+- Os placeholders desta rodada são genéricos por estrutura da chave, não por nomes reais dos times do play-in.
+- Se você quiser textos como “OKC vs LAL/MIN” com candidatos reais, isso pode entrar numa segunda rodada com uma camada específica para o estado do play-in.
