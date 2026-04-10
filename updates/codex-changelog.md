@@ -166,3 +166,37 @@
 ### Pendências
 - Se você quiser reduzir ainda mais o tamanho vertical, dá para fazer uma segunda rodada compactando o próprio `GameCard`.
 - A tela ainda usa muitos blocos ricos visualmente; a principal melhora desta rodada foi estrutural, não de densidade extrema.
+
+## 2026-04-10 00:05 - Relatório de pontuação com jogos agrupados por série
+
+### Objetivo
+- Reduzir a altura do relatório de pontuação agrupando os jogos por série, em vez de listar todos os jogos em sequência plana.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/components/ParticipantScoreReport.tsx`
+
+### Mudanças feitas
+- A seção `Jogos` do relatório de pontuação passou a agrupar o breakdown por série/confronto.
+- Cada grupo agora mostra um card-resumo com:
+  - rodada;
+  - confronto;
+  - subtotal de pontos daquela série de jogos;
+  - quantidade de acertos;
+  - quantidade de jogos concluídos;
+  - expansão/recolhimento por série.
+- Ao expandir a série, o usuário vê os jogos individuais daquela série com:
+  - número do jogo;
+  - status (`acertou`, `errou`, `pendente`);
+  - palpite feito;
+  - vencedor real;
+  - pontos gerados.
+- A primeira série do relatório abre automaticamente por padrão para manter leitura rápida.
+- A seção ficou consistente com a nova organização da aba `Jogos`, reforçando a mesma lógica mental no produto.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+### Pendências
+- Se quiser, numa próxima rodada dá para aplicar o mesmo padrão de agrupamento por série também à seção de `Séries`, usando expansão para detalhes extras de palpites.
