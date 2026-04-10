@@ -1,5 +1,36 @@
 # Codex Changelog
 
+## 2026-04-10 - Destaque do bracket oficial na Home
+
+### Objetivo
+- Tornar o acesso ao bracket oficial mais visível na Home, sem poluir a página com a chave inteira, usando um card-resumo com CTA forte.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+
+#### Nova seção — `Resultados reais` na Home
+- Foi adicionado um card dedicado ao bracket oficial na Home.
+- O bloco foi posicionado na coluna principal, logo após os cards de status gerais, para aumentar descoberta sem esconder o restante do conteúdo.
+
+#### Conteúdo do card
+- O card `Resultados reais` passou a exibir:
+  - quantidade de séries concluídas;
+  - quantidade de séries em aberto;
+  - campeão atual ou estado `Em disputa`;
+  - até dois confrontos de destaque das fases finais;
+  - CTA principal `Acompanhar playoffs`, levando para `/official`.
+
+#### Decisão de UX
+- A implementação usa dados já carregados de `series`, evitando query extra.
+- O objetivo foi reforçar visibilidade do bracket oficial sem duplicar a chave completa dentro da Home.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Correção do filtro mobile `Oeste / Finais / Leste` no bracket
 
 ### Objetivo

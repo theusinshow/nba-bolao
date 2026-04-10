@@ -796,6 +796,130 @@ function NextGamesCard() {
   )
 }
 
+function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>['series'] }) {
+  const completedSeries = series.filter((item) => item.is_complete).length
+  const openSeries = Math.max(series.length - completedSeries, 0)
+  const finals = series.find((item) => item.id === 'FIN')
+  const championLabel = finals?.is_complete
+    ? finals.winner?.abbreviation ?? finals.winner_id ?? 'Definido'
+    : 'Em disputa'
+
+  const spotlightSeries = [...series]
+    .filter((item) => item.round >= 3)
+    .sort((left, right) => {
+      if (left.round !== right.round) return right.round - left.round
+      return left.id.localeCompare(right.id)
+    })
+    .slice(0, 2)
+
+  return (
+    <div
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(224,92,58,0.12), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+      }}
+    >
+      <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
+
+      <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', marginBottom: 14 }}>
+        Acompanhe a chave oficial dos playoffs e veja como os confrontos estão avançando na vida real.
+      </p>
+
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.16)',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Séries concluídas</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-success)', fontSize: '1.45rem', lineHeight: 1.1 }}>
+            {completedSeries}
+          </div>
+        </div>
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.16)',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Em aberto</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.45rem', lineHeight: 1.1 }}>
+            {openSeries}
+          </div>
+        </div>
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.16)',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Campeão atual</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.45rem', lineHeight: 1.1 }}>
+            {championLabel}
+          </div>
+        </div>
+      </div>
+
+      {spotlightSeries.length > 0 && (
+        <div style={{ display: 'grid', gap: 10, marginTop: 12 }} className="sm:grid-cols-2">
+          {spotlightSeries.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.16)',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>
+                {item.conference ?? 'NBA'} {ROUND_LABEL[item.round] ?? ''}
+              </div>
+              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem', lineHeight: 1 }}>
+                {item.home_team?.abbreviation ?? item.home_team_id ?? '—'} vs {item.away_team?.abbreviation ?? item.away_team_id ?? '—'}
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 6 }}>
+                {item.is_complete
+                  ? `Vencedor: ${item.winner?.abbreviation ?? item.winner_id ?? '—'}`
+                  : 'Confronto em andamento'}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Link
+        to="/official"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          marginTop: 14,
+          padding: '10px 14px',
+          borderRadius: 10,
+          textDecoration: 'none',
+          background: 'rgba(12,12,18,0.34)',
+          border: '1px solid rgba(200,150,60,0.16)',
+          color: 'var(--nba-gold)',
+          fontWeight: 700,
+          fontSize: '0.82rem',
+        }}
+      >
+        Acompanhar playoffs
+        <ChevronRight size={15} />
+      </Link>
+    </div>
+  )
+}
+
 function OddsCard() {
   return (
     <div style={card}>
@@ -986,6 +1110,8 @@ export function Home({ participantId }: Props) {
             totalSeries={series.length}
             myEntry={myEntry}
           />
+
+          <OfficialBracketCard series={series} />
 
           {/* On tablet: ranking card appears here (left col hidden) */}
           <div className="md:hidden">
