@@ -1,5 +1,68 @@
 # Codex Changelog
 
+## 2026-04-10 - Home alinhada ao novo progresso do bracket
+
+### Objetivo
+- Corrigir a Home para não continuar exibindo o padrão antigo de progresso do bracket, que contava séries futuras ainda indefinidas como se já estivessem pendentes.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+
+#### Correção de progresso — `Home.tsx`
+- O `HeroPanel` da Home deixou de usar `series.length` e `picks.length` como base bruta do progresso.
+- Agora a Home considera apenas séries realmente prontas para palpite, usando a mesma lógica aplicada em `Meu Bracket`.
+- Com isso:
+  - o progresso percentual não é mais penalizado por rounds futuros;
+  - o subtítulo do CTA para `/bracket` deixa de mostrar algo como `8/15` quando parte da chave ainda não está definida;
+  - o texto do bloco de progresso passa a refletir apenas séries já liberadas.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+## 2026-04-10 - Jogos futuros desativados quando a série já terminou
+
+### Objetivo
+- Corrigir a experiência da aba `Jogos` e do modal jogo a jogo para não tratar como palpites válidos jogos 5, 6 ou 7 quando a série já foi encerrada antes.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Games.tsx`
+- `frontend/src/components/GamePickModal.tsx`
+
+### Mudanças feitas
+
+#### Correção de regra de UX — `Games.tsx`
+- A aba `Jogos` agora considera `series.games_played` e `series.is_complete` ao montar os grupos de cada série.
+- Quando a série já terminou antes do jogo atual:
+  - o card deixa de aparecer como aberto;
+  - o estado principal muda para `Série já encerrada`;
+  - a urgência e o countdown deixam de ser exibidos;
+  - o usuário não consegue mais selecionar nem salvar palpite naquele jogo;
+  - uma mensagem contextual explica que a série terminou antes daquele confronto acontecer.
+
+#### Refinamento de métricas por série
+- Os cards de série na aba `Jogos` agora usam apenas jogos realmente válidos para:
+  - percentual de cobertura;
+  - contagem de palpites feitos;
+  - total de jogos considerados naquela série;
+  - próximo fechamento.
+- Quando uma série termina antes do máximo de jogos cadastrados, a UI passa a sinalizar isso claramente.
+
+#### Consistência do modal — `GamePickModal.tsx`
+- O modal jogo a jogo também passou a respeitar `series.games_played` e `series.is_complete`.
+- Jogos que ficaram além do encerramento real da série agora exibem aviso de `Série já encerrada` em vez de parecerem bloqueados por horário comum.
+
+#### Limpeza pontual
+- Foi removido um `console.log` residual de debug no fluxo de `savePick` da página `Games`.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Progresso do bracket separado por rodada definida
 
 ### Objetivo

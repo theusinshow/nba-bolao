@@ -59,7 +59,10 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
               const normalizedGame = normalizeGame(game, series.round)
               const homeId = normalizedGame.home_team_id
               const awayId = normalizedGame.away_team_id
-              const locked = isGameLocked(game)
+              const seriesClosedBeforeGame =
+                series.is_complete &&
+                normalizedGame.game_number > series.games_played
+              const locked = seriesClosedBeforeGame || isGameLocked(game)
               const pick = getPickForGame(game.id)
               const correct = normalizedGame.played && pick && pick.winner_id === normalizedGame.winner_id
               const wrong = normalizedGame.played && pick && pick.winner_id !== normalizedGame.winner_id
@@ -75,7 +78,12 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-nba-muted text-xs font-condensed">Jogo {game.game_number}</span>
-                    {locked && !game.played && (
+                    {seriesClosedBeforeGame && (
+                      <span className="text-xs text-nba-east font-condensed">
+                        Série já encerrada
+                      </span>
+                    )}
+                    {locked && !game.played && !seriesClosedBeforeGame && (
                       <span className="flex items-center gap-1 text-xs text-nba-danger">
                         <Lock size={10} /> Bloqueado
                       </span>
@@ -117,6 +125,12 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                       )
                     })}
                   </div>
+
+                  {seriesClosedBeforeGame && (
+                    <div className="mt-2 rounded-md border border-nba-east/20 bg-nba-east/10 px-3 py-2 text-xs text-nba-muted">
+                      A série terminou em {series.games_played} jogo{series.games_played !== 1 ? 's' : ''}. Este jogo não recebe mais palpite.
+                    </div>
+                  )}
                 </div>
               )
             })}

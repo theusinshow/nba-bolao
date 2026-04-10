@@ -12,6 +12,8 @@ import { calculateGamePickPoints } from '../utils/scoring'
 interface GameWithTeams extends Game {
   team_a?: Team | null
   team_b?: Team | null
+  series_games_played?: number | null
+  series_is_complete?: boolean
 }
 
 interface Props {
@@ -30,6 +32,9 @@ interface SeriesGroup {
   pickedGames: number
   points: number
   nextTipOff: string | null
+  seriesGamesPlayed: number | null
+  seriesIsComplete: boolean
+  effectiveGamesCount: number
 }
 
 // ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
@@ -181,6 +186,10 @@ function getRelativeDateLabel(iso: string): string | null {
 }
 
 function getUrgency(game: GameWithTeams) {
+  if (game.series_is_complete && game.series_games_played != null && game.game_number > game.series_games_played) {
+    return { label: null, color: 'var(--nba-text-muted)' }
+  }
+
   if (game.played || !game.tip_off_at) return { label: null, color: 'var(--nba-text-muted)' }
 
   const diff = new Date(game.tip_off_at).getTime() - Date.now()
@@ -192,6 +201,10 @@ function getUrgency(game: GameWithTeams) {
 }
 
 function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPendingPick: boolean) {
+  if (game.series_is_complete && game.series_games_played != null && game.game_number > game.series_games_played) {
+    return { label: 'Série já encerrada', color: 'var(--nba-east)', bg: 'rgba(74,144,217,0.12)', icon: <CircleOff size={12} /> }
+  }
+
   if (game.played) {
     return { label: 'Finalizado', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <BadgeCheck size={12} /> }
   }
@@ -231,10 +244,15 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
       const orderedGames = [...seriesGames].sort((left, right) => left.game_number - right.game_number)
       const firstGame = orderedGames[0]
       const round = (firstGame.round ?? 1) as 1 | 2 | 3 | 4
-      const openGames = orderedGames.filter((game) => !game.played).length
+      const seriesGamesPlayed = firstGame.series_games_played ?? null
+      const seriesIsComplete = firstGame.series_is_complete ?? false
+      const effectiveGames = seriesIsComplete && seriesGamesPlayed != null
+        ? orderedGames.filter((game) => game.game_number <= seriesGamesPlayed)
+        : orderedGames
+      const openGames = seriesIsComplete ? 0 : effectiveGames.filter((game) => !game.played).length
       const playedGames = orderedGames.filter((game) => game.played).length
-      const pickedGames = orderedGames.filter((game) => !!picksByGameId[game.id]).length
-      const points = orderedGames.reduce((sum, game) => {
+      const pickedGames = effectiveGames.filter((game) => !!picksByGameId[game.id]).length
+      const points = effectiveGames.reduce((sum, game) => {
         const pick = picksByGameId[game.id]
         if (!pick) return sum
         return sum + calculateGamePickPoints(
@@ -243,7 +261,7 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
         )
       }, 0)
 
-      const nextTipOff = orderedGames
+      const nextTipOff = seriesIsComplete ? null : effectiveGames
         .filter((game) => !game.played && game.tip_off_at)
         .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]?.tip_off_at ?? null
 
@@ -259,6 +277,9 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
         pickedGames,
         points,
         nextTipOff,
+        seriesGamesPlayed,
+        seriesIsComplete,
+        effectiveGamesCount: effectiveGames.length,
       }
     })
     .sort((left, right) => {
@@ -532,9 +553,13 @@ interface GameCardProps {
 function GameCard({ game, pick, onSave }: GameCardProps) {
   const [pending, setPending] = useState<string | null>(null)
   const [saving,  setSaving]  = useState(false)
+  const seriesClosedBeforeGame =
+    !!game.series_is_complete &&
+    game.series_games_played != null &&
+    game.game_number > game.series_games_played
 
   // Se não há tip_off_at assumimos que o jogo ainda não foi agendado → não bloqueado
-  const locked     = game.tip_off_at ? new Date(game.tip_off_at) <= new Date() : false
+  const locked     = seriesClosedBeforeGame || (game.tip_off_at ? new Date(game.tip_off_at) <= new Date() : false)
   const savedId    = pick?.winner_id ?? null
   const displayId  = pending ?? savedId
   const hasPending = pending !== null && pending !== savedId
@@ -542,7 +567,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const tB = game.team_b
 
   function handleClick(teamId: string) {
-    if (locked || game.played) return
+    if (locked || game.played || seriesClosedBeforeGame) return
     setPending((prev) => (prev === teamId ? null : teamId))
   }
 
@@ -584,7 +609,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
         borderRadius: 8,
         overflow: 'hidden',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-        boxShadow: urgency.label && !game.played ? '0 10px 24px rgba(0,0,0,0.16)' : 'none',
+        boxShadow: urgency.label && !game.played && !seriesClosedBeforeGame ? '0 10px 24px rgba(0,0,0,0.16)' : 'none',
       }}
       onMouseEnter={(e) => {
         if (!displayId) {
@@ -645,7 +670,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
           </span>
         </div>
 
-        {game.tip_off_at && !game.played && (
+        {game.tip_off_at && !game.played && !seriesClosedBeforeGame && (
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', flexShrink: 0 }}>
             <Clock3 size={11} style={{ display: 'inline-flex', verticalAlign: 'text-bottom', marginRight: 4 }} />
             {formatTimeBRT(game.tip_off_at)}
@@ -654,7 +679,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
       </div>
 
       {/* ── Teams row ── */}
-      {urgency.label && !game.played && (
+      {urgency.label && !game.played && !seriesClosedBeforeGame && (
         <div
           style={{
             display: 'flex',
@@ -697,7 +722,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
           isSelected={displayId === tA?.id}
           isWinner={tAWins}
           isLoser={tAWrong}
-          locked={locked || game.played}
+          locked={locked || game.played || seriesClosedBeforeGame}
           onClick={() => handleClick(tA?.id ?? game.home_team_id)}
         />
         <CenterPanel game={game} locked={locked} />
@@ -707,7 +732,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
           isSelected={displayId === tB?.id}
           isWinner={tBWins}
           isLoser={tBWrong}
-          locked={locked || game.played}
+          locked={locked || game.played || seriesClosedBeforeGame}
           onClick={() => handleClick(tB?.id ?? game.away_team_id)}
         />
       </div>
@@ -759,6 +784,16 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
             ) : (
               <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Encerrado</span>
             )
+          ) : seriesClosedBeforeGame ? (
+            <span
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                color: 'var(--nba-east)', fontSize: '0.72rem',
+              }}
+            >
+              <CircleOff size={11} />
+              Série encerrada
+            </span>
           ) : locked ? (
             /* Locked */
             <span
@@ -780,7 +815,21 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
         </div>
       </div>
 
-      {!hasPending && !game.played && savedId && (
+      {seriesClosedBeforeGame && (
+        <div
+          style={{
+            padding: '10px 12px',
+            borderTop: '1px solid rgba(74,144,217,0.18)',
+            background: 'rgba(74,144,217,0.08)',
+            color: 'var(--nba-text-muted)',
+            fontSize: '0.74rem',
+          }}
+        >
+          Série já encerrada em <strong style={{ color: 'var(--nba-east)' }}>jogo {game.series_games_played}</strong>. Este card fica apenas como histórico da série.
+        </div>
+      )}
+
+      {!seriesClosedBeforeGame && !hasPending && !game.played && savedId && (
         <div
           style={{
             padding: '10px 12px',
@@ -795,7 +844,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
       )}
 
       {/* ── Save action (appears when pending) ── */}
-      {hasPending && (
+      {hasPending && !seriesClosedBeforeGame && (
         <div style={{ padding: 12, borderTop: '1px solid rgba(200,150,60,0.18)', background: 'rgba(200,150,60,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
@@ -1009,15 +1058,17 @@ export function Games({ participantId }: Props) {
       const seriesIds = [...new Set(gamesData.map((game) => game.series_id))]
       const { data: seriesData } = await supabase
         .from('series')
-        .select('id, round')
+        .select('id, round, games_played, is_complete')
         .in('id', seriesIds)
 
       const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
-      const roundBySeriesId = Object.fromEntries((seriesData ?? []).map((series) => [series.id, series.round]))
+      const seriesMetaById = Object.fromEntries((seriesData ?? []).map((series) => [series.id, series]))
       const merged = gamesData.map((g) => ({
-        ...normalizeGame(g as Game, roundBySeriesId[g.series_id]),
+        ...normalizeGame(g as Game, seriesMetaById[g.series_id]?.round),
         team_a: teamMap[g.home_team_id] ?? null,
         team_b: teamMap[g.away_team_id] ?? null,
+        series_games_played: seriesMetaById[g.series_id]?.games_played ?? null,
+        series_is_complete: seriesMetaById[g.series_id]?.is_complete ?? false,
       }))
       setGames(merged as GameWithTeams[])
       setIsMock(false)
@@ -1044,8 +1095,6 @@ export function Games({ participantId }: Props) {
   }
 
   async function savePick(gameId: string, winnerId: string) {
-    console.log('[savePick] chamado', { gameId, winnerId, participantId, isMock })
-
     if (isMock) {
       const fake: GamePick = {
         id: `mock-pick-${gameId}`,
@@ -1215,7 +1264,7 @@ function SeriesCard({
   onToggle: () => void
   onSave: (gameId: string, winnerId: string) => Promise<void>
 }) {
-  const completionPct = group.games.length > 0 ? Math.round((group.pickedGames / group.games.length) * 100) : 0
+  const completionPct = group.effectiveGamesCount > 0 ? Math.round((group.pickedGames / group.effectiveGamesCount) * 100) : 0
   const roundColor = ROUND_COLOR[group.round]
   const hasOpenGames = group.openGames > 0
 
@@ -1279,8 +1328,13 @@ function SeriesCard({
               {group.teamA?.abbreviation ?? group.games[0]?.home_team_id ?? '—'} vs {group.teamB?.abbreviation ?? group.games[0]?.away_team_id ?? '—'}
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
-              {group.games.length} jogo{group.games.length !== 1 ? 's' : ''} cadastrados • {group.playedGames} finalizado{group.playedGames !== 1 ? 's' : ''}
+              {group.effectiveGamesCount} jogo{group.effectiveGamesCount !== 1 ? 's' : ''} válidos • {group.playedGames} finalizado{group.playedGames !== 1 ? 's' : ''}
             </div>
+            {group.seriesIsComplete && group.seriesGamesPlayed != null && group.seriesGamesPlayed < group.games.length && (
+              <div style={{ color: 'var(--nba-east)', fontSize: '0.68rem', marginTop: 4 }}>
+                Série encerrada antes do jogo {group.seriesGamesPlayed + 1}
+              </div>
+            )}
           </div>
 
           <span
@@ -1312,7 +1366,7 @@ function SeriesCard({
           >
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>Palpites feitos</div>
             <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>
-              {group.pickedGames}/{group.games.length}
+              {group.pickedGames}/{group.effectiveGamesCount}
             </div>
           </div>
           <div

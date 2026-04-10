@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
+import { isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
   participantId: string
@@ -138,19 +139,19 @@ function RankArrow({ diff }: { diff: number }) {
 function HeroPanel({
   myEntry,
   pickedSeries,
-  totalSeries,
+  readySeries,
 }: {
   myEntry?: { rank: number; total_points: number; participant_name: string }
   pickedSeries: number
-  totalSeries: number
+  readySeries: number
 }) {
-  const progress = totalSeries > 0 ? Math.round((pickedSeries / totalSeries) * 100) : 0
+  const progress = readySeries > 0 ? Math.round((pickedSeries / readySeries) * 100) : 0
 
   const actions = [
     {
       to: '/bracket',
       label: 'Completar bracket',
-      sublabel: `${pickedSeries}/${totalSeries || 15} séries palpitadas`,
+      sublabel: `${pickedSeries}/${readySeries} séries disponíveis`,
       icon: <GitBranch size={16} />,
     },
     {
@@ -296,7 +297,7 @@ function HeroPanel({
               />
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem' }}>
-              {pickedSeries} de {totalSeries || 15} séries preenchidas.
+              {pickedSeries} de {readySeries} séries definidas preenchidas.
             </div>
           </div>
 
@@ -1063,7 +1064,9 @@ export function Home({ participantId }: Props) {
 
   const myEntry       = ranking.find((r) => r.participant_id === participantId)
   const completedSeries = series.filter((s) => s.is_complete).length
-  const pickedSeries = picks.length
+  const readySeries = series.filter(isSeriesReadyForPick)
+  const readySeriesIds = new Set(readySeries.map((item) => item.id))
+  const pickedSeries = picks.filter((pick) => readySeriesIds.has(pick.series_id)).length
 
   return (
     <>
@@ -1096,7 +1099,7 @@ export function Home({ participantId }: Props) {
           <HeroPanel
             myEntry={myEntry}
             pickedSeries={pickedSeries}
-            totalSeries={series.length}
+            readySeries={readySeries.length}
           />
 
           <div className="md:hidden">
