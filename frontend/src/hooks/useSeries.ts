@@ -60,6 +60,9 @@ export function useSeries(participantId?: string) {
   async function savePick(seriesId: string, winnerId: string, gamesCount: number) {
     if (!participantId) return
 
+    const currentSeries = getSeriesById(seriesId)
+    if (!currentSeries || currentSeries.is_complete) return
+
     const existing = picks.find((p) => p.series_id === seriesId)
 
     if (existing) {

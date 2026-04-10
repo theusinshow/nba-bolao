@@ -54,9 +54,19 @@ const MOCK_TEAMS: Record<string, Team> = {
 }
 
 // BRT = UTC-3 → add 3 h to convert BRT to UTC
+// Handles overflow when hBrt + 3 >= 24 (crosses midnight UTC)
 function brt(date: string, hBrt: number, mBrt = 0): string {
-  const h = String(hBrt + 3).padStart(2, '0')
+  const utcHours = hBrt + 3
+  const h = String(utcHours % 24).padStart(2, '0')
   const m = String(mBrt).padStart(2, '0')
+
+  if (utcHours >= 24) {
+    const d = new Date(`${date}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    const nextDate = d.toISOString().slice(0, 10)
+    return `${nextDate}T${h}:${m}:00Z`
+  }
+
   return `${date}T${h}:${m}:00Z`
 }
 

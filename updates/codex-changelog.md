@@ -1,5 +1,99 @@
 # Codex Changelog
 
+## 2026-04-10 - Auditoria completa e correção de 17 bugs (Claude Code)
+
+### Objetivo
+- Realizar auditoria técnica integral do projeto e corrigir todos os bugs identificados, cobrindo falhas críticas de runtime, comportamentos incorretos no sync, vulnerabilidades de bloqueio de palpites, instabilidade no ranking em tempo real e inconsistências menores de qualidade.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/hooks/useAuth.ts`
+- `frontend/src/hooks/useGamePicks.ts`
+- `frontend/src/hooks/useRanking.ts`
+- `frontend/src/hooks/useSeries.ts`
+- `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `frontend/src/components/BracketSVG.tsx`
+- `frontend/src/utils/scoring.ts`
+- `backend/src/jobs/syncNBA.ts`
+- `backend/src/routes/admin.ts`
+- `backend/src/scoring/engine.ts`
+- `backend/src/scoring/rules.ts`
+
+### Mudanças feitas
+
+#### Bug crítico — `useAuth.ts`: crash em runtime no primeiro login de novo usuário
+- Se o insert na tabela `participants` falhasse silenciosamente (erro de constraint, RLS ou rede), `created` era `null` e o código prosseguia com `participant!.id` e `participant!.is_admin`, gerando crash de runtime imediato.
+- Corrigido: adicionado check `if (createError || !created)` após o insert. Caso a criação falhe, o estado é definido como `unauthenticated` em vez de crashar.
+
+#### Bug crítico — `useAuth.ts`: erro de banco de dados silenciado na verificação de acesso
+- As queries `allowed_emails` e `participants` não desestruturavam `error`. Qualquer falha de banco (timeout, RLS, indisponibilidade) resultava em `data = null`, fazendo o app tratar o usuário como não autorizado e bloqueando todo acesso durante instabilidades do Supabase.
+- Corrigido: `error` agora é desestruturado em ambas as queries. Erros com código diferente de `PGRST116` (nenhuma linha encontrada — comportamento esperado) redirecionam para `unauthenticated` e registram o erro no console, sem mascarar falhas reais como decisão de autorização.
+
+#### Bug crítico — `syncNBA.ts` + `nba.ts`: `tip_off_at` armazenado como data pura sem horário
+- O campo `date` da API balldontlie.io é uma string de data pura ("2026-04-19"), sem horário. O sync gravava esse valor diretamente em `tip_off_at`, fazendo com que `new Date("2026-04-19")` fosse avaliado como meia-noite UTC (21h BRT do dia anterior). Palpites de jogo ficavam bloqueados 18–20 horas antes do tip-off real.
+- Corrigido: adicionada função `parseTipOffAt(date, status)` que extrai o horário real do campo `status` da BDL API, que para jogos não iniciados contém strings como `"7:30 pm ET"`. A função converte para UTC considerando EDT (UTC-4, vigente durante os playoffs de abril a junho). Casos em que o status não contém horário (ex.: jogo em andamento) retornam `null`, mantendo o jogo desbloqueado até o sync marcar `played = true`. `isFinalStatus` também foi expandido para aceitar variações como `"Final/OT"`.
+
+#### Bug crítico — `syncNBA.ts`: série marcada como encerrada prematuramente quando `home_team_id` é null
+- Se uma série existia no banco sem `home_team_id` ou `away_team_id` (série criada antes do seed), `winner_id === null` era `true` para jogos não finalizados. Com 4 ou mais jogos cadastrados sem resultado, `isComplete` poderia ser `true` com `winner_id` nulo, corrompendo a série.
+- Corrigido: `homeWins` e `awayWins` retornam 0 quando o respectivo `team_id` é null. `isComplete` só é `true` se ambos os times estiverem definidos na série.
+
+#### Bug alto — `useGamePicks.ts`: bloqueio de jogo validado apenas no cliente
+- A verificação de `tip_off_at` existia somente no frontend. O backend não validava, e as policies RLS do Supabase também não. Um usuário com acesso direto à API do Supabase poderia gravar palpites após o início do jogo.
+- Corrigido: `saveGamePick` agora verifica `game.played` antes de qualquer outra coisa, rejeitando imediatamente picks em jogos já finalizados. `isGameLocked` também retorna `true` para `game.played === true`, mantendo consistência entre a lógica de save e a lógica de exibição.
+
+#### Bug alto — `useRanking.ts`: sem debounce nas subscriptions Realtime
+- As 4 subscriptions Realtime (`series`, `series_picks`, `game_picks`, `games`) chamavam `computeRanking` diretamente. Durante um sync, múltiplas tabelas são atualizadas em sequência, disparando dezenas de execuções paralelas de `computeRanking`, cada uma com 6 queries ao Supabase. Isso gerava carga excessiva e potencial inconsistência de estado por execuções fora de ordem.
+- Corrigido: substituído o callback direto por `scheduleCompute()`, que usa `setTimeout` de 1,5 segundos com cancelamento do timer anterior. O timer é limpo no retorno do `useEffect`.
+
+#### Bug alto — `admin.ts`: sync e rescore retornavam sucesso antes de executar
+- As rotas `/admin/sync` e `/admin/rescore` respondiam `{ ok: true }` imediatamente e disparavam o processo com `.catch(console.error)`. Se o sync falhasse, o admin recebia "Sync started" sem nenhuma indicação de erro.
+- Corrigido: ambas as rotas agora aguardam `await`. Sucesso retorna mensagem de conclusão; falha retorna status 500 com a mensagem de erro.
+
+#### Bug alto — `Games.tsx`: função `brt()` gerava ISO string inválida ao cruzar meia-noite UTC
+- `brt('2026-04-20', 21)` produzia `T24:00:00Z`, que é um ISO inválido. `new Date(...)` retornaria `Invalid Date`, quebrando cálculos de lock e countdown.
+- Corrigido: quando `hBrt + 3 >= 24`, o dia é avançado corretamente usando `Date.setUTCDate`, e a hora é calculada com `% 24`.
+
+#### Bug alto — `useGamePicks.ts`: array `games` como dependência de `useEffect` causava refetch desnecessário
+- `games` (array) criava nova referência a cada `setGames`, acionando o efeito de `fetchPicks` em toda re-renderização.
+- Corrigido: dependência alterada de `games` para `games.length`.
+
+#### Bug alto — `syncNBA.ts`: `game_number` calculado por `length` em vez de `MAX`
+- `(existingGames?.length ?? 0) + 1` era incorreto quando jogos haviam sido deletados ou quando syncs ocorriam em paralelo, podendo gerar valores duplicados.
+- Corrigido: `game_number` agora é calculado como `MAX(game_number) + 1` a partir dos jogos carregados da série.
+
+#### Bug médio — `useRanking.ts`: falha silenciosa sem feedback ao usuário
+- Queries com falha ou dados ausentes resultavam em retorno silencioso, deixando a tela de ranking vazia sem nenhuma mensagem.
+- Corrigido: adicionado estado `error` no hook, populado em caso de erro de DB ou dados incompletos. `Ranking.tsx` exibe um banner vermelho com a mensagem de erro quando presente.
+
+#### Bug médio — `scoring.ts` / `rules.ts`: dois arquivos de pontuação independentes sem aviso
+- Os valores de `SCORING_CONFIG` (frontend) e `SCORING` (backend) eram idênticos mas sem nenhum mecanismo de sincronização. Uma alteração futura em um dos arquivos divergiria silenciosamente.
+- Corrigido: adicionado comentário de aviso explícito no topo de ambos os arquivos indicando que alterações devem ser espelhadas manualmente no arquivo correspondente.
+
+#### Bug baixo — `BracketSVG.tsx`: emoji `🏆` hardcoded no JSX
+- Substituído pelo componente `<Trophy>` do Lucide React, já presente como dependência do projeto. Evita problemas de encoding e mantém consistência visual.
+
+#### Bug baixo — `engine.ts`: `console.table` em produção
+- `console.table(ranking.slice(0, 10))` gerava saída verbosa nos logs do Render a cada sync (a cada 15 minutos). Substituído por `console.log` com formatação legível por linha.
+
+#### Bug baixo — `BracketSVG.tsx`: non-null assertion em `getSlot()`
+- `getSlot()` usava `!` para assertar que o ID sempre existia em `SLOT_DEFS`. Embora seguro com as constantes atuais, um ID incorreto em `CONNECTIONS` causaria crash silencioso.
+- Corrigido: retorno alterado para `SlotDef | undefined`; `renderConnections` faz early return se `from` ou `to` for `undefined`.
+
+#### Bug baixo — `useSeries.ts`: `savePick` não verificava `is_complete`
+- O hook `savePick` não guardava contra séries já encerradas. A SeriesModal desabilita o botão, mas a função aceitaria chamadas diretas em séries completas.
+- Corrigido: adicionada guarda no início da função que retorna sem ação se a série não existir ou já estiver completa.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso — sem erros de TypeScript. Warning de chunk grande do Vite permanece mas sem falha de compilação.
+- `backend`: `npm run build` concluído com sucesso — sem erros de TypeScript.
+- `backend`: `npm run test:scoring` concluído com sucesso — todos os testes passaram.
+
+### Pendências não corrigidas nesta rodada
+- Validação de `tip_off_at` no lado do servidor: o bloqueio de picks após tip-off ainda depende do frontend e de data correta no banco. Uma Edge Function no Supabase ou rota no backend que rejeite inserts após o horário seria a solução definitiva, mas requer mudanças na arquitetura de persistência de picks.
+- Políticas RLS do Supabase para `game_picks`: garantir que cada usuário só consiga inserir/atualizar os próprios picks ainda depende de revisão manual das policies no painel do Supabase.
+- `SERIES_ID_BY_TEAMS` em `syncNBA.ts`: mapeamento estático continua hardcoded para a temporada 2024-25. Temporadas futuras precisarão atualizar este mapa.
+
 ## 2026-04-10 - Correção de bugs críticos identificados em auditoria
 
 ### Objetivo

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Trophy } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
 import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 
@@ -79,8 +80,8 @@ const CONNECTIONS: Array<[string, string, 'left' | 'right']> = [
   ['E2-2', 'E1-4', 'right'],
 ]
 
-function getSlot(id: string): SlotDef {
-  return SLOT_DEFS.find((s) => s.id === id)!
+function getSlot(id: string): SlotDef | undefined {
+  return SLOT_DEFS.find((s) => s.id === id)
 }
 
 // ─── Pick status helper ───────────────────────────────────────────────────────
@@ -307,10 +308,11 @@ function MobileSeriesCard({
           )}
           {/* Champion badge for Finals */}
           {s.winner && isComplete && (
-            <span style={{ color: 'var(--nba-gold)', fontSize: '0.68rem' }}>
-            🏆 {s.winner.abbreviation}
-          </span>
-        )}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--nba-gold)', fontSize: '0.68rem' }}>
+              <Trophy size={10} />
+              {s.winner.abbreviation}
+            </span>
+          )}
         {onClick && (
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
             Tocar para palpitar →
@@ -465,6 +467,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
     return CONNECTIONS.map(([fromId, toId, side], i) => {
       const from = getSlot(fromId)
       const to   = getSlot(toId)
+      if (!from || !to) return null
 
       const x1 = side === 'left' ? from.x + BOX_W : from.x
       const y1 = from.y + BOX_H / 2

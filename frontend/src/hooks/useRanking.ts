@@ -7,32 +7,43 @@ export function useRanking() {
   const [ranking, setRanking] = useState<RankingEntry[]>([])
   const [breakdowns, setBreakdowns] = useState<Record<string, ParticipantScoreBreakdown>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const previousRankingRef = useRef<RankingEntry[]>([])
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     computeRanking()
 
+    function scheduleCompute() {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(computeRanking, 1500)
+    }
+
     const sub = supabase
       .channel('ranking-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, computeRanking)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, computeRanking)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, computeRanking)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, computeRanking)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, scheduleCompute)
       .subscribe()
 
-    return () => { supabase.removeChannel(sub) }
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      supabase.removeChannel(sub)
+    }
   }, [])
 
   async function computeRanking() {
     setLoading(true)
+    setError(null)
     try {
       const [
-        { data: participants },
-        { data: allSeries },
-        { data: allSeriesPicks },
-        { data: allGames },
-        { data: allGamePicks },
-        { data: teams },
+        { data: participants, error: e1 },
+        { data: allSeries, error: e2 },
+        { data: allSeriesPicks, error: e3 },
+        { data: allGames, error: e4 },
+        { data: allGamePicks, error: e5 },
+        { data: teams, error: e6 },
       ] = await Promise.all([
         supabase.from('participants').select('*'),
         supabase.from('series').select('*'),
@@ -42,7 +53,17 @@ export function useRanking() {
         supabase.from('teams').select('*'),
       ])
 
-      if (!participants || !allSeries || !allSeriesPicks || !allGames || !allGamePicks || !teams) return
+      const fetchError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6
+      if (fetchError) {
+        console.error('[useRanking] DB error:', fetchError.message)
+        setError('Erro ao carregar ranking. Tente novamente.')
+        return
+      }
+
+      if (!participants || !allSeries || !allSeriesPicks || !allGames || !allGamePicks || !teams) {
+        setError('Dados incompletos ao carregar ranking.')
+        return
+      }
 
       const { ranking: nextRanking, breakdowns: nextBreakdowns } = buildRankingState({
         participants: participants as Participant[],
@@ -56,6 +77,9 @@ export function useRanking() {
       previousRankingRef.current = nextRanking
       setRanking(nextRanking)
       setBreakdowns(nextBreakdowns)
+    } catch (err) {
+      console.error('[useRanking] Unexpected error:', err)
+      setError('Erro inesperado ao calcular ranking.')
     } finally {
       setLoading(false)
     }
@@ -65,5 +89,5 @@ export function useRanking() {
     return breakdowns[participantId]
   }
 
-  return { ranking, breakdowns, loading, refetch: computeRanking, getBreakdownForParticipant }
+  return { ranking, breakdowns, loading, error, refetch: computeRanking, getBreakdownForParticipant }
 }

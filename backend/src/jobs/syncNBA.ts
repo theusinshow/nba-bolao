@@ -43,7 +43,53 @@ function getDefaultSeason(): number {
 }
 
 function isFinalStatus(status: string): boolean {
-  return status.trim().toLowerCase() === 'final'
+  return /^final/i.test(status.trim())
+}
+
+/**
+ * Converts a BDL game date + status into a proper ISO datetime for tip_off_at.
+ *
+ * For upcoming games the BDL status is a time string like "7:30 pm ET".
+ * For played/in-progress games it is "Final", "Final/OT", "Qtr X ...", etc.
+ *
+ * NBA games in April–June fall in EDT (UTC-4).
+ * Returns null for unplayed games whose time cannot be parsed, so those
+ * games remain unlocked until played=true is set by the next sync.
+ */
+function parseTipOffAt(date: string, status: string): string | null {
+  const trimmed = status.trim()
+
+  // Game already finished — any past datetime is fine for lock purposes
+  if (isFinalStatus(trimmed)) {
+    return `${date}T00:00:00Z`
+  }
+
+  // Try to parse time like "7:30 pm ET" or "7:30 PM ET"
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*(am|pm)\s*ET$/i)
+  if (!match) return null
+
+  let hours = parseInt(match[1], 10)
+  const minutes = parseInt(match[2], 10)
+  const isPm = match[3].toLowerCase() === 'pm'
+
+  if (isPm && hours !== 12) hours += 12
+  if (!isPm && hours === 12) hours = 0
+
+  // EDT = UTC-4 (playoffs run April–June)
+  const utcHours = hours + 4
+
+  const h = String(utcHours % 24).padStart(2, '0')
+  const m = String(minutes).padStart(2, '0')
+
+  if (utcHours < 24) {
+    return `${date}T${h}:${m}:00Z`
+  }
+
+  // Tip-off crosses midnight UTC — advance to next calendar day
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  const nextDate = d.toISOString().slice(0, 10)
+  return `${nextDate}T${h}:${m}:00Z`
 }
 
 export async function syncNBA(): Promise<void> {
@@ -89,9 +135,14 @@ export async function syncNBA(): Promise<void> {
 
       const existingGame = existingGames?.find((g) => g.nba_game_id === bdlGame.id) ?? null
 
+      // Use MAX(game_number) + 1 to avoid collisions when games are deleted or
+      // when multiple syncs run in quick succession
+      const maxGameNumber = (existingGames ?? []).reduce(
+        (max, g) => Math.max(max, g.game_number), 0
+      )
       const gameNumber = existingGame
         ? existingGame.game_number
-        : (existingGames?.length ?? 0) + 1
+        : maxGameNumber + 1
 
       const payload = {
         series_id: series.id,
@@ -102,7 +153,7 @@ export async function syncNBA(): Promise<void> {
         home_score: bdlGame.home_team_score,
         away_score: bdlGame.visitor_team_score,
         played,
-        tip_off_at: bdlGame.date,
+        tip_off_at: parseTipOffAt(bdlGame.date, bdlGame.status),
         nba_game_id: bdlGame.id,
       }
 
@@ -118,9 +169,17 @@ export async function syncNBA(): Promise<void> {
           )
         : [...(existingGames ?? []), { id: `new-${bdlGame.id}`, winner_id: winnerId, game_number: gameNumber, played }]
 
-      const homeWins = gamesAfterSync.filter((game) => game.winner_id === series.home_team_id).length
-      const awayWins = gamesAfterSync.filter((game) => game.winner_id === series.away_team_id).length
-      const isComplete = homeWins === 4 || awayWins === 4
+      // Guard against null team IDs (series not yet fully seeded)
+      // Without this, winner_id === null would match unplayed games and
+      // could falsely mark a series as complete
+      const homeWins = series.home_team_id
+        ? gamesAfterSync.filter((game) => game.winner_id === series.home_team_id).length
+        : 0
+      const awayWins = series.away_team_id
+        ? gamesAfterSync.filter((game) => game.winner_id === series.away_team_id).length
+        : 0
+      const teamsKnown = !!series.home_team_id && !!series.away_team_id
+      const isComplete = teamsKnown && (homeWins === 4 || awayWins === 4)
 
       await supabase.from('series').update({
         games_played: gamesAfterSync.filter((game) => game.played).length,

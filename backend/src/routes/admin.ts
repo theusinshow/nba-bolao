@@ -41,14 +41,24 @@ router.use(requireAdmin)
 
 // POST /admin/sync — trigger manual NBA sync
 router.post('/sync', async (_req, res) => {
-  res.json({ ok: true, message: 'Sync started' })
-  syncNBA().catch(console.error)
+  try {
+    await syncNBA()
+    res.json({ ok: true, message: 'Sync completed successfully' })
+  } catch (err: unknown) {
+    console.error('[admin/sync] Sync failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
 })
 
 // POST /admin/rescore — recalculate scores only
 router.post('/rescore', async (_req, res) => {
-  res.json({ ok: true, message: 'Rescoring started' })
-  recalculateAllScores().catch(console.error)
+  try {
+    await recalculateAllScores()
+    res.json({ ok: true, message: 'Rescoring completed successfully' })
+  } catch (err: unknown) {
+    console.error('[admin/rescore] Rescore failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
 })
 
 // POST /admin/seed — seed series data for 2025 playoffs

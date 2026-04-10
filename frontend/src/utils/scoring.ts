@@ -1,3 +1,6 @@
+// IMPORTANT: These values are duplicated in backend/src/scoring/rules.ts (SCORING).
+// Any change here MUST be manually mirrored there, or the frontend and backend
+// ranking snapshots will diverge silently.
 export const SCORING_CONFIG = {
   pointsPerGame: { 1: 1, 2: 2, 3: 3, 4: 4 },
   pointsPerSeries: { 1: 3, 2: 6, 3: 9, 4: 12 },

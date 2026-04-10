@@ -28,25 +28,38 @@ export function useAuth() {
   async function handleUser(user: User) {
     const email = user.email!
 
-    const { data: allowed } = await supabase
+    const { data: allowed, error: allowedError } = await supabase
       .from('allowed_emails')
       .select('email')
       .eq('email', email)
       .single()
+
+    // PGRST116 = no rows found (expected when user is not in allowed list)
+    if (allowedError && allowedError.code !== 'PGRST116') {
+      console.error('[useAuth] DB error checking allowed_emails:', allowedError.message)
+      setAuth({ status: 'unauthenticated' })
+      return
+    }
 
     if (!allowed) {
       setAuth({ status: 'unauthorized', email })
       return
     }
 
-    let { data: participant } = await supabase
+    let { data: participant, error: fetchError } = await supabase
       .from('participants')
       .select('id, is_admin')
       .eq('user_id', user.id)
       .single()
 
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('[useAuth] DB error fetching participant:', fetchError.message)
+      setAuth({ status: 'unauthenticated' })
+      return
+    }
+
     if (!participant) {
-      const { data: created } = await supabase
+      const { data: created, error: createError } = await supabase
         .from('participants')
         .insert({
           user_id: user.id,
@@ -55,14 +68,21 @@ export function useAuth() {
         })
         .select('id, is_admin')
         .single()
+
+      if (createError || !created) {
+        console.error('[useAuth] Failed to create participant:', createError?.message)
+        setAuth({ status: 'unauthenticated' })
+        return
+      }
+
       participant = created
     }
 
     setAuth({
       status: 'authorized',
       user,
-      participantId: participant!.id,
-      isAdmin: participant!.is_admin ?? false,
+      participantId: participant.id,
+      isAdmin: participant.is_admin ?? false,
     })
   }
 

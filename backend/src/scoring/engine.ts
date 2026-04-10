@@ -95,7 +95,9 @@ export async function recalculateAllScores(): Promise<void> {
     // backend publishes a computed snapshot through logs while the frontend
     // remains the source of truth for live ranking display.
     console.log('[scoring] Done. Computed ranking snapshot for', ranking.length, 'participants.')
-    console.table(ranking.slice(0, 10))
+    ranking.slice(0, 10).forEach((entry, i) => {
+      console.log(`  ${i + 1}. ${entry.participant_name} — ${entry.total_points} pts`)
+    })
   } catch (error) {
     console.error('[scoring] Failed to recalculate scores:', error)
   }

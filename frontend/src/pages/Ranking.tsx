@@ -269,7 +269,7 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
 }
 
 export function Ranking({ participantId }: Props) {
-  const { ranking, breakdowns, loading } = useRanking()
+  const { ranking, breakdowns, loading, error } = useRanking()
   const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(participantId)
   const [mobileReportOpen, setMobileReportOpen] = useState(false)
@@ -289,6 +289,12 @@ export function Ranking({ participantId }: Props) {
   return (
     <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1180 }}>
       <RankingHero ranking={ranking} participantId={participantId} />
+
+      {error && (
+        <div style={{ margin: '16px 0', padding: '12px 16px', borderRadius: 8, background: 'rgba(231,76,60,0.10)', border: '1px solid rgba(231,76,60,0.3)', color: 'var(--nba-danger)', fontSize: '0.875rem' }}>
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
