@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { RankingEntry, Series, SeriesPick, GamePick, Participant } from '../types'
 import { calculateSeriesPickPoints, calculateGamePickPoints } from '../utils/scoring'
+import { normalizeGame } from '../utils/bracket'
 
 function compareRankingEntries(a: RankingEntry, b: RankingEntry): number {
   if (b.total_points !== a.total_points) {
@@ -51,8 +52,11 @@ export function useRanking() {
       const seriesMap: Record<string, Series> = Object.fromEntries(
         (allSeries as Series[]).map((s) => [s.id, s])
       )
-      const gameMap: Record<string, typeof allGames[0]> = Object.fromEntries(
-        (allGames as any[]).map((g) => [g.id, g])
+      const gameMap = Object.fromEntries(
+        (allGames as any[]).map((g) => {
+          const series = seriesMap[g.series_id]
+          return [g.id, normalizeGame(g, series?.round)]
+        })
       )
 
       const entries: RankingEntry[] = (participants as Participant[]).map((p) => {
@@ -84,16 +88,16 @@ export function useRanking() {
         }
 
         for (const gp of myGamePicks) {
-          const g = gameMap[gp.game_id] as any
+          const g = gameMap[gp.game_id]
           if (!g) continue
           gamesTotal++
           const pts = calculateGamePickPoints(
             { winnerId: gp.winner_id },
-            { winnerId: g.winner_id ?? undefined, played: g.played, round: g.round }
+            { winnerId: g.winner_id ?? undefined, played: g.played, round: g.round ?? seriesMap[g.series_id]?.round ?? 1 }
           )
           if (pts > 0) {
             gamesCorrect++
-            roundPoints[g.round - 1] += pts
+            roundPoints[(g.round ?? seriesMap[g.series_id]?.round ?? 1) - 1] += pts
           }
         }
 
@@ -118,9 +122,15 @@ export function useRanking() {
       })
 
       entries.sort(compareRankingEntries)
-      entries.forEach((e, i) => { e.rank = i + 1 })
+      entries.forEach((entry, index) => { entry.rank = index + 1 })
 
-      setRanking(entries)
+      setRanking((prev) => {
+        const prevByParticipant = Object.fromEntries(prev.map((entry) => [entry.participant_id, entry]))
+        return entries.map((entry) => ({
+          ...entry,
+          prev_rank: prevByParticipant[entry.participant_id]?.rank ?? null,
+        }))
+      })
     } finally {
       setLoading(false)
     }

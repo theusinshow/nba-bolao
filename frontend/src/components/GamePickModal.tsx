@@ -5,6 +5,7 @@ import { getTeam } from '../data/teams2025'
 import { useGamePicks } from '../hooks/useGamePicks'
 import { useUIStore } from '../store/useUIStore'
 import { CountdownTimer } from './CountdownTimer'
+import { normalizeGame } from '../utils/bracket'
 
 interface Props {
   series: Series
@@ -55,10 +56,13 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
         ) : (
           <div className="flex flex-col gap-3">
             {games.map((game) => {
+              const normalizedGame = normalizeGame(game, series.round)
+              const homeId = normalizedGame.home_team_id
+              const awayId = normalizedGame.away_team_id
               const locked = isGameLocked(game)
               const pick = getPickForGame(game.id)
-              const correct = game.played && pick && pick.winner_id === game.winner_id
-              const wrong = game.played && pick && pick.winner_id !== game.winner_id
+              const correct = normalizedGame.played && pick && pick.winner_id === normalizedGame.winner_id
+              const wrong = normalizedGame.played && pick && pick.winner_id !== normalizedGame.winner_id
 
               return (
                 <div
@@ -79,21 +83,21 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                     {!locked && game.tip_off_at && (
                       <CountdownTimer targetDate={game.tip_off_at} label="Tip-off em" />
                     )}
-                    {game.played && (
+                    {normalizedGame.played && (
                       <span className="text-xs text-nba-muted font-condensed">
-                        {game.score_a} – {game.score_b}
+                        {normalizedGame.score_a} – {normalizedGame.score_b}
                       </span>
                     )}
                   </div>
 
                   <div className="flex gap-2">
                     {[
-                      { team: teamA, id: game.team_a_id },
-                      { team: teamB, id: game.team_b_id },
+                      { team: teamA, id: homeId },
+                      { team: teamB, id: awayId },
                     ].map(({ team, id }) => {
                       if (!team) return null
                       const isPicked = pick?.winner_id === id
-                      const isWinner = game.winner_id === id
+                      const isWinner = normalizedGame.winner_id === id
 
                       return (
                         <button

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useUIStore } from '../store/useUIStore'
 import type { Game, GamePick, Team } from '../types'
+import { normalizeGame } from '../utils/bracket'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-1', series_id: '', game_number: 1, round: 1,
     team_a_id: 'OKC',   team_b_id: 'TBDW8',
     winner_id: null, home_team_id: 'OKC', away_team_id: 'TBDW8',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-19', 18, 0), balldontlie_id: null,
     team_a: MOCK_TEAMS.OKC, team_b: MOCK_TEAMS.TBDW8,
@@ -57,6 +59,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-2', series_id: '', game_number: 1, round: 1,
     team_a_id: 'DET',   team_b_id: 'TBDE8',
     winner_id: null, home_team_id: 'DET', away_team_id: 'TBDE8',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-19', 20, 30), balldontlie_id: null,
     team_a: MOCK_TEAMS.DET, team_b: MOCK_TEAMS.TBDE8,
@@ -65,6 +68,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-3', series_id: '', game_number: 1, round: 1,
     team_a_id: 'SAS',   team_b_id: 'TBDW7',
     winner_id: null, home_team_id: 'SAS', away_team_id: 'TBDW7',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-20', 15, 0), balldontlie_id: null,
     team_a: MOCK_TEAMS.SAS, team_b: MOCK_TEAMS.TBDW7,
@@ -73,6 +77,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-4', series_id: '', game_number: 1, round: 1,
     team_a_id: 'BOS',   team_b_id: 'TBDE7',
     winner_id: null, home_team_id: 'BOS', away_team_id: 'TBDE7',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-20', 17, 30), balldontlie_id: null,
     team_a: MOCK_TEAMS.BOS, team_b: MOCK_TEAMS.TBDE7,
@@ -81,6 +86,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-5', series_id: '', game_number: 1, round: 1,
     team_a_id: 'DEN',   team_b_id: 'MIN',
     winner_id: null, home_team_id: 'DEN', away_team_id: 'MIN',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-20', 20, 0), balldontlie_id: null,
     team_a: MOCK_TEAMS.DEN, team_b: MOCK_TEAMS.MIN,
@@ -89,6 +95,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-6', series_id: '', game_number: 1, round: 1,
     team_a_id: 'HOU',   team_b_id: 'LAL',
     winner_id: null, home_team_id: 'HOU', away_team_id: 'LAL',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-21', 19, 0), balldontlie_id: null,
     team_a: MOCK_TEAMS.HOU, team_b: MOCK_TEAMS.LAL,
@@ -97,6 +104,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-7', series_id: '', game_number: 1, round: 1,
     team_a_id: 'NYK',   team_b_id: 'ATL',
     winner_id: null, home_team_id: 'NYK', away_team_id: 'ATL',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-21', 21, 30), balldontlie_id: null,
     team_a: MOCK_TEAMS.NYK, team_b: MOCK_TEAMS.ATL,
@@ -105,6 +113,7 @@ const MOCK_GAMES: GameWithTeams[] = [
     id: 'mock-8', series_id: '', game_number: 1, round: 1,
     team_a_id: 'CLE',   team_b_id: 'TBDE6',
     winner_id: null, home_team_id: 'CLE', away_team_id: 'TBDE6',
+    home_score: null, away_score: null, nba_game_id: null,
     score_a: null, score_b: null, played: false,
     tip_off_at: brt('2026-04-22', 19, 0), balldontlie_id: null,
     team_a: MOCK_TEAMS.CLE, team_b: MOCK_TEAMS.TBDE6,
@@ -897,9 +906,16 @@ export function Games({ participantId }: Props) {
     }
 
     if (gamesData && gamesData.length > 0) {
+      const seriesIds = [...new Set(gamesData.map((game) => game.series_id))]
+      const { data: seriesData } = await supabase
+        .from('series')
+        .select('id, round')
+        .in('id', seriesIds)
+
       const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
+      const roundBySeriesId = Object.fromEntries((seriesData ?? []).map((series) => [series.id, series.round]))
       const merged = gamesData.map((g) => ({
-        ...g,
+        ...normalizeGame(g as Game, roundBySeriesId[g.series_id]),
         team_a: teamMap[g.home_team_id] ?? null,
         team_b: teamMap[g.away_team_id] ?? null,
       }))
@@ -1022,8 +1038,12 @@ export function Games({ participantId }: Props) {
 
   // Group games by date in BRT
   const grouped = new Map<string, { iso: string; games: GameWithTeams[] }>()
+  const unscheduledGames: GameWithTeams[] = []
   for (const g of games) {
-    if (!g.tip_off_at) continue
+    if (!g.tip_off_at) {
+      unscheduledGames.push(g)
+      continue
+    }
     const key = dateKeyBRT(g.tip_off_at)
     if (!grouped.has(key)) grouped.set(key, { iso: g.tip_off_at, games: [] })
     grouped.get(key)!.games.push(g)
@@ -1049,6 +1069,63 @@ export function Games({ participantId }: Props) {
           </div>
         </div>
       ))}
+
+      {unscheduledGames.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginBottom: 12,
+            }}
+          >
+            <h2
+              className="title"
+              style={{
+                color: 'var(--nba-gold)',
+                fontSize: '1rem',
+                letterSpacing: '0.14em',
+                lineHeight: 1,
+              }}
+            >
+              SEM HORÁRIO DEFINIDO
+            </h2>
+            <div
+              style={{
+                height: 1,
+                flex: 1,
+                minWidth: 32,
+                background: 'var(--nba-border)',
+              }}
+            />
+            <span
+              className="font-condensed"
+              style={{
+                color: 'var(--nba-text-muted)',
+                fontSize: '0.72rem',
+                background: 'var(--nba-surface-2)',
+                border: '1px solid var(--nba-border)',
+                borderRadius: 4,
+                padding: '2px 8px',
+              }}
+            >
+              {unscheduledGames.length} jogo{unscheduledGames.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {unscheduledGames.map((game) => (
+              <GameCard
+                key={game.id}
+                game={game}
+                pick={picks.find((p) => p.game_id === game.id)}
+                onSave={savePick}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

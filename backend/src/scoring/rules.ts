@@ -19,7 +19,7 @@ export interface SeriesPickInput {
 export interface GameOutcome {
   winnerId: string | null
   played: boolean
-  round: number
+  round?: number
 }
 
 export interface GamePickInput {
@@ -39,6 +39,7 @@ export function calculateSeriesPickPoints(pick: SeriesPickInput, series: SeriesO
 export function calculateGamePickPoints(pick: GamePickInput, game: GameOutcome): number {
   if (!game.played || !game.winnerId) return 0
   if (pick.winnerId !== game.winnerId) return 0
+  if (!game.round) return 0
 
   return SCORING.pointsPerGame[game.round]
 }

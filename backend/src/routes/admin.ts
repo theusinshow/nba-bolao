@@ -58,7 +58,7 @@ router.post('/seed', async (_req, res) => {
       const { data: existing } = await supabase
         .from('series')
         .select('id')
-        .eq('slot', s.slot)
+        .eq('id', s.id)
         .single()
 
       if (existing) {

@@ -1,4 +1,5 @@
 export type Conference = 'West' | 'East'
+export type RoundNumber = 1 | 2 | 3 | 4
 
 export interface Team {
   id: string
@@ -11,15 +12,17 @@ export interface Team {
 
 export interface Series {
   id: string
-  slot: string
-  round: 1 | 2 | 3 | 4
+  slot?: string | null
+  round: RoundNumber
   conference: Conference | null
+  position: number | null
   home_team_id: string | null
   away_team_id: string | null
   winner_id: string | null
   games_played: number
   is_complete: boolean
-  tip_off_at: string | null
+  nba_series_id: number | null
+  tip_off_at?: string | null
   // joined from teams table
   home_team?: Team | null
   away_team?: Team | null
@@ -30,17 +33,22 @@ export interface Game {
   id: string
   series_id: string
   game_number: number
-  round: 1 | 2 | 3 | 4
-  team_a_id: string
-  team_b_id: string
-  winner_id: string | null
   home_team_id: string
   away_team_id: string
-  score_a: number | null
-  score_b: number | null
+  winner_id: string | null
+  home_score: number | null
+  away_score: number | null
   played: boolean
   tip_off_at: string | null
-  balldontlie_id: number | null
+  nba_game_id: number | null
+  round?: RoundNumber
+  team_a_id?: string
+  team_b_id?: string
+  score_a?: number | null
+  score_b?: number | null
+  balldontlie_id?: number | null
+  team_a?: Team | null
+  team_b?: Team | null
 }
 
 export interface Participant {
@@ -57,7 +65,7 @@ export interface SeriesPick {
   series_id: string
   winner_id: string
   games_count: number
-  points: number
+  points?: number
 }
 
 export interface GamePick {
@@ -65,7 +73,7 @@ export interface GamePick {
   participant_id: string
   game_id: string
   winner_id: string
-  points: number
+  points?: number
 }
 
 export interface RankingEntry {
@@ -87,10 +95,10 @@ export interface RankingEntry {
 
 // Bracket slot IDs
 export type BracketSlot =
-  | 'W-R1-1' | 'W-R1-2' | 'W-R1-3' | 'W-R1-4'
-  | 'W-R2-1' | 'W-R2-2'
-  | 'W-CF'
-  | 'E-R1-1' | 'E-R1-2' | 'E-R1-3' | 'E-R1-4'
-  | 'E-R2-1' | 'E-R2-2'
-  | 'E-CF'
-  | 'FINALS'
+  | 'W1-1' | 'W1-2' | 'W1-3' | 'W1-4'
+  | 'W2-1' | 'W2-2'
+  | 'WCF'
+  | 'E1-1' | 'E1-2' | 'E1-3' | 'E1-4'
+  | 'E2-1' | 'E2-2'
+  | 'ECF'
+  | 'FIN'

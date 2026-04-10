@@ -6,6 +6,7 @@ import { useSeries } from '../hooks/useSeries'
 import { useUIStore } from '../store/useUIStore'
 import { supabase } from '../lib/supabase'
 import type { Series } from '../types'
+import { getSeriesSlot } from '../utils/bracket'
 
 interface Props {
   isAdmin: boolean
@@ -19,7 +20,7 @@ export function OfficialBracket({ isAdmin }: Props) {
 
   const completedSeries = series.filter((item) => item.is_complete).length
   const openSeries = Math.max(series.length - completedSeries, 0)
-  const champion = series.find((item) => item.slot === 'FIN' && item.is_complete)?.winner?.abbreviation ?? 'Em disputa'
+  const champion = series.find((item) => getSeriesSlot(item) === 'FIN' && item.is_complete)?.winner?.abbreviation ?? 'Em disputa'
 
   async function handleSync() {
     setSyncing(true)

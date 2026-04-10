@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Series, SeriesPick } from '../types'
+import { getSeriesSlot } from '../utils/bracket'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const BOX_W    = 148   // width of each series box
@@ -407,7 +408,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const seriesById     = Object.fromEntries(series.map((s) => [s.id, s]))
+  const seriesById     = Object.fromEntries(series.map((s) => [getSeriesSlot(s), s]))
   const pickBySeriesId = Object.fromEntries(picks.map((p) => [p.series_id, p]))
   const compareById    = comparePicks
     ? Object.fromEntries(comparePicks.map((p) => [p.series_id, p]))

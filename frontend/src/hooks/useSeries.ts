@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Series, SeriesPick } from '../types'
+import { getSeriesSlot } from '../utils/bracket'
 
 export function useSeries(participantId?: string) {
   const [series, setSeries] = useState<Series[]>([])
@@ -39,6 +40,7 @@ export function useSeries(participantId?: string) {
     const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
     const merged = seriesData.map((s) => ({
       ...s,
+      slot: getSeriesSlot({ id: s.id, slot: (s as Series).slot ?? null }),
       home_team: teamMap[s.home_team_id] ?? null,
       away_team: teamMap[s.away_team_id] ?? null,
       winner: s.winner_id ? (teamMap[s.winner_id] ?? null) : null,

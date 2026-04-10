@@ -21,10 +21,11 @@ export function calculateSeriesPickPoints(
 
 export function calculateGamePickPoints(
   pick: { winnerId: string },
-  game: { winnerId?: string; played: boolean; round: number }
+  game: { winnerId?: string; played: boolean; round?: number }
 ): number {
   if (!game.played || !game.winnerId) return 0
   if (pick.winnerId !== game.winnerId) return 0
+  if (!game.round) return 0
   return SCORING_CONFIG.pointsPerGame[game.round as 1 | 2 | 3 | 4]
 }
 

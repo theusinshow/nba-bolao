@@ -6,6 +6,7 @@ import { SeriesModal } from '../components/SeriesModal'
 import { GamePickModal } from '../components/GamePickModal'
 import { useSeries } from '../hooks/useSeries'
 import type { Series } from '../types'
+import { getSeriesSlot } from '../utils/bracket'
 
 interface Props {
   participantId: string
@@ -43,7 +44,7 @@ function MobileBracketSheet({
 
   const ordered = [...series].sort((a, b) => {
     if (a.round !== b.round) return a.round - b.round
-    return (a.slot ?? '').localeCompare(b.slot ?? '')
+    return getSeriesSlot(a).localeCompare(getSeriesSlot(b))
   })
 
   return (
@@ -130,7 +131,7 @@ function MobileBracketSheet({
                     {roundLabels[item.round]}
                   </span>
                   <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
-                    {item.conference ?? 'NBA'} {item.slot ?? ''}
+                    {item.conference ?? 'NBA'} {getSeriesSlot(item)}
                   </span>
                 </div>
 

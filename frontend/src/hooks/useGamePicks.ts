@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Game, GamePick } from '../types'
+import { normalizeGame } from '../utils/bracket'
 
 export function useGamePicks(participantId?: string, seriesId?: string) {
   const [games, setGames] = useState<Game[]>([])
@@ -19,12 +20,23 @@ export function useGamePicks(participantId?: string, seriesId?: string) {
 
   async function fetchGames() {
     if (!seriesId) return
-    const { data } = await supabase
-      .from('games')
-      .select('*')
-      .eq('series_id', seriesId)
-      .order('game_number')
-    if (data) setGames(data as Game[])
+    const [{ data: gamesData }, { data: seriesData }] = await Promise.all([
+      supabase
+        .from('games')
+        .select('*')
+        .eq('series_id', seriesId)
+        .order('game_number'),
+      supabase
+        .from('series')
+        .select('round')
+        .eq('id', seriesId)
+        .single(),
+    ])
+
+    if (gamesData) {
+      const round = seriesData?.round
+      setGames((gamesData as Game[]).map((game) => normalizeGame(game, round)))
+    }
   }
 
   async function fetchPicks() {
