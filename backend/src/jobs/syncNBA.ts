@@ -42,16 +42,21 @@ function getDefaultSeason(): number {
   return now.getUTCMonth() >= 8 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
 }
 
+function isFinalStatus(status: string): boolean {
+  return status.trim().toLowerCase() === 'final'
+}
+
 export async function syncNBA(): Promise<void> {
   console.log('[syncNBA] Starting sync...')
   try {
     const season = Number(process.env.BALLDONTLIE_SEASON ?? getDefaultSeason())
     console.log('[syncNBA] Using season', season)
 
-    const bdlGames = await fetchPostseasonGames(season)
-    const finished = bdlGames.filter((g) => g.status === 'Final')
+    const bdlGames = [...await fetchPostseasonGames(season)].sort(
+      (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime()
+    )
 
-    for (const bdlGame of finished) {
+    for (const bdlGame of bdlGames) {
       const homeAbbr = mapAbbr(bdlGame.home_team.abbreviation)
       const awayAbbr = mapAbbr(bdlGame.visitor_team.abbreviation)
       const pairKey = `${homeAbbr}-${awayAbbr}`
@@ -68,11 +73,12 @@ export async function syncNBA(): Promise<void> {
         .eq('id', seriesId)
         .single()
 
-      if (!series || series.is_complete) continue
+      if (!series) continue
 
-      // Determine winner
+      const played = isFinalStatus(bdlGame.status)
       const homeWon = bdlGame.home_team_score > bdlGame.visitor_team_score
-      const winnerId = homeWon ? homeAbbr : awayAbbr
+      const awayWon = bdlGame.visitor_team_score > bdlGame.home_team_score
+      const winnerId = played ? (homeWon ? homeAbbr : awayWon ? awayAbbr : null) : null
 
       // Upsert game
       const { data: existingGame } = await supabase
@@ -83,7 +89,7 @@ export async function syncNBA(): Promise<void> {
 
       const { data: existingGames } = await supabase
         .from('games')
-        .select('id, winner_id, game_number')
+        .select('id, winner_id, game_number, played')
         .eq('series_id', series.id)
         .order('game_number')
 
@@ -99,7 +105,7 @@ export async function syncNBA(): Promise<void> {
         winner_id: winnerId,
         home_score: bdlGame.home_team_score,
         away_score: bdlGame.visitor_team_score,
-        played: true,
+        played,
         tip_off_at: bdlGame.date,
         nba_game_id: bdlGame.id,
       }
@@ -111,15 +117,17 @@ export async function syncNBA(): Promise<void> {
       }
 
       const gamesAfterSync = existingGame
-        ? (existingGames ?? []).map((game) => game.id === existingGame.id ? { ...game, winner_id: winnerId } : game)
-        : [...(existingGames ?? []), { id: `new-${bdlGame.id}`, winner_id: winnerId, game_number: gameNumber }]
+        ? (existingGames ?? []).map((game) =>
+            game.id === existingGame.id ? { ...game, winner_id: winnerId, played } : game
+          )
+        : [...(existingGames ?? []), { id: `new-${bdlGame.id}`, winner_id: winnerId, game_number: gameNumber, played }]
 
       const homeWins = gamesAfterSync.filter((game) => game.winner_id === series.home_team_id).length
       const awayWins = gamesAfterSync.filter((game) => game.winner_id === series.away_team_id).length
       const isComplete = homeWins === 4 || awayWins === 4
 
       await supabase.from('series').update({
-        games_played: Math.max(series.games_played ?? 0, gamesAfterSync.length),
+        games_played: gamesAfterSync.filter((game) => game.played).length,
         winner_id: isComplete ? (homeWins === 4 ? series.home_team_id : series.away_team_id) : null,
         is_complete: isComplete,
       }).eq('id', series.id)

@@ -91,14 +91,10 @@ export async function recalculateAllScores(): Promise<void> {
   try {
     const ranking = await computeRankingSnapshot()
 
-    for (let i = 0; i < ranking.length; i++) {
-      await supabase
-        .from('participants')
-        .update({ total_points: ranking[i].total_points, rank: i + 1 })
-        .eq('id', ranking[i].participant_id)
-    }
-
-    console.log('[scoring] Done. Ranked', ranking.length, 'participants.')
+    // The live schema does not persist rank/points on participants, so the
+    // backend publishes a computed snapshot through logs while the frontend
+    // remains the source of truth for live ranking display.
+    console.log('[scoring] Done. Computed ranking snapshot for', ranking.length, 'participants.')
     console.table(ranking.slice(0, 10))
   } catch (error) {
     console.error('[scoring] Failed to recalculate scores:', error)

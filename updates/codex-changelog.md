@@ -200,3 +200,38 @@
 
 ### Pendências
 - Se quiser, numa próxima rodada dá para aplicar o mesmo padrão de agrupamento por série também à seção de `Séries`, usando expansão para detalhes extras de palpites.
+
+## 2026-04-10 00:40 - Retorno ao modo real da API no backend
+
+### Objetivo
+- Preparar o backend para sair do modo de teste com jogos fictícios e voltar a operar com dados reais da API, sem quebrar o ranking por tentar escrever colunas inexistentes.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `backend/src/scoring/engine.ts`
+- `backend/src/jobs/syncNBA.ts`
+
+### Mudanças feitas
+- `backend/src/scoring/engine.ts` deixou de tentar persistir `total_points` e `rank` em `participants`, já que essas colunas não existem no schema real atual do Supabase.
+- O rescore do backend agora computa o snapshot do ranking e registra o resultado em log, mantendo o frontend como fonte da verdade da exibição do ranking ao vivo.
+- `backend/src/jobs/syncNBA.ts` foi ajustado para processar todos os jogos de pós-temporada retornados pela API, não apenas os `Final`.
+- O sync agora faz upsert também de jogos futuros/agendados, preenchendo:
+  - `series_id`
+  - `game_number`
+  - `home_team_id`
+  - `away_team_id`
+  - `tip_off_at`
+  - `nba_game_id`
+  - `played`
+  - `winner_id`
+  - `home_score`
+  - `away_score`
+- Para jogos ainda não finalizados, o sync passa a gravar `played = false` e `winner_id = null`, permitindo que a agenda de palpites volte a aparecer sem depender de seed manual de jogos.
+- A atualização da série passou a usar a quantidade real de jogos jogados (`played = true`) em vez de contar todo jogo cadastrado, evitando inflar `games_played` quando a série já tem jogos futuros agendados.
+
+### Validações
+- Pendente nesta rodada: rodar `backend` build e `test:scoring` após a alteração.
+
+### Pendências
+- Ainda será necessário limpar do Supabase os dados fictícios antes de religar totalmente a operação real.
+- O mapeamento `SERIES_ID_BY_TEAMS` continua estático; ele funciona para a chave esperada, mas não substitui um mapeamento dinâmico de bracket em futuras temporadas.
