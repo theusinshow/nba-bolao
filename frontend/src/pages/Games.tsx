@@ -51,6 +51,8 @@ interface AutoPickDayGroup {
   alreadyPickedGames: GameWithTeams[]
 }
 
+type SavePickSource = 'manual' | 'auto'
+
 // ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
 
 const MOCK_TEAMS: Record<string, Team> = {
@@ -367,6 +369,27 @@ function generateRandomPreview(games: GameWithTeams[]): AutoPickPreviewItem[] {
       return { gameId: game.id, winnerId }
     })
     .filter((item): item is AutoPickPreviewItem => !!item)
+}
+
+function getAutoPickStorageKey(participantId: string) {
+  return `nba-bolao:auto-picks:${participantId}`
+}
+
+function loadAutoPickIds(participantId: string): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(getAutoPickStorageKey(participantId))
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function persistAutoPickIds(participantId: string, ids: string[]) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(getAutoPickStorageKey(participantId), JSON.stringify(ids))
 }
 
 // ─── Empty state (no games) ───────────────────────────────────────────────────
@@ -791,7 +814,13 @@ function TeamSide({
   const resultBg =
     isWinner ? 'rgba(46,204,113,0.10)' :
     isLoser  ? 'rgba(231,76,60,0.08)'  :
-    isSelected ? 'rgba(200,150,60,0.08)' :
+    isSelected ? 'rgba(200,150,60,0.22)' :
+    'transparent'
+
+  const borderColor =
+    isWinner ? 'rgba(46,204,113,0.45)' :
+    isLoser ? 'rgba(231,76,60,0.28)' :
+    isSelected ? 'rgba(200,150,60,0.78)' :
     'transparent'
 
   const align = side === 'left' ? 'flex-start' : 'flex-end'
@@ -807,12 +836,15 @@ function TeamSide({
         alignItems: align,
         padding: '20px 14px',
         background: resultBg,
-        border: 'none',
+        border: '1px solid transparent',
+        borderColor,
         cursor: locked ? 'default' : 'pointer',
-        transition: 'background 0.2s ease',
+        transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
         outline: 'none',
         opacity: isLoser ? 0.45 : 1,
         borderRadius: side === 'left' ? '7px 0 0 0' : '0 7px 0 0',
+        boxShadow: isSelected ? 'inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 0 2px rgba(200,150,60,0.18)' : 'none',
+        transform: isSelected ? 'translateY(-1px)' : 'translateY(0)',
       }}
       onMouseEnter={(e) => {
         if (!locked && !isSelected && !isWinner && !isLoser) {
@@ -828,10 +860,11 @@ function TeamSide({
       <span
         className="font-condensed font-bold"
         style={{
-          color: abbr === 'TBD' ? 'var(--nba-text-muted)' : color,
+          color: isSelected ? 'var(--nba-gold)' : abbr === 'TBD' ? 'var(--nba-text-muted)' : color,
           fontSize: 'clamp(1.6rem, 4vw, 2.2rem)',
           lineHeight: 1,
           letterSpacing: '-0.01em',
+          textShadow: isSelected ? '0 0 18px rgba(200,150,60,0.24)' : 'none',
         }}
       >
         {abbr}
@@ -851,6 +884,25 @@ function TeamSide({
       >
         {abbr === 'TBD' ? name : name.split(' ').pop()}
       </span>
+
+      {isSelected && !isWinner && !isLoser && (
+        <span
+          className="font-condensed font-bold"
+          style={{
+            marginTop: 8,
+            padding: '3px 8px',
+            borderRadius: 999,
+            background: 'rgba(200,150,60,0.18)',
+            border: '1px solid rgba(200,150,60,0.36)',
+            color: 'var(--nba-gold)',
+            fontSize: '0.68rem',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Selecionado
+        </span>
+      )}
 
       {/* Result icons */}
       {isWinner && (
@@ -924,10 +976,11 @@ function CenterPanel({ game, locked }: { game: GameWithTeams; locked: boolean })
 interface GameCardProps {
   game: GameWithTeams
   pick: GamePick | undefined
-  onSave: (gameId: string, winnerId: string) => Promise<void>
+  onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<void>
+  wasAutoPicked: boolean
 }
 
-function GameCard({ game, pick, onSave }: GameCardProps) {
+function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
   const [pending, setPending] = useState<string | null>(null)
   const [saving,  setSaving]  = useState(false)
   const seriesClosedBeforeGame =
@@ -942,6 +995,10 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
   const hasPending = pending !== null && pending !== savedId
   const tA = game.team_a
   const tB = game.team_b
+  const selectedTeam =
+    displayId === tA?.id ? tA :
+    displayId === tB?.id ? tB :
+    null
 
   function handleClick(teamId: string) {
     if (locked || game.played || seriesClosedBeforeGame) return
@@ -952,7 +1009,7 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
     if (!pending) return
     setSaving(true)
     try {
-      await onSave(game.id, pending)
+      await onSave(game.id, pending, 'manual')
       setPending(null)
     } catch (err) {
       console.error('[GameCard] handleSave threw:', err)
@@ -1214,23 +1271,70 @@ function GameCard({ game, pick, onSave }: GameCardProps) {
             background: 'rgba(46,204,113,0.06)',
             color: 'var(--nba-text-muted)',
             fontSize: '0.74rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
           }}
         >
-          Palpite atual: <strong style={{ color: 'var(--nba-success)' }}>{savedId === tA?.id ? tA?.abbreviation : tB?.abbreviation}</strong>
+          <span>
+            Palpite atual: <strong style={{ color: 'var(--nba-success)' }}>{savedId === tA?.id ? tA?.abbreviation : tB?.abbreviation}</strong>
+          </span>
+          {wasAutoPicked && (
+            <span
+              className="font-condensed font-bold"
+              style={{
+                color: 'var(--nba-gold)',
+                fontSize: '0.7rem',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '4px 8px',
+                borderRadius: 999,
+                background: 'rgba(200,150,60,0.14)',
+                border: '1px solid rgba(200,150,60,0.26)',
+              }}
+            >
+              Vai na fé
+            </span>
+          )}
         </div>
       )}
 
       {/* ── Save action (appears when pending) ── */}
       {hasPending && !seriesClosedBeforeGame && (
         <div style={{ padding: 12, borderTop: '1px solid rgba(200,150,60,0.18)', background: 'rgba(200,150,60,0.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ color: 'var(--nba-text)', fontSize: '0.8rem', fontWeight: 700 }}>
                 Palpite pronto para envio
               </div>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                Toque em salvar para confirmar {displayId === tA?.id ? tA?.abbreviation : tB?.abbreviation}.
+              <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem', marginTop: 4 }}>
+                Você está escolhendo{' '}
+                <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.9rem' }}>
+                  {selectedTeam?.abbreviation ?? (displayId === tA?.id ? tA?.abbreviation : tB?.abbreviation)}
+                </span>
+                {selectedTeam?.name ? (
+                  <span style={{ color: 'var(--nba-text-muted)' }}>
+                    {' '}• {selectedTeam.name}
+                  </span>
+                ) : null}
               </div>
+            </div>
+            <div
+              className="font-condensed font-bold"
+              style={{
+                color: 'var(--nba-gold)',
+                fontSize: '0.82rem',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '4px 9px',
+                borderRadius: 999,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.22)',
+              }}
+            >
+              {selectedTeam?.abbreviation ?? 'Pronto'}
             </div>
           </div>
           <button
@@ -1392,6 +1496,7 @@ export function Games({ participantId }: Props) {
   const [autoPickMode, setAutoPickMode] = useState<'fill-missing' | 'overwrite'>('fill-missing')
   const [autoPickPreview, setAutoPickPreview] = useState<AutoPickPreviewItem[]>([])
   const [autoPickSaving, setAutoPickSaving] = useState(false)
+  const [autoPickGameIds, setAutoPickGameIds] = useState<string[]>([])
   const { addToast } = useUIStore()
 
   useEffect(() => {
@@ -1401,6 +1506,11 @@ export function Games({ participantId }: Props) {
   useEffect(() => {
     if (games.length > 0) fetchPicks()
   }, [games, participantId])
+
+  useEffect(() => {
+    if (!participantId) return
+    setAutoPickGameIds(loadAutoPickIds(participantId))
+  }, [participantId])
 
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
   const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
@@ -1476,7 +1586,7 @@ export function Games({ participantId }: Props) {
     if (data) setPicks(data as GamePick[])
   }
 
-  async function savePick(gameId: string, winnerId: string) {
+  async function savePick(gameId: string, winnerId: string, source: SavePickSource = 'manual') {
     if (isMock) {
       const fake: GamePick = {
         id: `mock-pick-${gameId}`,
@@ -1490,6 +1600,13 @@ export function Games({ participantId }: Props) {
         return exists
           ? prev.map((p) => p.game_id === gameId ? { ...p, winner_id: winnerId } : p)
           : [...prev, fake]
+      })
+      setAutoPickGameIds((current) => {
+        const next = source === 'auto'
+          ? Array.from(new Set([...current, gameId]))
+          : current.filter((id) => id !== gameId)
+        persistAutoPickIds(participantId, next)
+        return next
       })
       addToast('Palpite salvo! (simulação)', 'success')
       return
@@ -1528,6 +1645,14 @@ export function Games({ participantId }: Props) {
         if (data) setPicks((prev) => [...prev, data as GamePick])
       }
 
+      setAutoPickGameIds((current) => {
+        const next = source === 'auto'
+          ? Array.from(new Set([...current, gameId]))
+          : current.filter((id) => id !== gameId)
+        persistAutoPickIds(participantId, next)
+        return next
+      })
+
       addToast('Palpite salvo!', 'success')
     } catch (err) {
       console.error('[savePick] exceção inesperada:', err)
@@ -1558,7 +1683,7 @@ export function Games({ participantId }: Props) {
     setAutoPickSaving(true)
     try {
       for (const item of autoPickPreview) {
-        await savePick(item.gameId, item.winnerId)
+        await savePick(item.gameId, item.winnerId, 'auto')
       }
       addToast('Vai na fé aplicado com sucesso!', 'success')
       setAutoPickGroup(null)
@@ -1660,6 +1785,7 @@ export function Games({ participantId }: Props) {
             expanded={expandedSeriesIds.includes(group.seriesId)}
             onToggle={() => toggleSeries(group.seriesId)}
             onSave={savePick}
+            autoPickGameIds={autoPickGameIds}
           />
         ))}
       </div>
@@ -1690,12 +1816,14 @@ function SeriesCard({
   expanded,
   onToggle,
   onSave,
+  autoPickGameIds,
 }: {
   group: SeriesGroup
   picks: GamePick[]
   expanded: boolean
   onToggle: () => void
-  onSave: (gameId: string, winnerId: string) => Promise<void>
+  onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<void>
+  autoPickGameIds: string[]
 }) {
   const completionPct = group.effectiveGamesCount > 0 ? Math.round((group.pickedGames / group.effectiveGamesCount) * 100) : 0
   const roundColor = ROUND_COLOR[group.round]
@@ -1853,6 +1981,7 @@ function SeriesCard({
                 game={game}
                 pick={picks.find((pick) => pick.game_id === game.id)}
                 onSave={onSave}
+                wasAutoPicked={autoPickGameIds.includes(game.id)}
               />
             ))}
           </div>

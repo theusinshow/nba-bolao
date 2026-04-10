@@ -1,5 +1,57 @@
 # Codex Changelog
 
+## 2026-04-10 - Palpites do Vai na fé passaram a ficar marcados na aba Jogos
+
+### Objetivo
+- Identificar visualmente quais palpites jogo a jogo foram preenchidos pela ferramenta `Vai na fé`, sem misturar essa origem com palpites manuais feitos depois.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+
+#### Marca visual de origem automática — `Games.tsx`
+- Os cards da aba `Jogos` agora exibem um selo `Vai na fé` ao lado do palpite atual quando aquele jogo foi preenchido pela ferramenta automática.
+
+#### Persistência local por participante
+- A origem do palpite automático passou a ser salva em `localStorage` por participante.
+- Isso permite que o usuário continue vendo a marca ao recarregar a página, sem precisar alterar o schema do Supabase nesta rodada.
+
+#### Limpeza automática ao editar manualmente
+- Quando o usuário altera manualmente um palpite que antes veio do `Vai na fé`, a marca é removida.
+- Com isso, o selo continua significando apenas `este palpite atual veio da ferramenta`.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+## 2026-04-10 - Seleção de time reforçada visualmente antes de salvar no jogo a jogo
+
+### Objetivo
+- Deixar mais evidente qual time foi escolhido no card jogo a jogo antes do clique final em `Salvar palpite`, reduzindo dúvida visual causada pelo contraste fraco do estado selecionado.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+
+#### Estado selecionado com contraste mais forte — `Games.tsx`
+- O lado escolhido agora recebe:
+  - fundo mais visível;
+  - borda dourada mais forte;
+  - brilho leve no texto do time;
+  - selo `Selecionado`.
+
+#### Resumo textual do palpite pendente
+- O bloco de confirmação abaixo do card passou a dizer explicitamente qual time será salvo.
+- Além da sigla, o resumo também mostra o nome do time quando disponível, evitando depender só do destaque visual dentro do card.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Faixa de resultados da última noite adicionada na Home
 
 ### Objetivo
