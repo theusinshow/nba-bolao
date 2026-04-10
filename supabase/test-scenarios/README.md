@@ -13,4 +13,5 @@ Estes scripts foram criados para uso em um Supabase de teste, separado do bolão
 
 - Os scripts abaixo limpam `series_picks`, `game_picks` e `games`, então são para ambiente de teste separado.
 - Os horários dos jogos são relativos ao momento da execução do SQL, para facilitar repetição sem editar datas manualmente.
-- O cenário abre a 1ª rodada completa para palpites e deixa as fases seguintes aguardando definição.
+- O cenário abre a 1ª rodada com até 7 jogos por série, deixando o teste mais próximo do comportamento real de uma série melhor de 7.
+- As fases seguintes continuam aguardando definição, servindo como estrutura visual no bracket.

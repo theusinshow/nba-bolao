@@ -28,7 +28,8 @@
   - reseta a chave para um estado de playoffs recém-iniciados;
   - define os confrontos da 1ª rodada;
   - deixa rounds seguintes aguardando definição;
-  - cria jogos fictícios com `tip_off_at` relativo ao momento da execução para liberar palpites imediatamente nas páginas reais.
+  - cria jogos fictícios com `tip_off_at` relativo ao momento da execução para liberar palpites imediatamente nas páginas reais;
+  - passou a gerar até 7 jogos por série na 1ª rodada, para simular melhor o comportamento real de confrontos melhor de 7.
 
 #### Novo script — `reveal-first-round-results.sql`
 - Foi criado um script complementar para publicar os resultados fictícios depois que todos tiverem palpitado.
@@ -36,7 +37,8 @@
   - marca os jogos fictícios como `played = true`;
   - define vencedores e placares;
   - atualiza as séries com `winner_id`, `games_played` e `is_complete`;
-  - permite observar o comportamento real de ranking, breakdown e telas de acompanhamento.
+  - permite observar o comportamento real de ranking, breakdown e telas de acompanhamento;
+  - foi expandido para cobrir todos os jogos da 1ª rodada fictícia gerados pelo script de abertura.
 
 #### Decisão operacional — manter o teste oficial fora do banco principal
 - Foi reforçada a estratégia de usar os scripts acima apenas em um Supabase de teste, separado do ambiente principal.
