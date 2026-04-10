@@ -1,5 +1,54 @@
 # Codex Changelog
 
+## 2026-04-10 - Scripts SQL para teste das páginas oficiais em ambiente separado
+
+### Objetivo
+- Documentar e versionar uma bateria de testes baseada nas tabelas oficiais do bolão, mas executada em um Supabase de teste separado, para validar Home, Bracket, Jogos, Ranking e Official com amigos reais.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `supabase/test-scenarios/README.md`
+- `supabase/test-scenarios/open-first-round-simulation.sql`
+- `supabase/test-scenarios/reveal-first-round-results.sql`
+
+### Mudanças feitas
+
+#### Nova documentação — `supabase/test-scenarios/README.md`
+- Foi criado um README específico para orientar o uso dos cenários SQL no ambiente de teste separado.
+- O arquivo descreve:
+  - a ordem recomendada de execução;
+  - o fato de os scripts limparem picks e jogos;
+  - o uso de horários relativos para facilitar repetição;
+  - o foco em testar as páginas oficiais do produto.
+
+#### Novo script — `open-first-round-simulation.sql`
+- Foi criado um script para abrir uma rodada fictícia da 1ª rodada diretamente nas tabelas oficiais do bolão, pensado para uso exclusivo no banco de teste.
+- O script:
+  - limpa `game_picks`, `series_picks` e `games`;
+  - reseta a chave para um estado de playoffs recém-iniciados;
+  - define os confrontos da 1ª rodada;
+  - deixa rounds seguintes aguardando definição;
+  - cria jogos fictícios com `tip_off_at` relativo ao momento da execução para liberar palpites imediatamente nas páginas reais.
+
+#### Novo script — `reveal-first-round-results.sql`
+- Foi criado um script complementar para publicar os resultados fictícios depois que todos tiverem palpitado.
+- O script:
+  - marca os jogos fictícios como `played = true`;
+  - define vencedores e placares;
+  - atualiza as séries com `winner_id`, `games_played` e `is_complete`;
+  - permite observar o comportamento real de ranking, breakdown e telas de acompanhamento.
+
+#### Decisão operacional — manter o teste oficial fora do banco principal
+- Foi reforçada a estratégia de usar os scripts acima apenas em um Supabase de teste, separado do ambiente principal.
+- O objetivo é testar o fluxo real das páginas oficiais sem correr risco de contaminar o bolão em produção.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque as alterações foram concentradas em documentação e scripts SQL para operação manual no banco de teste.
+
+### Pendências
+- Os scripts ainda precisam ser executados manualmente no banco de teste quando você quiser abrir a rodada fictícia e depois publicar os resultados.
+- Se você quiser cobrir 2ª rodada, finais de conferência ou finais da NBA com a mesma abordagem, será necessário criar cenários adicionais.
+
 ## 2026-04-10 - Simulação compartilhada de rodada fictícia via Supabase
 
 ### Objetivo
