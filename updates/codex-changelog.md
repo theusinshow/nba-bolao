@@ -1,5 +1,31 @@
 # Codex Changelog
 
+## 2026-04-10 - Guia rápido de gerenciamento de usuários no Supabase
+
+### Objetivo
+- Criar um documento de consulta rápida dentro do projeto com os comandos SQL mais usados para liberar acessos, listar participantes e administrar privilégios no Supabase.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `supabase/user-management-guide.md`
+
+### Mudanças feitas
+
+#### Nova documentação — `supabase/user-management-guide.md`
+- Foi criado um guia de referência rápida com comandos básicos de gerenciamento de usuários no Supabase.
+- O documento inclui:
+  - listagem de emails liberados em `allowed_emails`;
+  - inserção de um ou vários emails;
+  - verificação de email específico;
+  - remoção de emails liberados;
+  - listagem de participantes em `participants`;
+  - promoção e remoção de privilégio admin;
+  - consulta opcional para detectar usuários autenticados ainda não vinculados em `participants`;
+  - checklist básico para liberar um amigo no bolão.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi somente de documentação operacional.
+
 ## 2026-04-10 - Scripts SQL para teste das páginas oficiais em ambiente separado
 
 ### Objetivo
