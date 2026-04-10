@@ -1,5 +1,55 @@
 # Codex Changelog
 
+## 2026-04-10 - Backlog ampliado com feature `Vai na fé`
+
+### Objetivo
+- Registrar no backlog uma possível funcionalidade de palpites aleatórios por dia na aba `Jogos`, já acompanhada de cuidados de UX e regras para evitar erro de uso.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `updates/futuras-implementacoes.md`
+
+### Mudanças feitas
+
+#### Atualização do backlog — botão `Vai na fé`
+- O documento `updates/futuras-implementacoes.md` foi ampliado com uma nova proposta:
+  - botão de palpites aleatórios para os jogos do dia;
+  - foco em usuários casuais que querem participar mesmo sem tempo para analisar confronto por confronto.
+- O item foi documentado com:
+  - motivação de produto;
+  - escopo recomendado;
+  - plano de mitigação de riscos;
+  - cuidados para não sobrescrever palpites sem permissão;
+  - necessidade de prévia, confirmação e respeito ao lock dos jogos.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi apenas documental.
+
+## 2026-04-10 - Documento de backlog para futuras implementações
+
+### Objetivo
+- Registrar em um documento próprio as ideias de evolução futura do produto, com priorização inicial e contexto de negócio/usabilidade.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `updates/futuras-implementacoes.md`
+
+### Mudanças feitas
+
+#### Nova documentação — `updates/futuras-implementacoes.md`
+- Foi criado um documento consolidando ideias de próximas evoluções do bolão.
+- O arquivo organiza os itens por prioridade e inclui:
+  - melhorias de mobile e bracket;
+  - mensagem de série encerrada no fluxo jogo a jogo;
+  - visão para palpitar todos os jogos disponíveis de uma vez;
+  - comparação de palpites jogo a jogo na aba `Comparar`;
+  - integração de informações reais via APIs na Home;
+  - faixa com resultados da última noite;
+  - expansão dos tipos de gráfico no ranking.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi apenas documental.
+
 ## 2026-04-10 - Guia rápido de gerenciamento de usuários no Supabase
 
 ### Objetivo
