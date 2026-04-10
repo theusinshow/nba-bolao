@@ -1,5 +1,36 @@
 # Codex Changelog
 
+## 2026-04-10 - Organização final do changelog para revisão externa
+
+### Objetivo
+- Deixar o histórico do projeto mais fácil de consumir por outra IA ou revisor externo, e preparar um prompt de revisão orientado ao estado atual do projeto.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `updates/changelogs.md`
+- `updates/claude-code-review-prompt.md`
+
+### Mudanças feitas
+
+#### Organização do changelog mestre — `changelogs.md`
+- O arquivo consolidado passou a funcionar como porta de entrada para revisão.
+- Foram adicionadas seções novas para:
+  - explicar a ordem recomendada de leitura;
+  - resumir o estado atual do projeto;
+  - destacar os focos mais importantes para revisão externa;
+  - deixar explícitos os ajustes mais recentes em Home, Bracket e Jogos.
+
+#### Novo prompt operacional — `claude-code-review-prompt.md`
+- Foi criado um prompt pronto para uso no Claude Code.
+- O prompt orienta o revisor a:
+  - ler primeiro o changelog consolidado e o changelog técnico;
+  - revisar o projeto com mentalidade de code review e QA funcional;
+  - priorizar bugs, regressões, inconsistências de UX e riscos de regra de negócio;
+  - prestar atenção especial em progresso do bracket, Home, Jogos, mobile e integração com Supabase.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi documental e operacional.
+
 ## 2026-04-10 - Home alinhada ao novo progresso do bracket
 
 ### Objetivo

@@ -1,5 +1,26 @@
 # Changelogs
 
+## Como Usar Este Documento
+
+Este arquivo agora deve ser tratado como a melhor porta de entrada para leitura do histórico do projeto.
+
+Ordem recomendada para qualquer revisão externa:
+
+1. Ler este arquivo inteiro para entender contexto, objetivos e frentes principais.
+2. Depois abrir `updates/codex-changelog.md` para o histórico técnico detalhado.
+3. Consultar os arquivos citados no changelog técnico apenas quando necessário confirmar implementação, risco ou regressão.
+
+## Estado Atual
+
+Neste momento, os pontos mais recentes e mais importantes do projeto são:
+
+- o progresso do bracket foi corrigido para não contar séries futuras ainda indefinidas;
+- a Home foi alinhada à mesma lógica, evitando o antigo padrão de `8/15` quando a chave ainda não está formada;
+- a aba `Jogos` e o modal jogo a jogo agora reconhecem quando uma série já terminou antes do jogo 5, 6 ou 7;
+- o bracket mobile foi bastante refinado e o filtro `Oeste / Finais / Leste / Tudo` passou a funcionar corretamente;
+- a Home ganhou um card `Resultados reais` para dar destaque ao bracket oficial;
+- existe uma estrutura de testes em banco separado e uma simulação isolada via Supabase para não contaminar o bolão real.
+
 ## Consolidacao
 
 Este documento unifica os dois registros principais de historico do projeto:
@@ -62,7 +83,9 @@ As principais frentes registradas no changelog tecnico ate aqui foram:
 - guia de gerenciamento de usuarios no Supabase;
 - backlog de futuras implementacoes;
 - refinamentos fortes no mobile, especialmente no bracket;
-- card `Resultados reais` na Home para destacar o bracket oficial.
+- card `Resultados reais` na Home para destacar o bracket oficial;
+- correção do progresso do bracket e da Home para contar apenas séries definidas;
+- correção da aba `Jogos` para desativar jogos futuros quando a série já terminou.
 
 ### Referencia de leitura
 
@@ -213,6 +236,18 @@ Ordem sugerida de continuidade:
 3. implementar melhorias de UX de picks e comparacao;
 4. aproximar a Home de dados reais via API;
 5. preparar a virada final para a operacao oficial dos playoffs.
+
+---
+
+## Foco Para Revisao Externa
+
+Se outra IA ou outro desenvolvedor for revisar o projeto agora, os focos mais valiosos sao:
+
+- verificar regressao nas regras de progresso do bracket e da Home;
+- verificar se a aba `Jogos` nao permite palpites em jogos posteriores a uma série já encerrada;
+- revisar se o mobile do bracket ficou consistente depois das ultimas rodadas;
+- validar que a Home, o Bracket, os Jogos, o Ranking e o Official continuam coerentes entre si;
+- apontar bugs, riscos de regra de negocio, inconsistencias visuais e oportunidades de simplificacao.
 
 ---
 
