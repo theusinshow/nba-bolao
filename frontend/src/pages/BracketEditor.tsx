@@ -6,7 +6,7 @@ import { SeriesModal } from '../components/SeriesModal'
 import { GamePickModal } from '../components/GamePickModal'
 import { useSeries } from '../hooks/useSeries'
 import type { Series } from '../types'
-import { getSeriesSlot } from '../utils/bracket'
+import { getSeriesSlot, isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
   participantId: string
@@ -239,18 +239,27 @@ function MobileBracketSheet({
 function BracketHero({
   pickedCount,
   totalSeries,
+  readySeries,
   pct,
+  roundSummaries,
 }: {
   pickedCount: number
   totalSeries: number
+  readySeries: number
   pct: number
+  roundSummaries: Array<{
+    label: string
+    picked: number
+    total: number
+    pendingDefinition: number
+  }>
 }) {
-  const remaining = Math.max(totalSeries - pickedCount, 0)
+  const remaining = Math.max(readySeries - pickedCount, 0)
 
   const items = [
     {
       label: 'Palpites feitos',
-      value: `${pickedCount}/${totalSeries}`,
+      value: `${pickedCount}/${readySeries}`,
       tone: 'var(--nba-text)',
       icon: <Target size={14} />,
     },
@@ -308,7 +317,7 @@ function BracketHero({
                 </h1>
               </div>
               <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', maxWidth: 560 }}>
-                Monte seu caminho at&eacute; as finais e acompanhe o quanto do seu bracket j&aacute; est&aacute; preenchido.
+                Monte seu caminho at&eacute; as finais e acompanhe o progresso apenas das rodadas que j&aacute; foram definidas.
               </p>
             </div>
 
@@ -371,7 +380,7 @@ function BracketHero({
         }}
       >
         <div className="flex justify-between mb-2" style={{ fontSize: '0.75rem', color: 'var(--nba-text-muted)' }}>
-          <span>{pickedCount} de {totalSeries} s&eacute;ries palpitadas</span>
+          <span>{pickedCount} de {readySeries} s&eacute;ries dispon&iacute;veis palpitadas</span>
           <span style={{ color: pct === 100 ? 'var(--nba-success)' : 'var(--nba-text-muted)' }}>
             {pct}%
           </span>
@@ -424,6 +433,42 @@ function BracketHero({
             Vencedor
           </span>
         </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gap: 10,
+            marginTop: 14,
+          }}
+          className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {roundSummaries.map((round) => (
+            <div
+              key={round.label}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.3)',
+                border: '1px solid rgba(200,150,60,0.12)',
+              }}
+            >
+              <div
+                className="font-condensed"
+                style={{ color: 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em', marginBottom: 6 }}
+              >
+                {round.label}
+              </div>
+              <div style={{ color: 'var(--nba-text)', fontSize: '0.86rem', fontWeight: 700 }}>
+                {round.picked}/{round.total} palpites
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                {round.pendingDefinition > 0
+                  ? `${round.pendingDefinition} aguardando definição`
+                  : 'Tudo liberado nesta fase'}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -447,13 +492,40 @@ export function BracketEditor({ participantId }: Props) {
     )
   }
 
-  const pickedCount = picks.length
+  const roundMeta = [
+    { round: 1, label: '1ª rodada' },
+    { round: 2, label: '2ª rodada' },
+    { round: 3, label: 'Finais de conferência' },
+    { round: 4, label: 'Grande final' },
+  ] as const
+
+  const readySeries = series.filter(isSeriesReadyForPick)
+  const readySeriesIds = new Set(readySeries.map((item) => item.id))
+  const pickedCount = picks.filter((pick) => readySeriesIds.has(pick.series_id)).length
   const totalSeries = series.length
-  const pct         = totalSeries > 0 ? Math.round((pickedCount / totalSeries) * 100) : 0
+  const pct = readySeries.length > 0 ? Math.round((pickedCount / readySeries.length) * 100) : 0
+  const roundSummaries = roundMeta.map(({ round, label }) => {
+    const roundSeries = series.filter((item) => item.round === round)
+    const roundReady = roundSeries.filter(isSeriesReadyForPick)
+    const roundReadyIds = new Set(roundReady.map((item) => item.id))
+
+    return {
+      label,
+      picked: picks.filter((pick) => roundReadyIds.has(pick.series_id)).length,
+      total: roundReady.length,
+      pendingDefinition: Math.max(roundSeries.length - roundReady.length, 0),
+    }
+  })
 
   return (
     <div className="pb-24 pt-4">
-      <BracketHero pickedCount={pickedCount} totalSeries={totalSeries} pct={pct} />
+      <BracketHero
+        pickedCount={pickedCount}
+        totalSeries={totalSeries}
+        readySeries={readySeries.length}
+        pct={pct}
+        roundSummaries={roundSummaries}
+      />
 
       {/* ── Bracket SVG ────────────────────────────────────────────────── */}
       <div

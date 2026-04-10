@@ -1,5 +1,39 @@
 # Codex Changelog
 
+## 2026-04-10 - Progresso do bracket separado por rodada definida
+
+### Objetivo
+- Corrigir a contagem de progresso em `Meu Bracket`, para não tratar como "em aberto" séries de rounds futuros que ainda não têm times definidos.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/BracketEditor.tsx`
+
+### Mudanças feitas
+
+#### Correção de regra de progresso — `BracketEditor.tsx`
+- O hero do bracket estava usando `series.length` como total absoluto de palpites, o que fazia rounds futuros aparecerem como pendentes mesmo quando o confronto ainda não existia.
+- Corrigido:
+  - o progresso principal agora considera apenas séries prontas para palpite;
+  - a contagem `Palpites feitos` passou a usar somente confrontos já definidos;
+  - a métrica `Em aberto` agora representa apenas séries disponíveis e ainda não palpitadas;
+  - o percentual de progresso deixou de ser penalizado por rounds futuros ainda indefinidos.
+
+#### Refinamento de UX — resumo por rodada
+- `Meu Bracket` passou a exibir um resumo separado por fase:
+  - `1ª rodada`
+  - `2ª rodada`
+  - `Finais de conferência`
+  - `Grande final`
+- Cada card agora mostra:
+  - quantos palpites já foram feitos naquela fase;
+  - quantos confrontos estão realmente liberados;
+  - quantas séries ainda aguardam definição.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Destaque do bracket oficial na Home
 
 ### Objetivo
