@@ -20,6 +20,7 @@ const LEGEND = [
 ]
 
 const MOBILE_SECTIONS = [
+  { key: 'full', label: 'Tudo' },
   { key: 'west', label: 'Oeste' },
   { key: 'finals', label: 'Finais' },
   { key: 'east', label: 'Leste' },
@@ -29,10 +30,14 @@ function MobileBracketSheet({
   series,
   picks,
   onClose,
+  onSeriesSelect,
+  focusSection,
 }: {
   series: Series[]
   picks: ReturnType<typeof useSeries>['picks']
   onClose: () => void
+  onSeriesSelect: (series: Series) => void
+  focusSection: 'west' | 'finals' | 'east' | 'full'
 }) {
   const pickBySeries = Object.fromEntries(picks.map((pick) => [pick.series_id, pick]))
   const roundLabels: Record<number, string> = {
@@ -42,10 +47,26 @@ function MobileBracketSheet({
     4: 'Finais da NBA',
   }
 
-  const ordered = [...series].sort((a, b) => {
+  const filteredSeries = [...series].filter((item) => {
+    if (focusSection === 'full') return true
+    if (focusSection === 'west') return item.conference === 'West'
+    if (focusSection === 'east') return item.conference === 'East'
+    return item.round >= 3
+  })
+
+  const ordered = filteredSeries.sort((a, b) => {
     if (a.round !== b.round) return a.round - b.round
     return getSeriesSlot(a).localeCompare(getSeriesSlot(b))
   })
+
+  const focusLabel =
+    focusSection === 'full'
+      ? 'Todos os lados da chave'
+      : focusSection === 'west'
+      ? 'Somente a conferência Oeste'
+      : focusSection === 'east'
+      ? 'Somente a conferência Leste'
+      : 'Finais de conferência e finais da NBA'
 
   return (
     <>
@@ -81,7 +102,7 @@ function MobileBracketSheet({
               Chave Mobile
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem' }}>
-              Veja os confrontos sem depender da rolagem horizontal
+              {focusLabel}
             </div>
           </div>
 
@@ -106,6 +127,21 @@ function MobileBracketSheet({
         </div>
 
         <div style={{ display: 'grid', gap: 12 }}>
+          {ordered.length === 0 && (
+            <div
+              style={{
+                padding: '14px 12px',
+                borderRadius: 12,
+                background: 'rgba(12,12,18,0.4)',
+                border: '1px solid rgba(200,150,60,0.12)',
+                color: 'var(--nba-text-muted)',
+                fontSize: '0.82rem',
+              }}
+            >
+              Nenhum confronto disponível neste filtro ainda.
+            </div>
+          )}
+
           {ordered.map((item) => {
             const home = item.home_team?.abbreviation ?? '—'
             const away = item.away_team?.abbreviation ?? '—'
@@ -117,13 +153,20 @@ function MobileBracketSheet({
               : null
 
             return (
-              <div
+              <button
                 key={item.id}
+                onClick={() => {
+                  onClose()
+                  onSeriesSelect(item)
+                }}
                 style={{
+                  width: '100%',
                   padding: '12px 12px',
                   borderRadius: 12,
                   background: 'rgba(12,12,18,0.4)',
                   border: '1px solid rgba(200,150,60,0.12)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
@@ -170,8 +213,21 @@ function MobileBracketSheet({
                       Vencedor: {item.winner.abbreviation}
                     </span>
                   )}
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(200,150,60,0.12)',
+                      color: 'var(--nba-text-muted)',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Tocar para abrir
+                  </span>
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -377,7 +433,7 @@ export function BracketEditor({ participantId }: Props) {
   const { series, picks, loading, savePick, getPickForSeries } = useSeries(participantId)
   const [selectedSeries, setSelectedSeries]   = useState<Series | null>(null)
   const [gamePickSeries, setGamePickSeries]    = useState<Series | null>(null)
-  const [mobileFocus, setMobileFocus] = useState<'west' | 'finals' | 'east' | 'full'>('west')
+  const [mobileFocus, setMobileFocus] = useState<'west' | 'finals' | 'east' | 'full'>('full')
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
 
   if (loading) {
@@ -473,7 +529,9 @@ export function BracketEditor({ participantId }: Props) {
             fontSize: '0.72rem',
           }}
         >
-          Arraste lateralmente para ver toda a chave
+          {mobileFocus === 'full'
+            ? 'Arraste lateralmente para ver toda a chave'
+            : `Filtro ativo: ${MOBILE_SECTIONS.find((section) => section.key === mobileFocus)?.label ?? 'Tudo'}`}
         </div>
 
         <div
@@ -554,6 +612,8 @@ export function BracketEditor({ participantId }: Props) {
           series={series}
           picks={picks}
           onClose={() => setMobileSheetOpen(false)}
+          onSeriesSelect={setSelectedSeries}
+          focusSection={mobileFocus}
         />
       )}
     </div>

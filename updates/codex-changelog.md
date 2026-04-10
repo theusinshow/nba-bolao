@@ -1,5 +1,52 @@
 # Codex Changelog
 
+## 2026-04-10 - Correção do filtro mobile `Oeste / Finais / Leste` no bracket
+
+### Objetivo
+- Corrigir o comportamento do filtro mobile da aba `Meu Bracket`, garantindo que os botões `Oeste`, `Finais` e `Leste` realmente filtrem o conteúdo exibido.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/components/BracketSVG.tsx`
+
+### Mudanças feitas
+
+#### Bug funcional — `BracketSVG.tsx`: foco mobile não era aplicado na visualização mobile
+- O estado `mobileFocus` era atualizado em `BracketEditor.tsx`, mas a implementação mobile de `BracketSVG` não utilizava `focusSection` para nada.
+- Na prática, os botões `Oeste`, `Finais` e `Leste` mudavam o visual do botão ativo, mas a lista de séries continuava exibindo todos os confrontos.
+- Corrigido:
+  - `MobileBracketView` passou a receber `focusSection`;
+  - a lista mobile agora filtra as séries conforme a seleção atual;
+  - `Oeste` mostra apenas confrontos da conferência Oeste;
+  - `Leste` mostra apenas confrontos da conferência Leste;
+  - `Finais` mostra rounds 3 e 4.
+
+#### Refinamento de UX — `BracketEditor.tsx`: volta para visão completa no mobile
+- Depois da correção do filtro, ainda faltava um caminho explícito para retornar à visão completa da chave no mobile.
+- Corrigido:
+  - adicionada a opção `Tudo` ao seletor mobile;
+  - o estado inicial passou a abrir na visão completa;
+  - a dica contextual abaixo do seletor agora mostra o filtro ativo quando o usuário não está em `Tudo`.
+
+#### Refinamento de UX — `BracketEditor.tsx`: sheet mobile da chave passou a ser acionável
+- A visualização simplificada aberta pelo botão `Chave` no mobile funcionava apenas como leitura, sem permitir ação imediata.
+- Corrigido:
+  - os cards da `MobileBracketSheet` passaram a ser clicáveis;
+  - tocar em um confronto fecha a sheet e abre o modal da série correspondente;
+  - foi adicionado um indicativo visual `Tocar para abrir` em cada card da sheet.
+
+#### Refinamento de UX — `BracketEditor.tsx`: sheet mobile passou a respeitar o filtro ativo
+- Mesmo depois da correção do filtro principal, a sheet `Chave` ainda mostrava sempre a lista completa de confrontos, criando inconsistência com o estado selecionado na tela.
+- Corrigido:
+  - `MobileBracketSheet` agora recebe o `focusSection` atual;
+  - a listagem da sheet respeita `Tudo`, `Oeste`, `Leste` e `Finais`;
+  - o subtítulo da sheet passou a explicar o recorte atual;
+  - foi adicionada mensagem de estado vazio caso o filtro selecionado ainda não tenha confrontos disponíveis.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Backlog ampliado com feature `Vai na fé`
 
 ### Objetivo

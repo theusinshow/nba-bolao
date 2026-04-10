@@ -330,11 +330,13 @@ function MobileBracketView({
   picks,
   comparePicks,
   onSeriesClick,
+  focusSection = 'full',
 }: {
   series: Series[]
   picks: SeriesPick[]
   comparePicks?: SeriesPick[]
   onSeriesClick?: (s: Series) => void
+  focusSection?: 'west' | 'finals' | 'east' | 'full'
 }) {
   const pickBySeriesId    = Object.fromEntries(picks.map((p) => [p.series_id, p]))
   const compareBySeriesId = comparePicks
@@ -342,10 +344,18 @@ function MobileBracketView({
     : null
   const isCompareMode = !!comparePicks
 
+  const filteredSeries = series.filter((s) => {
+    if (focusSection === 'full') return true
+    if (focusSection === 'finals') return s.round >= 3
+    if (focusSection === 'west') return s.conference === 'West'
+    if (focusSection === 'east') return s.conference === 'East'
+    return true
+  })
+
   const rounds = ([1, 2, 3, 4] as const).map((r) => ({
     round: r,
     label: ROUND_LABELS[r],
-    items: series.filter((s) => s.round === r),
+    items: filteredSeries.filter((s) => s.round === r),
   })).filter((g) => g.items.length > 0)
 
   return (
@@ -451,6 +461,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         picks={picks}
         comparePicks={comparePicks}
         onSeriesClick={onSeriesClick}
+        focusSection={focusSection}
       />
     )
   }
