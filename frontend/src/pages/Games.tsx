@@ -37,6 +37,20 @@ interface SeriesGroup {
   effectiveGamesCount: number
 }
 
+interface AutoPickPreviewItem {
+  gameId: string
+  winnerId: string
+}
+
+interface AutoPickDayGroup {
+  key: string
+  label: string
+  iso: string
+  games: GameWithTeams[]
+  pendingGames: GameWithTeams[]
+  alreadyPickedGames: GameWithTeams[]
+}
+
 // ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
 
 const MOCK_TEAMS: Record<string, Team> = {
@@ -185,8 +199,23 @@ function getRelativeDateLabel(iso: string): string | null {
   return null
 }
 
+function isSeriesClosedBeforeGame(game: GameWithTeams): boolean {
+  return !!(
+    game.series_is_complete &&
+    game.series_games_played != null &&
+    game.game_number > game.series_games_played
+  )
+}
+
+function isGameOpenForPick(game: GameWithTeams): boolean {
+  if (isSeriesClosedBeforeGame(game)) return false
+  if (game.played) return false
+  if (!game.tip_off_at) return false
+  return new Date(game.tip_off_at) > new Date()
+}
+
 function getUrgency(game: GameWithTeams) {
-  if (game.series_is_complete && game.series_games_played != null && game.game_number > game.series_games_played) {
+  if (isSeriesClosedBeforeGame(game)) {
     return { label: null, color: 'var(--nba-text-muted)' }
   }
 
@@ -201,7 +230,7 @@ function getUrgency(game: GameWithTeams) {
 }
 
 function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPendingPick: boolean) {
-  if (game.series_is_complete && game.series_games_played != null && game.game_number > game.series_games_played) {
+  if (isSeriesClosedBeforeGame(game)) {
     return { label: 'Série já encerrada', color: 'var(--nba-east)', bg: 'rgba(74,144,217,0.12)', icon: <CircleOff size={12} /> }
   }
 
@@ -299,6 +328,47 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
     })
 }
 
+function buildAutoPickDayGroups(games: GameWithTeams[], picks: GamePick[]): AutoPickDayGroup[] {
+  const pickMap = new Map(picks.map((pick) => [pick.game_id, pick]))
+  const groups = new Map<string, GameWithTeams[]>()
+
+  for (const game of games) {
+    if (!game.tip_off_at) continue
+    if (!isGameOpenForPick(game)) continue
+    const key = dateKeyBRT(game.tip_off_at)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(game)
+  }
+
+  return [...groups.entries()]
+    .map(([key, dayGames]) => {
+      const ordered = [...dayGames].sort((a, b) => new Date(a.tip_off_at!).getTime() - new Date(b.tip_off_at!).getTime())
+      const pendingGames = ordered.filter((game) => !pickMap.has(game.id))
+      const alreadyPickedGames = ordered.filter((game) => pickMap.has(game.id))
+
+      return {
+        key,
+        label: formatDateHeader(ordered[0].tip_off_at!),
+        iso: ordered[0].tip_off_at!,
+        games: ordered,
+        pendingGames,
+        alreadyPickedGames,
+      }
+    })
+    .sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime())
+}
+
+function generateRandomPreview(games: GameWithTeams[]): AutoPickPreviewItem[] {
+  return games
+    .map((game) => {
+      const options = [game.home_team_id, game.away_team_id].filter(Boolean)
+      if (options.length < 2) return null
+      const winnerId = options[Math.floor(Math.random() * options.length)]
+      return { gameId: game.id, winnerId }
+    })
+    .filter((item): item is AutoPickPreviewItem => !!item)
+}
+
 // ─── Empty state (no games) ───────────────────────────────────────────────────
 
 function EmptyState() {
@@ -322,6 +392,313 @@ function EmptyState() {
       </p>
       <div style={{ marginTop: 8 }}>
         <CountdownTimer targetDate={target} label="Faltam" urgentUnderOneHour />
+      </div>
+    </div>
+  )
+}
+
+function DailyAutoPickCard({
+  groups,
+  onOpen,
+}: {
+  groups: AutoPickDayGroup[]
+  onOpen: (group: AutoPickDayGroup) => void
+}) {
+  if (groups.length === 0) return null
+
+  return (
+    <div
+      style={{
+        background: 'var(--nba-surface)',
+        border: '1px solid var(--nba-border)',
+        borderRadius: 12,
+        padding: '1rem',
+        marginBottom: 18,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div>
+          <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 4 }}>
+            Vai na fé
+          </div>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+            Preencha no aleatório só os jogos do dia que ainda estiverem abertos.
+          </p>
+        </div>
+        <span
+          className="font-condensed"
+          style={{
+            color: 'var(--nba-text-muted)',
+            fontSize: '0.72rem',
+            background: 'var(--nba-surface-2)',
+            border: '1px solid var(--nba-border)',
+            borderRadius: 999,
+            padding: '4px 10px',
+          }}
+        >
+          {groups.length} dia{groups.length !== 1 ? 's' : ''} disponível{groups.length !== 1 ? 'eis' : ''}
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gap: 10 }}>
+        {groups.map((group) => (
+          <button
+            key={group.key}
+            onClick={() => onOpen(group)}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              border: '1px solid rgba(200,150,60,0.16)',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              padding: '12px 14px',
+              color: 'inherit',
+              cursor: 'pointer',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.92rem', lineHeight: 1 }}>
+                  {group.label}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 5 }}>
+                  {group.pendingGames.length} sem palpite • {group.alreadyPickedGames.length} já preenchido{group.alreadyPickedGames.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+              <span
+                className="font-condensed font-bold"
+                style={{
+                  color: 'var(--nba-gold)',
+                  fontSize: '0.82rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Vai na fé hoje
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AutoPickModal({
+  group,
+  preview,
+  mode,
+  saving,
+  onClose,
+  onModeChange,
+  onRefreshPreview,
+  onConfirm,
+}: {
+  group: AutoPickDayGroup
+  preview: AutoPickPreviewItem[]
+  mode: 'fill-missing' | 'overwrite'
+  saving: boolean
+  onClose: () => void
+  onModeChange: (mode: 'fill-missing' | 'overwrite') => void
+  onRefreshPreview: () => void
+  onConfirm: () => void
+}) {
+  const previewMap = new Map(preview.map((item) => [item.gameId, item.winnerId]))
+  const listedGames = mode === 'overwrite' ? group.games : group.pendingGames
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 640,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          background: 'var(--nba-surface)',
+          border: '1px solid rgba(200,150,60,0.22)',
+          borderRadius: 14,
+          padding: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div>
+            <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.15rem', marginBottom: 4 }}>
+              Vai na fé • {group.label}
+            </div>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+              Os palpites abaixo são aleatórios. Revise antes de confirmar.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              border: '1px solid rgba(200,150,60,0.14)',
+              background: 'rgba(12,12,18,0.34)',
+              color: 'var(--nba-text-muted)',
+              borderRadius: 10,
+              padding: '6px 10px',
+              cursor: 'pointer',
+            }}
+          >
+            Fechar
+          </button>
+        </div>
+
+        {group.alreadyPickedGames.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gap: 8,
+              marginBottom: 14,
+            }}
+            className="grid-cols-1 sm:grid-cols-2"
+          >
+            <button
+              onClick={() => onModeChange('fill-missing')}
+              style={{
+                textAlign: 'left',
+                borderRadius: 10,
+                padding: '10px 12px',
+                border: `1px solid ${mode === 'fill-missing' ? 'rgba(46,204,113,0.32)' : 'rgba(200,150,60,0.12)'}`,
+                background: mode === 'fill-missing' ? 'rgba(46,204,113,0.12)' : 'rgba(12,12,18,0.34)',
+                color: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <div className="font-condensed font-bold" style={{ color: mode === 'fill-missing' ? 'var(--nba-success)' : 'var(--nba-text)', fontSize: '0.88rem' }}>
+                Preencher só faltantes
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                Mantém seus palpites já salvos e gera só o que falta.
+              </div>
+            </button>
+            <button
+              onClick={() => onModeChange('overwrite')}
+              style={{
+                textAlign: 'left',
+                borderRadius: 10,
+                padding: '10px 12px',
+                border: `1px solid ${mode === 'overwrite' ? 'rgba(231,76,60,0.28)' : 'rgba(200,150,60,0.12)'}`,
+                background: mode === 'overwrite' ? 'rgba(231,76,60,0.10)' : 'rgba(12,12,18,0.34)',
+                color: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <div className="font-condensed font-bold" style={{ color: mode === 'overwrite' ? 'var(--nba-danger)' : 'var(--nba-text)', fontSize: '0.88rem' }}>
+                Sobrescrever o dia inteiro
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                Refaz todos os jogos abertos deste dia, inclusive os já preenchidos.
+              </div>
+            </button>
+          </div>
+        )}
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem' }}>
+            {listedGames.length} jogo{listedGames.length !== 1 ? 's' : ''} será{listedGames.length !== 1 ? 'ão' : ''} alterado{listedGames.length !== 1 ? 's' : ''}
+          </div>
+          <button
+            onClick={onRefreshPreview}
+            style={{
+              border: '1px solid rgba(200,150,60,0.16)',
+              background: 'rgba(12,12,18,0.34)',
+              color: 'var(--nba-gold)',
+              borderRadius: 10,
+              padding: '7px 10px',
+              cursor: 'pointer',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+            }}
+          >
+            Gerar outra prévia
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
+          {listedGames.map((game) => (
+            <div
+              key={game.id}
+              style={{
+                borderRadius: 10,
+                border: '1px solid rgba(200,150,60,0.12)',
+                background: 'rgba(12,12,18,0.34)',
+                padding: '10px 12px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem', lineHeight: 1 }}>
+                    Jogo {game.game_number} • {game.team_a?.abbreviation ?? game.home_team_id} vs {game.team_b?.abbreviation ?? game.away_team_id}
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                    {game.tip_off_at ? formatTimeBRT(game.tip_off_at) : 'Horário indefinido'}
+                  </div>
+                </div>
+                <div
+                  className="font-condensed font-bold"
+                  style={{
+                    color: 'var(--nba-gold)',
+                    fontSize: '0.92rem',
+                    padding: '6px 10px',
+                    borderRadius: 999,
+                    background: 'rgba(200,150,60,0.12)',
+                    border: '1px solid rgba(200,150,60,0.2)',
+                  }}
+                >
+                  {previewMap.get(game.id) === game.home_team_id
+                    ? game.team_a?.abbreviation ?? game.home_team_id
+                    : game.team_b?.abbreviation ?? game.away_team_id}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={onClose}
+            disabled={saving}
+            style={{
+              flex: 1,
+              minWidth: 140,
+              border: '1px solid rgba(200,150,60,0.14)',
+              background: 'rgba(12,12,18,0.34)',
+              color: 'var(--nba-text)',
+              borderRadius: 10,
+              padding: '10px 14px',
+              cursor: saving ? 'default' : 'pointer',
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={saving || listedGames.length === 0}
+            style={{
+              flex: 1.2,
+              minWidth: 180,
+              border: 'none',
+              background: saving ? 'rgba(200,150,60,0.36)' : 'var(--nba-gold)',
+              color: saving ? 'rgba(10,10,15,0.6)' : '#0a0a0f',
+              borderRadius: 10,
+              padding: '10px 14px',
+              cursor: saving ? 'default' : 'pointer',
+              fontWeight: 700,
+            }}
+          >
+            {saving ? 'Aplicando...' : 'Confirmar vai na fé'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1011,6 +1388,10 @@ export function Games({ participantId }: Props) {
   const [isMock,  setIsMock]  = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [expandedSeriesIds, setExpandedSeriesIds] = useState<string[]>([])
+  const [autoPickGroup, setAutoPickGroup] = useState<AutoPickDayGroup | null>(null)
+  const [autoPickMode, setAutoPickMode] = useState<'fill-missing' | 'overwrite'>('fill-missing')
+  const [autoPickPreview, setAutoPickPreview] = useState<AutoPickPreviewItem[]>([])
+  const [autoPickSaving, setAutoPickSaving] = useState(false)
   const { addToast } = useUIStore()
 
   useEffect(() => {
@@ -1022,6 +1403,7 @@ export function Games({ participantId }: Props) {
   }, [games, participantId])
 
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
+  const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
 
   useEffect(() => {
     if (seriesGroups.length === 0) {
@@ -1153,6 +1535,39 @@ export function Games({ participantId }: Props) {
     }
   }
 
+  function openAutoPick(group: AutoPickDayGroup) {
+    const mode = group.alreadyPickedGames.length > 0 ? 'fill-missing' : 'overwrite'
+    setAutoPickGroup(group)
+    setAutoPickMode(mode)
+    setAutoPickPreview(generateRandomPreview(mode === 'overwrite' ? group.games : group.pendingGames))
+  }
+
+  function refreshAutoPickPreview(nextMode = autoPickMode) {
+    if (!autoPickGroup) return
+    const sourceGames = nextMode === 'overwrite' ? autoPickGroup.games : autoPickGroup.pendingGames
+    setAutoPickPreview(generateRandomPreview(sourceGames))
+  }
+
+  function changeAutoPickMode(mode: 'fill-missing' | 'overwrite') {
+    setAutoPickMode(mode)
+    refreshAutoPickPreview(mode)
+  }
+
+  async function confirmAutoPick() {
+    if (!autoPickGroup) return
+    setAutoPickSaving(true)
+    try {
+      for (const item of autoPickPreview) {
+        await savePick(item.gameId, item.winnerId)
+      }
+      addToast('Vai na fé aplicado com sucesso!', 'success')
+      setAutoPickGroup(null)
+      setAutoPickPreview([])
+    } finally {
+      setAutoPickSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -1191,6 +1606,7 @@ export function Games({ participantId }: Props) {
   return (
     <div style={{ padding: '16px 16px 96px', maxWidth: 680, margin: '0 auto' }}>
       <GamesHero games={games} picks={picks} isMock={isMock} />
+      <DailyAutoPickCard groups={autoPickDayGroups} onOpen={openAutoPick} />
 
       <div
         style={{
@@ -1247,6 +1663,23 @@ export function Games({ participantId }: Props) {
           />
         ))}
       </div>
+
+      {autoPickGroup && (
+        <AutoPickModal
+          group={autoPickGroup}
+          preview={autoPickPreview}
+          mode={autoPickMode}
+          saving={autoPickSaving}
+          onClose={() => {
+            if (autoPickSaving) return
+            setAutoPickGroup(null)
+            setAutoPickPreview([])
+          }}
+          onModeChange={changeAutoPickMode}
+          onRefreshPreview={() => refreshAutoPickPreview()}
+          onConfirm={confirmAutoPick}
+        />
+      )}
     </div>
   )
 }

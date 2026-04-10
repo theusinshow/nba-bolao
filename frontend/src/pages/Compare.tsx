@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { BracketSVG } from '../components/BracketSVG'
 import { useSeries } from '../hooks/useSeries'
 import { useRanking } from '../hooks/useRanking'
-import type { Participant, SeriesPick, Series } from '../types'
+import type { Participant, SeriesPick, Series, Game, GamePick, Team } from '../types'
 
 // ─── Avatar (shared with RankingTable) ───────────────────────────────────────
 
@@ -227,6 +227,53 @@ function ParticipantHeader({
   )
 }
 
+function getTeamName(team: Team | null | undefined): string {
+  if (!team) return 'A definir'
+  return team.abbreviation || team.name
+}
+
+function getSeriesMatchupLabel(series: Series): string {
+  return `${getTeamName(series.home_team)} x ${getTeamName(series.away_team)}`
+}
+
+function getGameMatchupLabel(game: Game, seriesRef?: Series): string {
+  const homeAbbr =
+    seriesRef?.home_team?.id === game.home_team_id
+      ? seriesRef.home_team.abbreviation
+      : seriesRef?.away_team?.id === game.home_team_id
+      ? seriesRef.away_team.abbreviation
+      : game.home_team_id
+  const awayAbbr =
+    seriesRef?.home_team?.id === game.away_team_id
+      ? seriesRef.home_team.abbreviation
+      : seriesRef?.away_team?.id === game.away_team_id
+      ? seriesRef.away_team.abbreviation
+      : game.away_team_id
+
+  return `${homeAbbr} x ${awayAbbr}`
+}
+
+function getPickedTeamLabel(winnerId: string | undefined, game: Game, seriesRef?: Series): string {
+  if (!winnerId) return 'Sem palpite'
+
+  const homeTeam =
+    seriesRef?.home_team?.id === game.home_team_id
+      ? seriesRef.home_team
+      : seriesRef?.away_team?.id === game.home_team_id
+      ? seriesRef.away_team
+      : null
+  const awayTeam =
+    seriesRef?.home_team?.id === game.away_team_id
+      ? seriesRef.home_team
+      : seriesRef?.away_team?.id === game.away_team_id
+      ? seriesRef.away_team
+      : null
+
+  if (homeTeam?.id === winnerId) return homeTeam.abbreviation
+  if (awayTeam?.id === winnerId) return awayTeam.abbreviation
+  return winnerId
+}
+
 // ─── Styled select ────────────────────────────────────────────────────────────
 
 function StyledSelect({
@@ -378,11 +425,15 @@ function SelectionArena({
 function SummaryCard({
   p1, p2,
   picks1, picks2,
+  gamePicks1, gamePicks2,
+  games,
   series,
   pts1, pts2,
 }: {
   p1: Participant; p2: Participant
   picks1: SeriesPick[]; picks2: SeriesPick[]
+  gamePicks1: GamePick[]; gamePicks2: GamePick[]
+  games: Game[]
   series: Series[]
   pts1: number; pts2: number
 }) {
@@ -401,6 +452,20 @@ function SummaryCard({
   }
 
   const total = series.length
+  let gameAgree = 0, gameDisagree = 0, gameOnlyOne = 0
+
+  for (const game of games) {
+    const pick1 = gamePicks1.find((p) => p.game_id === game.id)
+    const pick2 = gamePicks2.find((p) => p.game_id === game.id)
+    if (pick1 && pick2) {
+      if (pick1.winner_id === pick2.winner_id) gameAgree++
+      else gameDisagree++
+    } else if (pick1 || pick2) {
+      gameOnlyOne++
+    }
+  }
+
+  const totalGames = games.length
 
   const p1Winning = pts1 > pts2
   const p2Winning = pts2 > pts1
@@ -533,7 +598,22 @@ function SummaryCard({
       </div>
 
       {/* Agreement stats */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-2">
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.14)',
+          }}
+        >
+          <div style={{ width: '100%', textAlign: 'center', color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Séries
+          </div>
         <Stat
           label="Concordam"
           value={`${agree}/${total}`}
@@ -552,6 +632,42 @@ function SummaryCard({
           color="rgba(241,196,15,0.8)"
           note="série em aberto"
         />
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.14)',
+          }}
+        >
+          <div style={{ width: '100%', textAlign: 'center', color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Jogo a jogo
+          </div>
+          <Stat
+            label="Concordam"
+            value={`${gameAgree}/${totalGames}`}
+            color="rgba(46,204,113,0.8)"
+            note="mesmo vencedor"
+          />
+          <Stat
+            label="Divergem"
+            value={`${gameDisagree}/${totalGames}`}
+            color="rgba(231,76,60,0.8)"
+            note="vencedores diferentes"
+          />
+          <Stat
+            label="Só um palpitou"
+            value={`${gameOnlyOne}/${totalGames}`}
+            color="rgba(241,196,15,0.8)"
+            note="jogo em aberto"
+          />
+        </div>
       </div>
     </div>
   )
@@ -611,6 +727,197 @@ function CompareLegend() {
           {label}
         </span>
       ))}
+    </div>
+  )
+}
+
+function GameComparisonBoard({
+  games,
+  series,
+  picks1,
+  picks2,
+  p1,
+  p2,
+}: {
+  games: Game[]
+  series: Series[]
+  picks1: GamePick[]
+  picks2: GamePick[]
+  p1: Participant
+  p2: Participant
+}) {
+  const seriesMap = new Map(series.map((item) => [item.id, item]))
+  const grouped = series
+    .map((seriesItem) => ({
+      series: seriesItem,
+      games: games.filter((game) => game.series_id === seriesItem.id).sort((a, b) => a.game_number - b.game_number),
+    }))
+    .filter((group) => group.games.length > 0)
+
+  if (grouped.length === 0) {
+    return (
+      <div
+        style={{
+          background: 'var(--nba-surface)',
+          border: '1px solid var(--nba-border)',
+          borderRadius: 10,
+          padding: '1rem',
+          marginBottom: 20,
+        }}
+      >
+        <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 8 }}>
+          Comparação jogo a jogo
+        </div>
+        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', margin: 0 }}>
+          Ainda não há jogos cadastrados para comparar nesta bateria.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        background: 'var(--nba-surface)',
+        border: '1px solid var(--nba-border)',
+        borderRadius: 10,
+        padding: '1rem',
+        marginBottom: 20,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 4 }}>
+            Comparação jogo a jogo
+          </div>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+            Veja rapidamente em quais partidas cada um foi para um lado diferente.
+          </p>
+        </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+          {grouped.length} série{grouped.length !== 1 ? 's' : ''} com jogos cadastrados
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        {grouped.map(({ series: seriesItem, games: seriesGames }) => {
+          const roundLabel =
+            seriesItem.round === 1
+              ? '1ª rodada'
+              : seriesItem.round === 2
+              ? '2ª rodada'
+              : seriesItem.round === 3
+              ? 'Finais de conferência'
+              : 'Grande final'
+
+          return (
+            <div
+              key={seriesItem.id}
+              style={{
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.14)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderBottom: '1px solid rgba(200,150,60,0.12)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.96rem', lineHeight: 1 }}>
+                    {getSeriesMatchupLabel(seriesItem)}
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginTop: 4 }}>
+                    {roundLabel} • {seriesItem.conference ?? 'Finals'}
+                  </div>
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                  {seriesGames.length} jogo{seriesGames.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8, padding: 12 }}>
+                {seriesGames.map((game) => {
+                  const leftPick = picks1.find((pick) => pick.game_id === game.id)
+                  const rightPick = picks2.find((pick) => pick.game_id === game.id)
+                  const samePick = leftPick && rightPick && leftPick.winner_id === rightPick.winner_id
+                  const rowAccent = samePick
+                    ? 'rgba(46,204,113,0.22)'
+                    : leftPick && rightPick
+                    ? 'rgba(231,76,60,0.18)'
+                    : leftPick || rightPick
+                    ? 'rgba(241,196,15,0.16)'
+                    : 'rgba(200,150,60,0.08)'
+
+                  return (
+                    <div
+                      key={game.id}
+                      style={{
+                        display: 'grid',
+                        gap: 10,
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        background: rowAccent,
+                        border: '1px solid rgba(255,255,255,0.04)',
+                      }}
+                      className="grid-cols-1 lg:grid-cols-[140px_1fr_1fr]"
+                    >
+                      <div>
+                        <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
+                          Jogo {game.game_number}
+                        </div>
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                          {getGameMatchupLabel(game, seriesMap.get(game.series_id))}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: 'rgba(74,144,217,0.12)',
+                          border: '1px solid rgba(74,144,217,0.22)',
+                        }}
+                      >
+                        <div style={{ color: 'var(--nba-east)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
+                          {p1.name.split(' ')[0]}
+                        </div>
+                        <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1.1 }}>
+                          {leftPick ? getPickedTeamLabel(leftPick.winner_id, game, seriesMap.get(game.series_id)) : 'Sem palpite'}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: 'rgba(224,92,58,0.12)',
+                          border: '1px solid rgba(224,92,58,0.22)',
+                        }}
+                      >
+                        <div style={{ color: 'var(--nba-west)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
+                          {p2.name.split(' ')[0]}
+                        </div>
+                        <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1.1 }}>
+                          {rightPick ? getPickedTeamLabel(rightPick.winner_id, game, seriesMap.get(game.series_id)) : 'Sem palpite'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -766,6 +1073,9 @@ export function Compare() {
   const [rightId,  setRightId]  = useState('')
   const [leftPicks,  setLeftPicks]  = useState<SeriesPick[]>([])
   const [rightPicks, setRightPicks] = useState<SeriesPick[]>([])
+  const [games, setGames] = useState<Game[]>([])
+  const [leftGamePicks, setLeftGamePicks] = useState<GamePick[]>([])
+  const [rightGamePicks, setRightGamePicks] = useState<GamePick[]>([])
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   const { series } = useSeries()
@@ -777,19 +1087,51 @@ export function Compare() {
     })
   }, [])
 
+  useEffect(() => {
+    supabase
+      .from('games')
+      .select('*')
+      .order('tip_off_at', { ascending: true })
+      .order('game_number', { ascending: true })
+      .then(({ data }) => {
+        if (data) setGames(data as Game[])
+      })
+  }, [])
+
   async function fetchPicks(id: string): Promise<SeriesPick[]> {
     const { data } = await supabase.from('series_picks').select('*').eq('participant_id', id)
     return (data as SeriesPick[]) ?? []
   }
 
+  async function fetchGamePicks(id: string): Promise<GamePick[]> {
+    const { data } = await supabase.from('game_picks').select('*').eq('participant_id', id)
+    return (data as GamePick[]) ?? []
+  }
+
   async function handleLeft(id: string) {
     setLeftId(id)
-    setLeftPicks(id ? await fetchPicks(id) : [])
+    if (!id) {
+      setLeftPicks([])
+      setLeftGamePicks([])
+      return
+    }
+
+    const [seriesData, gameData] = await Promise.all([fetchPicks(id), fetchGamePicks(id)])
+    setLeftPicks(seriesData)
+    setLeftGamePicks(gameData)
   }
 
   async function handleRight(id: string) {
     setRightId(id)
-    setRightPicks(id ? await fetchPicks(id) : [])
+    if (!id) {
+      setRightPicks([])
+      setRightGamePicks([])
+      return
+    }
+
+    const [seriesData, gameData] = await Promise.all([fetchPicks(id), fetchGamePicks(id)])
+    setRightPicks(seriesData)
+    setRightGamePicks(gameData)
   }
 
   const handleHover = useCallback(
@@ -868,12 +1210,23 @@ export function Compare() {
           <SummaryCard
             p1={p1} p2={p2}
             picks1={leftPicks} picks2={rightPicks}
+            gamePicks1={leftGamePicks} gamePicks2={rightGamePicks}
+            games={games}
             series={series}
             pts1={pts1} pts2={pts2}
           />
 
           {/* Legend */}
           <CompareLegend />
+
+          <GameComparisonBoard
+            games={games}
+            series={series}
+            picks1={leftGamePicks}
+            picks2={rightGamePicks}
+            p1={p1}
+            p2={p2}
+          />
 
           {/* Brackets — side by side on desktop, stacked on mobile */}
           <div

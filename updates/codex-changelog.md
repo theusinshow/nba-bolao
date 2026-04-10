@@ -1,5 +1,116 @@
 # Codex Changelog
 
+## 2026-04-10 - Faixa de resultados da última noite adicionada na Home
+
+### Objetivo
+- Deixar a Home mais viva e com sensação de acompanhamento diário, exibindo um resumo horizontal dos placares mais recentes.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+
+#### Novo ticker horizontal na Home — `Home.tsx`
+- Foi adicionada uma faixa `Resultados da última noite` logo abaixo do painel principal.
+- O bloco usa cards compactos em movimento contínuo horizontal para destacar:
+  - confronto;
+  - placar final;
+  - fase da competição;
+  - um contexto curto do jogo.
+
+#### Integração com o layout atual
+- O novo bloco foi encaixado sem substituir os cards principais já existentes da Home.
+- A faixa conversa com o visual do restante da página, usando o mesmo sistema de bordas, tons dourados e superfícies do produto.
+
+#### Dados atuais
+- Nesta rodada, os resultados exibidos continuam simulados e servem como placeholder visual de produto.
+- A estrutura já foi deixada pronta para no futuro trocar a fonte estática por dados reais vindos de API.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+## 2026-04-10 - Botão Vai na fé adicionado para os jogos do dia
+
+### Objetivo
+- Dar um atalho rápido para usuários mais casuais preencherem no aleatório os jogos abertos de um dia inteiro, sem desmontar o fluxo manual da aba `Jogos`.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+
+#### Novo bloco diário de auto-palpites — `Games.tsx`
+- A aba `Jogos` ganhou um card `Vai na fé` acima da lista de séries.
+- Esse bloco agrupa automaticamente os jogos ainda abertos por dia e exibe:
+  - quantos jogos do dia ainda estão sem palpite;
+  - quantos já tinham sido preenchidos;
+  - um CTA para abrir o fluxo aleatório daquele dia.
+
+#### Fluxo com prévia e confirmação
+- O botão abre um modal dedicado com:
+  - prévia dos vencedores sorteados jogo a jogo;
+  - opção de gerar outra prévia;
+  - confirmação explícita antes de salvar.
+
+#### Proteção contra sobrescrita sem querer
+- Quando o dia já possui jogos com palpite salvo, o modal oferece dois modos:
+  - `Preencher só faltantes`;
+  - `Sobrescrever o dia inteiro`.
+- O modo padrão preserva palpites já salvos e só completa o que estiver faltando.
+
+#### Respeito ao lock e ao encerramento da série
+- O agrupamento diário do `Vai na fé` ignora:
+  - jogos já iniciados;
+  - jogos finalizados;
+  - jogos que não deveriam mais existir porque a série já terminou antes.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+## 2026-04-10 - Comparação jogo a jogo adicionada na aba Comparar
+
+### Objetivo
+- Expandir a aba `Comparar` para além do bracket por séries e permitir confronto direto também nos palpites jogo a jogo.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Compare.tsx`
+
+### Mudanças feitas
+
+#### Novo carregamento de palpites de jogos — `Compare.tsx`
+- A página passou a buscar também os registros de `game_picks` para cada participante selecionado.
+- O carregamento agora monta o duelo completo com:
+  - `series_picks`;
+  - `game_picks`;
+  - jogos cadastrados em `games`.
+
+#### Resumo ampliado da comparação
+- O `SummaryCard` passou a exibir duas camadas de resumo:
+  - estatísticas de concordância por série;
+  - estatísticas de concordância jogo a jogo.
+- Agora a comparação mostra, para jogos:
+  - quantos palpites são iguais;
+  - quantos divergem;
+  - quantos só um dos participantes preencheu.
+
+#### Nova seção detalhada por série
+- Foi adicionada uma seção `Comparação jogo a jogo` abaixo da legenda principal.
+- Os jogos são agrupados por série e exibem:
+  - confronto da série;
+  - rodada correspondente;
+  - lista dos jogos cadastrados;
+  - palpite de cada participante lado a lado;
+  - diferenciação visual para concordância, divergência e ausência parcial de palpite.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Organização final do changelog para revisão externa
 
 ### Objetivo
