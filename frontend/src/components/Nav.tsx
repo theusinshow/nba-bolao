@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, X } from 'lucide-react'
+import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X } from 'lucide-react'
 import type { AuthState } from '../hooks/useAuth'
 
 interface Props {
@@ -139,6 +139,25 @@ export function Nav({ auth, onSignOut }: Props) {
               >
                 <ArrowLeftRight size={16} />
                 <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Comparar brackets</span>
+              </NavLink>
+
+              <NavLink
+                to="/simulacao"
+                onClick={() => setMenuOpen(false)}
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 12px',
+                  borderRadius: 12,
+                  textDecoration: 'none',
+                  color: isActive ? 'var(--nba-east)' : 'var(--nba-text)',
+                  background: isActive ? 'rgba(74,144,217,0.12)' : 'rgba(12,12,18,0.34)',
+                  border: `1px solid ${isActive ? 'rgba(74,144,217,0.22)' : 'rgba(200,150,60,0.08)'}`,
+                })}
+              >
+                <TestTube2 size={16} />
+                <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Simulação</span>
               </NavLink>
 
               <button

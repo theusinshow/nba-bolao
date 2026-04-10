@@ -1,5 +1,78 @@
 # Codex Changelog
 
+## 2026-04-10 - Simulação compartilhada de rodada fictícia via Supabase
+
+### Objetivo
+- Criar um modo de simulação compartilhada, isolado do bolão real, para permitir que vários amigos palpitem o mesmo cenário fictício de playoffs e que um admin publique os resultados depois.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/App.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/SimulationLab.tsx`
+- `frontend/src/utils/simulation.ts`
+- `supabase/shared-simulation.sql`
+
+### Mudanças feitas
+
+#### Nova funcionalidade — rota `/simulacao` no frontend
+- Foi adicionada uma nova rota protegida em `App.tsx` para expor a área de simulação compartilhada sem misturar com Home, Bracket, Jogos, Ranking e Compare do fluxo principal.
+
+#### Nova funcionalidade — entrada de navegação para a simulação
+- O menu rápido em `Nav.tsx` ganhou um item `Simulação`, permitindo que usuários autorizados entrem no ambiente de testes compartilhado sem precisar digitar rota manualmente.
+
+#### Nova funcionalidade — tela `SimulationLab.tsx`
+- Foi criada a página `SimulationLab.tsx` para operar a rodada fictícia compartilhada.
+- A tela:
+  - carrega a simulação ativa no Supabase;
+  - mostra status da rodada fictícia (`aberta` ou `encerrada`);
+  - exibe progresso de palpites por participante;
+  - permite palpites de séries da 1ª rodada;
+  - permite palpites jogo a jogo da mesma rodada;
+  - bloqueia novos palpites depois que os resultados fictícios são publicados;
+  - exibe ranking e relatório de pontuação após a revelação dos resultados.
+
+#### Nova funcionalidade — controle administrativo da rodada fictícia
+- Usuários admin agora podem:
+  - criar a rodada fictícia inicial;
+  - resetar a rodada para um novo ciclo de testes;
+  - publicar resultados fictícios para todos ao mesmo tempo.
+- O reset apaga apenas os palpites da simulação e recria o estado do cenário fictício, sem tocar em tabelas reais do bolão.
+
+#### Nova funcionalidade — utilitário `simulation.ts`
+- Foi criado `frontend/src/utils/simulation.ts` para centralizar:
+  - geração do cenário fictício inicial;
+  - definição das séries e jogos da 1ª rodada da simulação;
+  - publicação aleatória de resultados fictícios;
+  - cálculo do ranking da simulação usando o mesmo motor de ranking do app real.
+- O cálculo do ranking continua reaproveitando `buildRankingState`, preservando a mesma regra de pontuação e o mesmo formato de breakdown já usado no produto.
+
+#### Nova infraestrutura — SQL `supabase/shared-simulation.sql`
+- Foi criado um arquivo SQL dedicado para provisionar a simulação compartilhada no Supabase.
+- O script adiciona:
+  - função `current_participant_id()`;
+  - função `is_current_participant_admin()`;
+  - tabela `simulation_runs`;
+  - tabela `simulation_series_picks`;
+  - tabela `simulation_game_picks`;
+  - policies RLS para leitura autenticada e escrita limitada ao próprio participante;
+  - bloqueio de escrita quando a simulação já foi publicada;
+  - permissão administrativa para criar, resetar e publicar a rodada.
+
+#### Decisão de arquitetura — isolamento total do bolão real
+- A abordagem anterior de simulação local em `localStorage` foi substituída por uma simulação compartilhada no Supabase.
+- A implementação final não reutiliza `series`, `games`, `series_picks` ou `game_picks` reais.
+- Toda a rodada fictícia passa a existir em tabelas próprias, reduzindo risco de contaminação do bolão oficial.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+### Pendências
+- O SQL em `supabase/shared-simulation.sql` ainda precisa ser executado manualmente no SQL Editor do Supabase para que a funcionalidade compartilhada fique operacional.
+- A publicação de resultados fictícios hoje gera vencedores e placares de forma aleatória; se você quiser cenários controlados, isso pode virar uma segunda rodada.
+- A simulação compartilhada atual cobre a 1ª rodada como ambiente de teste; rounds seguintes seguem presentes no bracket apenas como estrutura visual.
+
 ## 2026-04-10 - Auditoria completa e correção de 17 bugs (Claude Code)
 
 ### Objetivo
