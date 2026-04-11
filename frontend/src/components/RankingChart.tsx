@@ -26,6 +26,36 @@ interface ScoreEvent {
 
 const PLAYER_COLORS = ['#4a90d9', '#ff6b6b', '#f4b942', '#2ecc71', '#ff7a18', '#5ac8d8', '#b86cf2', '#d4c23a', '#7f8db8']
 
+function buildUniqueChartLabels(names: string[]) {
+  const firstNameCounts = new Map<string, number>()
+  for (const name of names) {
+    const firstName = name.split(' ')[0] || name
+    firstNameCounts.set(firstName, (firstNameCounts.get(firstName) ?? 0) + 1)
+  }
+
+  const usedLabels = new Set<string>()
+
+  return names.map((name) => {
+    const parts = name.split(' ').filter(Boolean)
+    const firstName = parts[0] || name
+
+    if ((firstNameCounts.get(firstName) ?? 0) === 1) {
+      usedLabels.add(firstName)
+      return firstName
+    }
+
+    let label = parts.length > 1 ? `${firstName} ${parts[parts.length - 1][0]}.` : firstName
+    let suffix = 2
+    while (usedLabels.has(label)) {
+      label = `${firstName} ${suffix}`
+      suffix += 1
+    }
+
+    usedLabels.add(label)
+    return label
+  })
+}
+
 function formatDateLabel(dateValue: string) {
   return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(new Date(dateValue))
 }
@@ -180,8 +210,13 @@ export function RankingChart({ ranking, breakdowns }: Props) {
     [isMobile, ranking]
   )
 
+  const participantLabels = useMemo(
+    () => buildUniqueChartLabels(topParticipants.map((participant) => participant.participant_name)),
+    [topParticipants]
+  )
+
   const participantEvents = useMemo(() => {
-    return topParticipants.map((participant) => {
+    return topParticipants.map((participant, index) => {
       const breakdown = breakdowns[participant.participant_id]
       const events: ScoreEvent[] = []
 
@@ -199,11 +234,11 @@ export function RankingChart({ ranking, breakdowns }: Props) {
 
       return {
         id: participant.participant_id,
-        name: participant.participant_name.split(' ')[0],
+        name: participantLabels[index],
         events,
       }
     })
-  }, [breakdowns, topParticipants])
+  }, [breakdowns, participantLabels, topParticipants])
 
   const buckets = useMemo(() => {
     const keys = new Set<string>()
