@@ -1,5 +1,84 @@
 # Codex Changelog
 
+## 2026-04-10 - Vai na fé deixa de confirmar sucesso em caso de falha parcial
+
+### Objetivo
+- Corrigir o fluxo do `Vai na fé` para não exibir sucesso quando algum palpite do lote falhar no meio da operação.
+
+### Arquivos alterados
+- `frontend/src/pages/Games.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- `savePick` passou a retornar sucesso/falha explicitamente em vez de apenas exibir toast e encerrar silenciosamente.
+- O fluxo manual continua mostrando toast de sucesso individual quando o usuário salva um único palpite.
+- O fluxo automático do `Vai na fé` deixou de disparar toast de sucesso por jogo, evitando ruído visual durante salvamento em lote.
+- `confirmAutoPick` agora verifica o retorno de cada salvamento:
+  - se todos derem certo, fecha o modal e mostra sucesso;
+  - se algum falhar, interrompe a sequência, mantém o contexto aberto e exibe erro informando que o lote não foi concluído.
+- As tipagens internas de `Games.tsx` foram ajustadas para refletir o novo retorno booleano do salvamento.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
+## 2026-04-10 - Backup operacional implementado para contingencia do bolao
+
+### Objetivo
+- Garantir que o bolao continue operavel mesmo se o app sair do ar, gerando snapshots exportaveis com palpites, ranking e um resumo legivel para operacao manual.
+
+### Arquivos alterados
+- `.gitignore`
+- `backend/package.json`
+- `backend/src/backup/exportOperationalSnapshot.ts`
+- `backend/src/scripts/backupOperationalSnapshot.ts`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+
+#### Novo exportador operacional no backend
+- Foi criado `backend/src/backup/exportOperationalSnapshot.ts` para montar um snapshot completo diretamente do Supabase usando o schema real atual.
+- O exportador busca:
+  - participantes;
+  - times;
+  - series;
+  - palpites de series;
+  - jogos;
+  - palpites jogo a jogo.
+- O ranking congelado do momento e recalculado no proprio script usando as mesmas regras de pontuacao do backend, evitando depender de dados volateis da interface.
+
+#### Arquivos de contingencia gerados automaticamente
+- Cada execucao cria uma pasta propria dentro de `backups/` com timestamp.
+- Dentro dela o script gera:
+  - `palpites-series-YYYY-MM-DD.csv`
+  - `palpites-jogos-YYYY-MM-DD.csv`
+  - `ranking-YYYY-MM-DD.csv`
+  - `resumo-rodada-YYYY-MM-DD.md`
+- Os CSVs foram pensados para conferencia tecnica e uso em planilha.
+- O Markdown foi pensado para leitura humana e compartilhamento rapido no grupo em caso de contingencia.
+
+#### Resumo legivel para tocar o bolao manualmente
+- O arquivo `resumo-rodada-*.md` agora inclui:
+  - horario de geracao;
+  - contagem de participantes, series, jogos e palpites;
+  - ranking consolidado;
+  - series ja concluidas;
+  - proximos jogos ainda abertos;
+  - orientacoes objetivas de como continuar o bolao manualmente usando os arquivos exportados.
+
+#### Novo comando operacional
+- O backend ganhou o script `npm run backup:operational`.
+- Esse comando:
+  - faz o build do backend;
+  - executa o exportador;
+  - informa no terminal a pasta gerada e os caminhos dos quatro arquivos.
+
+#### Higiene do repositorio
+- A pasta `backups/` foi adicionada ao `.gitignore` para evitar commit acidental de snapshots operacionais e dumps sensiveis.
+
+### Validações
+- Pendente nesta rodada: executar `npm run backup:operational` com acesso real ao Supabase para validar a geracao dos arquivos ponta a ponta.
+
 ## 2026-04-10 - Home com pódio mais visível e seleção de times respeitando identidade visual
 
 ### Objetivo

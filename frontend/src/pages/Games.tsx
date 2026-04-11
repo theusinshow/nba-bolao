@@ -979,7 +979,7 @@ function CenterPanel({ game, locked }: { game: GameWithTeams; locked: boolean })
 interface GameCardProps {
   game: GameWithTeams
   pick: GamePick | undefined
-  onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<void>
+  onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<boolean>
   wasAutoPicked: boolean
 }
 
@@ -1592,7 +1592,7 @@ export function Games({ participantId }: Props) {
     if (data) setPicks(data as GamePick[])
   }
 
-  async function savePick(gameId: string, winnerId: string, source: SavePickSource = 'manual') {
+  async function savePick(gameId: string, winnerId: string, source: SavePickSource = 'manual'): Promise<boolean> {
     if (isMock) {
       const fake: GamePick = {
         id: `mock-pick-${gameId}`,
@@ -1614,13 +1614,15 @@ export function Games({ participantId }: Props) {
         persistAutoPickIds(participantId, next)
         return next
       })
-      addToast('Palpite salvo! (simulação)', 'success')
-      return
+      if (source === 'manual') {
+        addToast('Palpite salvo! (simulação)', 'success')
+      }
+      return true
     }
 
     if (!participantId) {
       addToast('Erro: participante não identificado', 'error')
-      return
+      return false
     }
 
     try {
@@ -1635,7 +1637,7 @@ export function Games({ participantId }: Props) {
           .single()
         if (error) {
           addToast(`Erro ao salvar: ${error.message}`, 'error')
-          return
+          return false
         }
         if (data) setPicks((prev) => prev.map((p) => p.id === existing.id ? data as GamePick : p))
       } else {
@@ -1646,7 +1648,7 @@ export function Games({ participantId }: Props) {
           .single()
         if (error) {
           addToast(`Erro ao salvar: ${error.message}`, 'error')
-          return
+          return false
         }
         if (data) setPicks((prev) => [...prev, data as GamePick])
       }
@@ -1659,10 +1661,14 @@ export function Games({ participantId }: Props) {
         return next
       })
 
-      addToast('Palpite salvo!', 'success')
+      if (source === 'manual') {
+        addToast('Palpite salvo!', 'success')
+      }
+      return true
     } catch (err) {
       console.error('[savePick] exceção inesperada:', err)
       addToast(`Erro inesperado: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      return false
     }
   }
 
@@ -1689,7 +1695,11 @@ export function Games({ participantId }: Props) {
     setAutoPickSaving(true)
     try {
       for (const item of autoPickPreview) {
-        await savePick(item.gameId, item.winnerId, 'auto')
+        const saved = await savePick(item.gameId, item.winnerId, 'auto')
+        if (!saved) {
+          addToast('Vai na fé interrompido: alguns palpites não foram salvos.', 'error')
+          return
+        }
       }
       addToast('Vai na fé aplicado com sucesso!', 'success')
       setAutoPickGroup(null)
@@ -1828,7 +1838,7 @@ function SeriesCard({
   picks: GamePick[]
   expanded: boolean
   onToggle: () => void
-  onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<void>
+  onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<boolean>
   autoPickGameIds: string[]
 }) {
   const completionPct = group.effectiveGamesCount > 0 ? Math.round((group.pickedGames / group.effectiveGamesCount) * 100) : 0
