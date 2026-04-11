@@ -38,6 +38,10 @@
 ### Validações
 - `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
 
+### Ajuste adicional da mesma rodada
+- `backend/src/lib/supabase.ts` passou a importar `dotenv/config` no ponto central do client.
+- Isso garante que scripts operacionais executados fora do `index.ts` também carreguem `SUPABASE_URL` e `SUPABASE_SERVICE_KEY` corretamente.
+
 ## 2026-04-11 - Home fica mais clara e mais útil no modo fictício atual
 
 ### Objetivo
