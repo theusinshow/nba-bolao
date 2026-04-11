@@ -1,5 +1,110 @@
 # Codex Changelog
 
+## 2026-04-11 - Gráfico do ranking vira uma corrida de pontuação em linhas
+
+### Objetivo
+- Aproximar o gráfico do ranking de uma leitura estilo “corrida”, com linhas por participante em vez de barras empilhadas por fase.
+
+### Arquivos alterados
+- `frontend/src/components/RankingChart.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O card do ranking deixou de usar o gráfico de barras empilhadas e passou a renderizar uma visualização em linhas.
+- Cada participante agora aparece como uma trilha própria, com cor dedicada e progressão cumulativa da pontuação ao longo dos checkpoints de rodada.
+- A legenda foi reorganizada para destacar os participantes, em vez de destacar apenas as fases do playoff.
+- O eixo horizontal passou a trabalhar com checkpoints compactos como `R1-1`, `SF-3`, `CF-S`, `FIN-S`, aproximando a sensação de progresso contínuo da referência visual enviada.
+- O gráfico ganhou rolagem horizontal quando necessário, para preservar leitura mesmo com muitos pontos no eixo X.
+- O tooltip foi redesenhado para comparar rapidamente a posição de todos os participantes em cada checkpoint.
+- O título do card na aba `Ranking` foi ajustado para `Corrida de Pontuação`, alinhando melhor a expectativa visual com o novo gráfico.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
+## 2026-04-11 - Relatório do ranking ganha filtros por rodada e conferência
+
+### Objetivo
+- Encurtar o relatório detalhado do ranking e permitir que o usuário foque rapidamente em um pedaço específico do bracket.
+
+### Arquivos alterados
+- `frontend/src/components/ParticipantScoreReport.tsx`
+- `frontend/src/types/index.ts`
+- `frontend/src/utils/ranking.ts`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O relatório do participante passou a ter uma organização em duas camadas:
+  - visão principal `Tudo`, `Por rodada` e `Por conferência`;
+  - filtros específicos dependendo da visão escolhida.
+- No modo `Por rodada`, a interface oferece chips para:
+  - `R1`;
+  - `R2`;
+  - `CF`;
+  - `Finals`.
+- No modo `Por conferência`, o relatório pode ser isolado em:
+  - `Leste`;
+  - `Oeste`;
+  - `Finals`.
+- Os blocos de `Séries` e `Jogos` passaram a obedecer ao mesmo recorte ativo, evitando que o usuário filtre uma parte da tela e continue vendo outra inteira.
+- O agrupamento colapsável dos jogos por série foi preservado, mas agora trabalha apenas com os itens do recorte atual.
+- O breakdown interno passou a carregar também a informação de conferência, para que o filtro não precise inferir esse dado na UI.
+- Quando um recorte não possui itens, o relatório mostra um estado vazio específico em vez de deixar a área parecer incompleta.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
+## 2026-04-11 - Card do Vai na fé ganha ajuda contextual com ícone de informação
+
+### Objetivo
+- Explicar rapidamente para usuários novos o que faz o botão `Vai na fé` quando houver palpites abertos no dia.
+
+### Arquivos alterados
+- `frontend/src/pages/Games.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O card diário do `Vai na fé` agora exibe um botão circular amarelo com ícone de informação ao lado do título.
+- Ao tocar/clicar nesse ícone, a interface abre uma caixa curta explicando:
+  - que o recurso gera palpites aleatórios;
+  - que ele considera apenas os jogos ainda abertos naquele dia;
+  - que o usuário ainda pode revisar antes de confirmar.
+- A explicação foi colocada dentro do próprio card, mantendo o fluxo autoexplicativo sem levar o usuário para outro modal.
+
+### Validações
+- Pendente nesta rodada: rodar `frontend` build após a alteração visual.
+
+## 2026-04-11 - Aba Comparar passa a respeitar o lock antes de revelar palpites
+
+### Objetivo
+- Impedir que a aba `Comparar` funcione como atalho para copiar palpites antes do fechamento de jogos e séries.
+
+### Arquivos alterados
+- `frontend/src/pages/Compare.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A página passou a calcular explicitamente quais jogos já podem ser comparados:
+  - jogos `played`;
+  - jogos cujo `tip_off_at` já passou.
+- A mesma lógica agora define quais séries podem aparecer no duelo:
+  - séries já concluídas;
+  - séries que já possuem pelo menos um jogo travado ou encerrado.
+- Os palpites ainda em janela aberta deixam de ser enviados para todos os pontos de comparação da tela:
+  - resumo superior;
+  - comparação jogo a jogo;
+  - bracket lado a lado;
+  - tooltip de hover.
+- Com isso, a interface para de expor concordâncias, divergências, estrelas de palpite e detalhes de série antes da hora.
+- A seção ganhou uma mensagem curta deixando explícito que a comparação só revela palpites depois do lock.
+- O texto da área `Comparação jogo a jogo` também foi ajustado para refletir essa regra de produto.
+
+### Validações
+- `frontend`: `npm run build` executado após a alteração.
+- Observação: a primeira tentativa falhou por restrição de execução do ambiente (`spawn EPERM` no `esbuild`), então a validação foi refeita com o comando aprovado do frontend.
+
 ## 2026-04-11 - Comparação jogo a jogo fica mais compacta e mais clara
 
 ### Objetivo

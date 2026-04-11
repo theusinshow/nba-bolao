@@ -274,6 +274,22 @@ function getPickedTeamLabel(winnerId: string | undefined, game: Game, seriesRef?
   return winnerId
 }
 
+function isPastDate(dateValue: string | null | undefined): boolean {
+  if (!dateValue) return false
+  return new Date(dateValue).getTime() <= Date.now()
+}
+
+function isGameComparisonVisible(game: Game): boolean {
+  return game.played || isPastDate(game.tip_off_at)
+}
+
+function isSeriesComparisonVisible(series: Series, allGames: Game[]): boolean {
+  if (series.is_complete) return true
+  return allGames.some(
+    (game) => game.series_id === series.id && isGameComparisonVisible(game)
+  )
+}
+
 // ─── Styled select ────────────────────────────────────────────────────────────
 
 function StyledSelect({
@@ -828,7 +844,7 @@ function GameComparisonBoard({
             Comparação jogo a jogo
           </div>
           <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
-            Veja rapidamente em quais partidas cada um foi para um lado diferente.
+            Só aparecem aqui os jogos que já fecharam para novos palpites.
           </p>
         </div>
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
@@ -1358,6 +1374,18 @@ export function Compare() {
 
   const bothSelected  = !!leftId && !!rightId
   const sameSelected  = leftId && rightId && leftId === rightId
+  const visibleSeriesIds = new Set(
+    series.filter((item) => isSeriesComparisonVisible(item, games)).map((item) => item.id)
+  )
+  const visibleGameIds = new Set(
+    games.filter((game) => isGameComparisonVisible(game)).map((game) => game.id)
+  )
+  const visibleSeries = series.filter((item) => visibleSeriesIds.has(item.id))
+  const visibleGames = games.filter((game) => visibleGameIds.has(game.id))
+  const visibleLeftPicks = leftPicks.filter((pick) => visibleSeriesIds.has(pick.series_id))
+  const visibleRightPicks = rightPicks.filter((pick) => visibleSeriesIds.has(pick.series_id))
+  const visibleLeftGamePicks = leftGamePicks.filter((pick) => visibleGameIds.has(pick.game_id))
+  const visibleRightGamePicks = rightGamePicks.filter((pick) => visibleGameIds.has(pick.game_id))
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1400 }}>
@@ -1414,13 +1442,31 @@ export function Compare() {
       {/* Main comparison */}
       {bothSelected && !sameSelected && p1 && p2 && (
         <>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 14px',
+              background: 'rgba(200,150,60,0.08)',
+              border: '1px solid rgba(200,150,60,0.2)',
+              borderRadius: 8,
+              marginBottom: 16,
+              color: 'var(--nba-text)',
+              fontSize: '0.82rem',
+            }}
+          >
+            <ShieldCheck size={16} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
+            A comparação só revela palpites de jogos e séries que já fecharam para novos picks.
+          </div>
+
           {/* Summary card */}
           <SummaryCard
             p1={p1} p2={p2}
-            picks1={leftPicks} picks2={rightPicks}
-            gamePicks1={leftGamePicks} gamePicks2={rightGamePicks}
-            games={games}
-            series={series}
+            picks1={visibleLeftPicks} picks2={visibleRightPicks}
+            gamePicks1={visibleLeftGamePicks} gamePicks2={visibleRightGamePicks}
+            games={visibleGames}
+            series={visibleSeries}
             pts1={pts1} pts2={pts2}
           />
 
@@ -1428,10 +1474,10 @@ export function Compare() {
           <CompareLegend />
 
           <GameComparisonBoard
-            games={games}
-            series={series}
-            picks1={leftGamePicks}
-            picks2={rightGamePicks}
+            games={visibleGames}
+            series={visibleSeries}
+            picks1={visibleLeftGamePicks}
+            picks2={visibleRightGamePicks}
             p1={p1}
             p2={p2}
           />
@@ -1454,9 +1500,9 @@ export function Compare() {
                 isWinning={pts1 > pts2}
               />
               <BracketSVG
-                series={series}
-                picks={leftPicks}
-                comparePicks={rightPicks}
+                series={visibleSeries}
+                picks={visibleLeftPicks}
+                comparePicks={visibleRightPicks}
                 onSeriesHover={handleHover}
               />
             </div>
@@ -1470,9 +1516,9 @@ export function Compare() {
                 isWinning={pts2 > pts1}
               />
               <BracketSVG
-                series={series}
-                picks={rightPicks}
-                comparePicks={leftPicks}
+                series={visibleSeries}
+                picks={visibleRightPicks}
+                comparePicks={visibleLeftPicks}
                 onSeriesHover={handleHover}
               />
             </div>
@@ -1484,8 +1530,8 @@ export function Compare() {
       {tooltip && p1 && p2 && (
         <SeriesHoverTooltip
           tooltip={tooltip}
-          picks1={leftPicks}
-          picks2={rightPicks}
+          picks1={visibleLeftPicks}
+          picks2={visibleRightPicks}
           p1Name={p1.name}
           p2Name={p2.name}
         />

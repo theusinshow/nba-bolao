@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BarChart3, CheckCircle2, ChevronDown, ChevronRight, CircleOff, Flame, Layers3, Trophy, XCircle } from 'lucide-react'
-import type { ParticipantScoreBreakdown, RoundNumber } from '../types'
+import type { GameScoreBreakdownItem, ParticipantScoreBreakdown, RoundNumber, SeriesScoreBreakdownItem } from '../types'
 
 interface Props {
   breakdown?: ParticipantScoreBreakdown
@@ -14,6 +14,12 @@ const ROUND_LABEL: Record<RoundNumber, string> = {
   4: 'Finals',
 }
 
+const CONFERENCE_LABEL = {
+  East: 'Leste',
+  West: 'Oeste',
+  Finals: 'Finals',
+} as const
+
 const STATUS_META = {
   cravada: { label: 'Cravada', color: 'var(--nba-gold)', bg: 'rgba(200,150,60,0.1)', icon: <Flame size={13} /> },
   winner: { label: 'Vencedor', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <CheckCircle2 size={13} /> },
@@ -22,15 +28,19 @@ const STATUS_META = {
   correct: { label: 'Acertou', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <CheckCircle2 size={13} /> },
 } as const
 
+type ReportViewMode = 'all' | 'round' | 'conference'
+type ReportConference = keyof typeof CONFERENCE_LABEL
+
 interface GameBreakdownGroup {
   series_id: string
   round: RoundNumber
+  conference: ReportConference | null
   matchup_label: string
   total_points: number
   correct_games: number
   played_games: number
   total_games: number
-  items: ParticipantScoreBreakdown['game_breakdown']
+  items: GameScoreBreakdownItem[]
 }
 
 function SummaryCard({ label, value, tone }: { label: string; value: string | number; tone: string }) {
@@ -62,8 +72,39 @@ function SectionHeader({ title, icon }: { title: string; icon: ReactNode }) {
   )
 }
 
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        borderRadius: 999,
+        padding: '7px 11px',
+        border: `1px solid ${active ? 'rgba(200,150,60,0.35)' : 'rgba(200,150,60,0.12)'}`,
+        background: active ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+        color: active ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+        fontSize: '0.74rem',
+        fontWeight: 700,
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
 export function ParticipantScoreReport({ breakdown, loading }: Props) {
   const [expandedSeriesIds, setExpandedSeriesIds] = useState<string[]>([])
+  const [viewMode, setViewMode] = useState<ReportViewMode>('all')
+  const [roundFilter, setRoundFilter] = useState<RoundNumber>(1)
+  const [conferenceFilter, setConferenceFilter] = useState<ReportConference>('East')
 
   if (loading) {
     return (
@@ -82,15 +123,54 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
   }
 
   const { participant, summary, series_breakdown, game_breakdown } = breakdown
+
+  const availableRounds = useMemo(
+    () => [...new Set([...series_breakdown.map((item) => item.round), ...game_breakdown.map((item) => item.round)])].sort((a, b) => a - b) as RoundNumber[],
+    [series_breakdown, game_breakdown]
+  )
+
+  const availableConferences = useMemo(
+    () =>
+      (Object.keys(CONFERENCE_LABEL) as ReportConference[]).filter((conference) =>
+        [...series_breakdown, ...game_breakdown].some((item) => item.conference === conference)
+      ),
+    [series_breakdown, game_breakdown]
+  )
+
+  useEffect(() => {
+    if (availableRounds.length > 0 && !availableRounds.includes(roundFilter)) {
+      setRoundFilter(availableRounds[0])
+    }
+  }, [availableRounds, roundFilter])
+
+  useEffect(() => {
+    if (availableConferences.length > 0 && !availableConferences.includes(conferenceFilter)) {
+      setConferenceFilter(availableConferences[0])
+    }
+  }, [availableConferences, conferenceFilter])
+
+  const filteredSeriesBreakdown = useMemo<SeriesScoreBreakdownItem[]>(() => {
+    if (viewMode === 'round') return series_breakdown.filter((item) => item.round === roundFilter)
+    if (viewMode === 'conference') return series_breakdown.filter((item) => item.conference === conferenceFilter)
+    return series_breakdown
+  }, [conferenceFilter, roundFilter, series_breakdown, viewMode])
+
+  const filteredGameBreakdown = useMemo<GameScoreBreakdownItem[]>(() => {
+    if (viewMode === 'round') return game_breakdown.filter((item) => item.round === roundFilter)
+    if (viewMode === 'conference') return game_breakdown.filter((item) => item.conference === conferenceFilter)
+    return game_breakdown
+  }, [conferenceFilter, game_breakdown, roundFilter, viewMode])
+
   const gameBreakdownGroups = useMemo<GameBreakdownGroup[]>(() => {
     const grouped = new Map<string, GameBreakdownGroup>()
 
-    for (const item of game_breakdown) {
+    for (const item of filteredGameBreakdown) {
       const current = grouped.get(item.series_id)
       if (!current) {
         grouped.set(item.series_id, {
           series_id: item.series_id,
           round: item.round,
+          conference: item.conference,
           matchup_label: item.matchup_label,
           total_points: item.points,
           correct_games: item.status === 'correct' ? 1 : 0,
@@ -117,7 +197,7 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
         if (left.round !== right.round) return left.round - right.round
         return left.matchup_label.localeCompare(right.matchup_label)
       })
-  }, [game_breakdown])
+  }, [filteredGameBreakdown])
 
   useEffect(() => {
     if (gameBreakdownGroups.length === 0) {
@@ -139,6 +219,13 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
         : [...current, seriesId]
     )
   }
+
+  const activeFilterLabel =
+    viewMode === 'round'
+      ? ROUND_LABEL[roundFilter]
+      : viewMode === 'conference'
+      ? CONFERENCE_LABEL[conferenceFilter]
+      : 'Tudo'
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -192,6 +279,56 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
             />
           ))}
         </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 14,
+            borderTop: '1px solid rgba(200,150,60,0.14)',
+            display: 'grid',
+            gap: 10,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Organizar relatório</div>
+              <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1rem', lineHeight: 1 }}>
+                {activeFilterLabel}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <FilterChip label="Tudo" active={viewMode === 'all'} onClick={() => setViewMode('all')} />
+              <FilterChip label="Por rodada" active={viewMode === 'round'} onClick={() => setViewMode('round')} />
+              <FilterChip label="Por conferência" active={viewMode === 'conference'} onClick={() => setViewMode('conference')} />
+            </div>
+          </div>
+
+          {viewMode === 'round' && availableRounds.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {availableRounds.map((round) => (
+                <FilterChip
+                  key={round}
+                  label={ROUND_LABEL[round]}
+                  active={roundFilter === round}
+                  onClick={() => setRoundFilter(round)}
+                />
+              ))}
+            </div>
+          )}
+
+          {viewMode === 'conference' && availableConferences.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {availableConferences.map((conference) => (
+                <FilterChip
+                  key={conference}
+                  label={CONFERENCE_LABEL[conference]}
+                  active={conferenceFilter === conference}
+                  onClick={() => setConferenceFilter(conference)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gap: 16 }} className="lg:grid-cols-2">
@@ -205,11 +342,11 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
         >
           <SectionHeader title="Séries" icon={<Trophy size={15} />} />
 
-          {series_breakdown.length === 0 ? (
-            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>Nenhum palpite de série registrado.</p>
+          {filteredSeriesBreakdown.length === 0 ? (
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>Nenhum palpite de série encontrado nesse recorte.</p>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
-              {series_breakdown.map((item) => {
+              {filteredSeriesBreakdown.map((item) => {
                 const status = STATUS_META[item.status]
                 return (
                   <div
@@ -281,7 +418,7 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
           <SectionHeader title="Jogos" icon={<Layers3 size={15} />} />
 
           {gameBreakdownGroups.length === 0 ? (
-            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>Nenhum palpite jogo a jogo registrado.</p>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem' }}>Nenhum palpite jogo a jogo encontrado nesse recorte.</p>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
               {gameBreakdownGroups.map((group) => {

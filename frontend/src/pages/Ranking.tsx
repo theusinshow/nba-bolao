@@ -390,9 +390,9 @@ export function Ranking({ participantId }: Props) {
                     marginBottom: 16,
                   }}
                 >
-                  Pontuação por Rodada
+                  Corrida de Pontuação
                 </h2>
-                <RankingChart ranking={ranking} />
+                <RankingChart ranking={ranking} breakdowns={breakdowns} />
               </div>
 
               {/* Table card */}

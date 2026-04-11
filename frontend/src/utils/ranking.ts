@@ -26,6 +26,11 @@ function getTeamLabel(teamId: string | null | undefined, teamsById: Record<strin
   return teamsById[teamId]?.abbreviation ?? teamId
 }
 
+function normalizeBreakdownConference(conference: string | null | undefined): 'East' | 'West' | 'Finals' | null {
+  if (conference === 'East' || conference === 'West' || conference === 'Finals') return conference
+  return null
+}
+
 function getMatchupLabel(series: Series, teamsById: Record<string, Team | undefined>): string {
   const home = getTeamLabel(series.home_team_id, teamsById) ?? '—'
   const away = getTeamLabel(series.away_team_id, teamsById) ?? '—'
@@ -117,6 +122,7 @@ export function buildRankingState({
           id: pick.id,
           series_id: pick.series_id,
           round: currentSeries.round,
+          conference: currentSeries.round === 4 ? 'Finals' : normalizeBreakdownConference(currentSeries.conference),
           position: currentSeries.position,
           matchup_label: getMatchupLabel(currentSeries, teamsById),
           picked_winner_id: pick.winner_id,
@@ -139,6 +145,7 @@ export function buildRankingState({
       .map((pick) => {
         const game = gameMap[pick.game_id]
         if (!game) return null
+        const currentSeries = seriesMap[game.series_id]
 
         const points = calculateGamePickPoints(
           { winnerId: pick.winner_id },
@@ -162,6 +169,7 @@ export function buildRankingState({
           game_id: pick.game_id,
           series_id: game.series_id,
           round: game.round!,
+          conference: game.round === 4 ? 'Finals' : normalizeBreakdownConference(currentSeries?.conference),
           game_number: game.game_number,
           matchup_label: `${getTeamLabel(game.home_team_id, teamsById) ?? '—'} vs ${getTeamLabel(game.away_team_id, teamsById) ?? '—'}`,
           picked_winner_id: pick.winner_id,

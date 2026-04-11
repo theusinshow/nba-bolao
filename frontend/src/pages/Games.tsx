@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Info } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useUIStore } from '../store/useUIStore'
@@ -438,6 +438,8 @@ function DailyAutoPickCard({
   groups: AutoPickDayGroup[]
   onOpen: (group: AutoPickDayGroup) => void
 }) {
+  const [showInfo, setShowInfo] = useState(false)
+
   if (groups.length === 0) return null
 
   return (
@@ -450,14 +452,54 @@ function DailyAutoPickCard({
         marginBottom: 18,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div>
-          <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 4 }}>
-            Vai na fé
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ position: 'relative', flex: '1 1 280px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 0 }}>
+              Vai na fé
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowInfo((current) => !current)}
+              aria-label="Explicar o botão Vai na fé"
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '999px',
+                border: '1px solid rgba(200,150,60,0.35)',
+                background: 'rgba(200,150,60,0.14)',
+                color: 'var(--nba-gold)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <Info size={12} />
+            </button>
           </div>
           <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
             Preencha no aleatório só os jogos do dia que ainda estiverem abertos.
           </p>
+
+          {showInfo && (
+            <div
+              style={{
+                marginTop: 10,
+                maxWidth: 420,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.96)',
+                border: '1px solid rgba(200,150,60,0.26)',
+                color: 'var(--nba-text)',
+                fontSize: '0.78rem',
+                lineHeight: 1.45,
+              }}
+            >
+              O <strong style={{ color: 'var(--nba-gold)' }}>Vai na fé</strong> gera palpites aleatórios para os jogos que ainda estão abertos naquele dia. Você pode usar como atalho para preencher rápido e revisar antes de confirmar.
+            </div>
+          )}
         </div>
         <span
           className="font-condensed"
