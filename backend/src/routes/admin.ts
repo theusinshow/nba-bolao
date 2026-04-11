@@ -5,8 +5,31 @@ import { recalculateAllScores } from '../scoring/engine'
 import { supabase } from '../lib/supabase'
 import { SERIES_SEED } from './seedData'
 import { removeParticipantCompletely } from '../admin/removeParticipant'
+import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
 
 const router = Router()
+
+interface AllowedEmailRow {
+  email: string
+}
+
+interface ParticipantRow {
+  id: string
+  user_id: string
+  name: string
+  email: string
+  is_admin: boolean | null
+}
+
+interface PickRow {
+  id: string
+  participant_id: string
+}
+
+interface AdminRequest extends Request {
+  adminUserId?: string
+  adminParticipantId?: string
+}
 
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
@@ -27,7 +50,7 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
   const { data: participant, error: participantError } = await supabase
     .from('participants')
-    .select('is_admin')
+    .select('id, is_admin')
     .eq('user_id', user.id)
     .single()
 
@@ -35,7 +58,107 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(403).json({ ok: false, error: 'Admin access required' })
   }
 
+  ;(req as AdminRequest).adminUserId = user.id
+  ;(req as AdminRequest).adminParticipantId = participant.id
   next()
+}
+
+function countDuplicateValues(values: string[]): number {
+  const counts = new Map<string, number>()
+
+  for (const value of values) {
+    const normalized = value.trim().toLocaleLowerCase('pt-BR')
+    if (!normalized) continue
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1)
+  }
+
+  return Array.from(counts.values()).filter((count) => count > 1).length
+}
+
+async function buildAdminOverview() {
+  const [
+    { data: participants, error: participantsError },
+    { data: allowedEmails, error: allowedEmailsError },
+    { data: seriesPicks, error: seriesPicksError },
+    { data: gamePicks, error: gamePicksError },
+    { data: simulationSeriesPicks, error: simulationSeriesPicksError },
+    { data: simulationGamePicks, error: simulationGamePicksError },
+    { data: series, error: seriesError },
+    { data: games, error: gamesError },
+  ] = await Promise.all([
+    supabase.from('participants').select('id, user_id, name, email, is_admin'),
+    supabase.from('allowed_emails').select('email'),
+    supabase.from('series_picks').select('id, participant_id'),
+    supabase.from('game_picks').select('id, participant_id'),
+    supabase.from('simulation_series_picks').select('id, participant_id'),
+    supabase.from('simulation_game_picks').select('id, participant_id'),
+    supabase.from('series').select('id, is_complete'),
+    supabase.from('games').select('id, played'),
+  ])
+
+  const fetchError =
+    participantsError ??
+    allowedEmailsError ??
+    seriesPicksError ??
+    gamePicksError ??
+    simulationSeriesPicksError ??
+    simulationGamePicksError ??
+    seriesError ??
+    gamesError
+
+  if (fetchError) {
+    throw new Error(fetchError.message)
+  }
+
+  const participantRows = (participants ?? []) as ParticipantRow[]
+  const allowedEmailRows = (allowedEmails ?? []) as AllowedEmailRow[]
+  const seriesPickRows = (seriesPicks ?? []) as PickRow[]
+  const gamePickRows = (gamePicks ?? []) as PickRow[]
+  const simulationSeriesPickRows = (simulationSeriesPicks ?? []) as PickRow[]
+  const simulationGamePickRows = (simulationGamePicks ?? []) as PickRow[]
+  const participantIds = new Set(participantRows.map((participant) => participant.id))
+  const participantEmails = new Set(participantRows.map((participant) => participant.email.toLocaleLowerCase('pt-BR')))
+  const allowedEmailSet = new Set(allowedEmailRows.map((row) => row.email.toLocaleLowerCase('pt-BR')))
+
+  const participantsWithoutAccess = participantRows.filter(
+    (participant) => !allowedEmailSet.has(participant.email.toLocaleLowerCase('pt-BR'))
+  )
+  const allowedWithoutParticipant = allowedEmailRows.filter(
+    (row) => !participantEmails.has(row.email.toLocaleLowerCase('pt-BR'))
+  )
+
+  return {
+    stats: {
+      participants: participantRows.length,
+      admins: participantRows.filter((participant) => participant.is_admin).length,
+      allowed_emails: allowedEmailRows.length,
+      series_picks: seriesPickRows.length,
+      game_picks: gamePickRows.length,
+      simulation_series_picks: simulationSeriesPickRows.length,
+      simulation_game_picks: simulationGamePickRows.length,
+      series_total: (series ?? []).length,
+      series_completed: ((series ?? []) as Array<{ is_complete: boolean }>).filter((item) => item.is_complete).length,
+      games_total: (games ?? []).length,
+      games_played: ((games ?? []) as Array<{ played: boolean }>).filter((item) => item.played).length,
+      mode: process.env.APP_MODE ?? process.env.BOLAO_MODE ?? 'ficticio',
+    },
+    inconsistencies: {
+      duplicate_names: countDuplicateValues(participantRows.map((participant) => participant.name)),
+      duplicate_emails: countDuplicateValues(participantRows.map((participant) => participant.email)),
+      participants_without_access: participantsWithoutAccess.length,
+      allowed_without_participant: allowedWithoutParticipant.length,
+      orphaned_series_picks: seriesPickRows.filter((pick) => !participantIds.has(pick.participant_id)).length,
+      orphaned_game_picks: gamePickRows.filter((pick) => !participantIds.has(pick.participant_id)).length,
+    },
+    details: {
+      participants_without_access: participantsWithoutAccess.map((participant) => ({
+        id: participant.id,
+        name: participant.name,
+        email: participant.email,
+      })),
+      allowed_without_participant: allowedWithoutParticipant.map((row) => row.email),
+    },
+  }
 }
 
 router.use(requireAdmin)
@@ -87,6 +210,142 @@ router.post('/seed', async (_req, res) => {
 // GET /admin/health
 router.get('/health', (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() })
+})
+
+// GET /admin/overview
+router.get('/overview', async (_req, res) => {
+  try {
+    const overview = await buildAdminOverview()
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      overview,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/overview] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// GET /admin/allowed-emails
+router.get('/allowed-emails', async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('allowed_emails')
+      .select('email')
+      .order('email', { ascending: true })
+
+    if (error) {
+      return res.status(500).json({ ok: false, error: error.message })
+    }
+
+    res.json({ ok: true, emails: (data ?? []) as AllowedEmailRow[] })
+  } catch (err: unknown) {
+    console.error('[admin/allowed-emails] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/backup — generate operational backup snapshot
+router.post('/backup', async (_req, res) => {
+  try {
+    const result = await exportOperationalSnapshot()
+    res.json({
+      ok: true,
+      message: 'Operational backup generated successfully',
+      result,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/backup] Backup failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/allowed-emails/add
+router.post('/allowed-emails/add', async (req, res) => {
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+    if (!email) {
+      return res.status(400).json({ ok: false, error: 'Email is required.' })
+    }
+
+    const { data, error } = await supabase
+      .from('allowed_emails')
+      .upsert({ email }, { onConflict: 'email' })
+      .select('email')
+      .single()
+
+    if (error) {
+      return res.status(500).json({ ok: false, error: error.message })
+    }
+
+    res.json({ ok: true, email: data.email, message: 'Email liberado com sucesso.' })
+  } catch (err: unknown) {
+    console.error('[admin/allowed-emails/add] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/allowed-emails/remove
+router.post('/allowed-emails/remove', async (req, res) => {
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+    if (!email) {
+      return res.status(400).json({ ok: false, error: 'Email is required.' })
+    }
+
+    const { data, error } = await supabase
+      .from('allowed_emails')
+      .delete()
+      .eq('email', email)
+      .select('email')
+
+    if (error) {
+      return res.status(500).json({ ok: false, error: error.message })
+    }
+
+    res.json({ ok: true, removed: data?.length ?? 0, message: 'Email removido da lista de acesso.' })
+  } catch (err: unknown) {
+    console.error('[admin/allowed-emails/remove] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/participants/set-admin
+router.post('/participants/set-admin', async (req, res) => {
+  try {
+    const participantId = typeof req.body?.participantId === 'string' ? req.body.participantId.trim() : ''
+    const isAdmin = typeof req.body?.isAdmin === 'boolean' ? req.body.isAdmin : null
+    const currentAdminParticipantId = (req as AdminRequest).adminParticipantId ?? ''
+
+    if (!participantId || isAdmin == null) {
+      return res.status(400).json({ ok: false, error: 'participantId and isAdmin are required.' })
+    }
+
+    if (!isAdmin && participantId === currentAdminParticipantId) {
+      return res.status(400).json({ ok: false, error: 'Você não pode remover seu próprio acesso de admin por esta rota.' })
+    }
+
+    const { data, error } = await supabase
+      .from('participants')
+      .update({ is_admin: isAdmin })
+      .eq('id', participantId)
+      .select('id, name, email, is_admin')
+      .single()
+
+    if (error || !data) {
+      return res.status(500).json({ ok: false, error: error?.message ?? 'Participant not found.' })
+    }
+
+    res.json({
+      ok: true,
+      participant: data,
+      message: isAdmin ? 'Participante promovido a admin.' : 'Privilégio de admin removido.',
+    })
+  } catch (err: unknown) {
+    console.error('[admin/participants/set-admin] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
 })
 
 // POST /admin/participants/remove — fully remove one participant and related data

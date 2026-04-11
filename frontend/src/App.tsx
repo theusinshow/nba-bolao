@@ -12,6 +12,7 @@ import { Ranking } from './pages/Ranking'
 import { Compare } from './pages/Compare'
 import { Games } from './pages/Games'
 import { SimulationLab } from './pages/SimulationLab'
+import { Admin } from './pages/Admin'
 
 export default function App() {
   const { auth, signInWithGoogle, signOut } = useAuth()
@@ -98,6 +99,14 @@ export default function App() {
           element={
             <ProtectedRoute auth={auth}>
               <SimulationLab participantId={participantId} isAdmin={isAdmin} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute auth={auth} requireAdmin>
+              <Admin participantId={participantId} />
             </ProtectedRoute>
           }
         />

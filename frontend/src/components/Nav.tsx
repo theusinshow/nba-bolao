@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X } from 'lucide-react'
+import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X, Shield } from 'lucide-react'
 import type { AuthState } from '../hooks/useAuth'
 
 interface Props {
@@ -19,6 +19,7 @@ export function Nav({ auth, onSignOut }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const name = auth.status === 'authorized' ? auth.user.user_metadata.full_name ?? '' : ''
   const avatar = auth.status === 'authorized' ? auth.user.user_metadata.avatar_url : null
+  const isAdmin = auth.status === 'authorized' ? auth.isAdmin : false
   const shortName = name.split(' ').filter(Boolean)[0] ?? 'Participante'
   const initials = name
     .split(' ')
@@ -159,6 +160,27 @@ export function Nav({ auth, onSignOut }: Props) {
                 <TestTube2 size={16} />
                 <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Simulação</span>
               </NavLink>
+
+              {isAdmin && (
+                <NavLink
+                  to="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '12px 12px',
+                    borderRadius: 12,
+                    textDecoration: 'none',
+                    color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
+                    background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+                    border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
+                  })}
+                >
+                  <Shield size={16} />
+                  <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Admin</span>
+                </NavLink>
+              )}
 
               <button
                 onClick={onSignOut}

@@ -1,5 +1,87 @@
 # Codex Changelog
 
+## 2026-04-11 - Aba Admin evolui para painel operacional completo
+
+### Objetivo
+- Transformar a primeira versão da aba Admin em um painel realmente útil para operação cotidiana do bolão, concentrando gestão de acesso, privilégios, sync e saúde do sistema.
+
+### Arquivos alterados
+- `backend/src/routes/admin.ts`
+- `frontend/src/pages/Admin.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O backend administrativo ganhou novos endpoints para:
+  - listar `allowed_emails`;
+  - adicionar email liberado;
+  - remover email liberado;
+  - promover e rebaixar admin;
+  - entregar um `overview` com métricas e inconsistências do bolão.
+- O `overview` passou a consolidar:
+  - total de participantes e admins;
+  - volume de `series_picks` e `game_picks`;
+  - contagem de séries e jogos resolvidos;
+  - modo operacional atual (`fictício` ou `real`, conforme env);
+  - nomes duplicados, emails duplicados, participantes sem acesso, emails sem participante e picks órfãos.
+- A aba `Admin` no frontend foi ampliada com:
+  - bloco de saúde do bolão;
+  - bloco de inconsistências com detalhes úteis;
+  - gestão visual de `allowed_emails`;
+  - promoção/rebaixamento de admins;
+  - botão visual de `Sync`;
+  - histórico local das últimas ações administrativas;
+  - manutenção da remoção completa de participante e das operações de backup/rescore.
+
+### Impacto esperado
+- A área administrativa deixa de ser só uma tela de remoção e vira um centro operacional real do produto.
+- Fica muito mais simples detectar problemas de consistência e agir sem depender de painel bruto do Supabase ou terminal para tudo.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
+## 2026-04-11 - Produto ganha aba Admin para gestão operacional do bolão
+
+### Objetivo
+- Tirar tarefas críticas do terminal e do painel bruto do Supabase, criando uma área administrativa visual para operar o bolão com mais segurança.
+
+### Arquivos alterados
+- `backend/src/routes/admin.ts`
+- `frontend/src/lib/adminApi.ts`
+- `frontend/src/components/ProtectedRoute.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Admin.tsx`
+- `frontend/src/App.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O backend ganhou a operação visual de backup:
+  - novo endpoint `POST /admin/backup`
+  - reaproveitando o exportador operacional já existente.
+- O frontend ganhou um client administrativo autenticado:
+  - envia o `Bearer token` da sessão atual para o backend;
+  - centraliza chamadas admin em `adminApi.ts`.
+- Foi criada a nova página `Admin`:
+  - lista participantes com nome, email, id e status de admin;
+  - destaca nomes duplicados;
+  - permite remover participantes de forma completa com confirmação;
+  - protege contra auto-remoção do próprio admin pela interface;
+  - oferece botões para `Recalcular ranking` e `Gerar backup operacional`;
+  - mostra health do backend e métricas rápidas do painel.
+- A navegação agora exibe o atalho `Admin` apenas para usuários com `isAdmin = true`.
+- A proteção de rota foi ampliada para suportar `requireAdmin`, impedindo acesso direto à URL por usuários comuns.
+
+### Impacto esperado
+- A administração do bolão fica bem mais prática para tarefas recorrentes.
+- Casos como participante duplicado deixam de depender de terminal ou exclusão manual incompleta no banco.
+- O produto começa a ganhar um painel operacional real, em vez de depender apenas de scripts.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
 ## 2026-04-11 - Remoção completa de participante vira rotina operacional do bolão
 
 ### Objetivo
