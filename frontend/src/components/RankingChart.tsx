@@ -17,23 +17,83 @@ interface Props {
   breakdowns: Record<string, ParticipantScoreBreakdown>
 }
 
-type ChartEventKind = 'game' | 'series'
+type GroupMode = 'daily' | '3days' | 'weekly'
 
-interface ChartEvent {
-  key: string
-  round: number
-  kind: ChartEventKind
-  order: number
-  label: string
+interface ScoreEvent {
+  date: string
+  points: number
 }
 
 const PLAYER_COLORS = ['#4a90d9', '#ff6b6b', '#f4b942', '#2ecc71', '#ff7a18', '#5ac8d8', '#b86cf2', '#d4c23a', '#7f8db8']
 
-function roundShortLabel(round: number): string {
-  if (round === 1) return 'R1'
-  if (round === 2) return 'SF'
-  if (round === 3) return 'CF'
-  return 'FIN'
+function formatDateLabel(dateValue: string) {
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(new Date(dateValue))
+}
+
+function startOfDay(date: Date) {
+  const next = new Date(date)
+  next.setHours(0, 0, 0, 0)
+  return next
+}
+
+function bucketDate(dateValue: string, mode: GroupMode) {
+  const date = startOfDay(new Date(dateValue))
+
+  if (mode === 'daily') {
+    return date.toISOString()
+  }
+
+  if (mode === '3days') {
+    const start = new Date(date)
+    const dayOfMonth = start.getDate()
+    const offset = (dayOfMonth - 1) % 3
+    start.setDate(dayOfMonth - offset)
+    return start.toISOString()
+  }
+
+  const start = new Date(date)
+  const day = start.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  start.setDate(start.getDate() + diff)
+  return start.toISOString()
+}
+
+function groupLabel(bucket: string, mode: GroupMode) {
+  const start = new Date(bucket)
+
+  if (mode === 'daily') return formatDateLabel(bucket)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + (mode === '3days' ? 2 : 6))
+  return `${formatDateLabel(start.toISOString())} - ${formatDateLabel(end.toISOString())}`
+}
+
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        borderRadius: 999,
+        padding: '7px 11px',
+        border: `1px solid ${active ? 'rgba(200,150,60,0.35)' : 'rgba(200,150,60,0.12)'}`,
+        background: active ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+        color: active ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+        fontSize: '0.74rem',
+        fontWeight: 700,
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  )
 }
 
 interface TooltipPayloadItem {
@@ -62,19 +122,11 @@ function CustomTooltip({
         border: '1px solid rgba(200,150,60,0.3)',
         borderRadius: 10,
         padding: '10px 12px',
-        minWidth: 180,
+        minWidth: 190,
         boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
       }}
     >
-      <div
-        className="font-condensed font-bold"
-        style={{
-          color: 'var(--nba-gold)',
-          fontSize: '0.92rem',
-          marginBottom: 8,
-          letterSpacing: '0.05em',
-        }}
-      >
+      <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.92rem', marginBottom: 8 }}>
         {label}
       </div>
 
@@ -82,24 +134,10 @@ function CustomTooltip({
         {sorted.map((entry) => (
           <div
             key={entry.dataKey}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              fontSize: '0.76rem',
-            }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: '0.76rem' }}
           >
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--nba-text-muted)' }}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '999px',
-                  background: entry.color,
-                  flexShrink: 0,
-                }}
-              />
+              <span style={{ width: 8, height: 8, borderRadius: '999px', background: entry.color, flexShrink: 0 }} />
               {entry.dataKey}
             </span>
             <strong style={{ color: entry.color }}>{entry.value} pts</strong>
@@ -110,35 +148,14 @@ function CustomTooltip({
   )
 }
 
-function CustomLegend({
-  payload,
-}: {
-  payload?: Array<{ value: string; color: string }>
-}) {
+function CustomLegend({ payload }: { payload?: Array<{ value: string; color: string }> }) {
   if (!payload?.length) return null
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '8px 14px',
-        marginBottom: 12,
-        fontSize: '0.75rem',
-        color: 'var(--nba-text-muted)',
-      }}
-    >
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', marginBottom: 12, fontSize: '0.75rem', color: 'var(--nba-text-muted)' }}>
       {payload.map((item) => (
         <span key={item.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '999px',
-              background: item.color,
-              flexShrink: 0,
-            }}
-          />
+          <span style={{ width: 8, height: 8, borderRadius: '999px', background: item.color, flexShrink: 0 }} />
           {item.value}
         </span>
       ))}
@@ -148,6 +165,7 @@ function CustomLegend({
 
 export function RankingChart({ ranking, breakdowns }: Props) {
   const [isMobile, setIsMobile] = useState(false)
+  const [groupMode, setGroupMode] = useState<GroupMode>('3days')
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 640px)')
@@ -162,89 +180,64 @@ export function RankingChart({ ranking, breakdowns }: Props) {
     [isMobile, ranking]
   )
 
-  const events = useMemo<ChartEvent[]>(() => {
-    const eventMap = new Map<string, ChartEvent>()
-
-    for (const participant of topParticipants) {
+  const participantEvents = useMemo(() => {
+    return topParticipants.map((participant) => {
       const breakdown = breakdowns[participant.participant_id]
-      if (!breakdown) continue
+      const events: ScoreEvent[] = []
 
-      for (const item of breakdown.game_breakdown) {
-        const key = `game:${item.round}:${item.series_id}:${item.game_number}`
-        if (!eventMap.has(key)) {
-          eventMap.set(key, {
-            key,
-            round: item.round,
-            kind: 'game',
-            order: item.game_number,
-            label: `${roundShortLabel(item.round)}-${item.game_number}`,
-          })
+      if (breakdown) {
+        for (const item of breakdown.game_breakdown) {
+          if (!item.event_date || item.points <= 0) continue
+          events.push({ date: item.event_date, points: item.points })
+        }
+
+        for (const item of breakdown.series_breakdown) {
+          if (!item.event_date || item.points <= 0) continue
+          events.push({ date: item.event_date, points: item.points })
         }
       }
 
-      for (const item of breakdown.series_breakdown) {
-        const key = `series:${item.round}:${item.series_id}`
-        if (!eventMap.has(key)) {
-          eventMap.set(key, {
-            key,
-            round: item.round,
-            kind: 'series',
-            order: 100 + (item.position ?? 99),
-            label: `${roundShortLabel(item.round)}-S`,
-          })
-        }
+      return {
+        id: participant.participant_id,
+        name: participant.participant_name.split(' ')[0],
+        events,
       }
-    }
-
-    return [...eventMap.values()].sort((left, right) => {
-      if (left.round !== right.round) return left.round - right.round
-      if (left.order !== right.order) return left.order - right.order
-      return left.key.localeCompare(right.key)
     })
   }, [breakdowns, topParticipants])
 
-  const data = useMemo(() => {
-    const eventIndexByKey = new Map(events.map((event, index) => [event.key, index]))
+  const buckets = useMemo(() => {
+    const keys = new Set<string>()
+    for (const participant of participantEvents) {
+      for (const event of participant.events) {
+        keys.add(bucketDate(event.date, groupMode))
+      }
+    }
 
-    return events.map((event, index) => {
+    return [...keys].sort((left, right) => new Date(left).getTime() - new Date(right).getTime())
+  }, [groupMode, participantEvents])
+
+  const data = useMemo(() => {
+    return buckets.map((bucket) => {
       const row: Record<string, number | string> = {
-        step: event.label,
-        fullLabel: `${event.label} ${index + 1}`,
+        step: groupLabel(bucket, groupMode),
       }
 
-      for (const participant of topParticipants) {
-        const breakdown = breakdowns[participant.participant_id]
-        const shortName = participant.participant_name.split(' ')[0]
-        let cumulative = 0
-
-        if (breakdown) {
-          const gamePoints = breakdown.game_breakdown
-            .filter((item) => {
-              const itemKey = `game:${item.round}:${item.series_id}:${item.game_number}`
-              const itemIndex = eventIndexByKey.get(itemKey)
-              return itemIndex != null && itemIndex <= index
-            })
-            .reduce((sum, item) => sum + item.points, 0)
-
-          const seriesPoints = breakdown.series_breakdown
-            .filter((item) => {
-              const itemKey = `series:${item.round}:${item.series_id}`
-              const itemIndex = eventIndexByKey.get(itemKey)
-              return itemIndex != null && itemIndex <= index
-            })
-            .reduce((sum, item) => sum + item.points, 0)
-
-          cumulative = gamePoints + seriesPoints
+      for (const participant of participantEvents) {
+        let total = 0
+        for (const event of participant.events) {
+          const eventBucket = bucketDate(event.date, groupMode)
+          if (new Date(eventBucket).getTime() <= new Date(bucket).getTime()) {
+            total += event.points
+          }
         }
-
-        row[shortName] = cumulative
+        row[participant.name] = total
       }
 
       return row
     })
-  }, [breakdowns, events, topParticipants])
+  }, [buckets, groupMode, participantEvents])
 
-  const chartWidth = Math.max(760, data.length * (isMobile ? 56 : 68))
+  const chartWidth = Math.max(760, data.length * (isMobile ? 72 : 96))
 
   if (topParticipants.length === 0 || data.length === 0) {
     return (
@@ -255,24 +248,22 @@ export function RankingChart({ ranking, breakdowns }: Props) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem' }}>
-        Evolução cumulativa dos pontos por checkpoints de rodada, jogo e fechamento de série.
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem' }}>
+          Evolução cumulativa agrupada por tempo para reduzir o comprimento do gráfico.
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <FilterChip label="Diário" active={groupMode === 'daily'} onClick={() => setGroupMode('daily')} />
+          <FilterChip label="3 dias" active={groupMode === '3days'} onClick={() => setGroupMode('3days')} />
+          <FilterChip label="Semanal" active={groupMode === 'weekly'} onClick={() => setGroupMode('weekly')} />
+        </div>
       </div>
 
-      <div
-        style={{
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          paddingBottom: 4,
-        }}
-      >
+      <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
         <div style={{ width: chartWidth, height: isMobile ? 300 : 360 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={data}
-              margin={{ top: 20, right: 24, left: isMobile ? 0 : 8, bottom: 8 }}
-            >
+            <LineChart data={data} margin={{ top: 20, right: 24, left: isMobile ? 0 : 8, bottom: 8 }}>
               <CartesianGrid stroke="rgba(200,150,60,0.10)" vertical={false} />
               <XAxis
                 dataKey="step"
@@ -290,16 +281,15 @@ export function RankingChart({ ranking, breakdowns }: Props) {
               <Tooltip content={<CustomTooltip />} />
               <Legend verticalAlign="top" align="left" content={<CustomLegend />} />
 
-              {topParticipants.map((participant, index) => {
-                const shortName = participant.participant_name.split(' ')[0]
+              {participantEvents.map((participant, index) => {
                 const color = PLAYER_COLORS[index % PLAYER_COLORS.length]
                 const isLeader = index === 0
 
                 return (
                   <Line
-                    key={participant.participant_id}
+                    key={participant.id}
                     type="linear"
-                    dataKey={shortName}
+                    dataKey={participant.name}
                     stroke={color}
                     strokeWidth={isLeader ? 3 : 2}
                     dot={{ r: isMobile ? 2 : 2.5, strokeWidth: 0, fill: color }}
@@ -308,17 +298,11 @@ export function RankingChart({ ranking, breakdowns }: Props) {
                     isAnimationActive
                   >
                     <LabelList
-                      dataKey={shortName}
+                      dataKey={participant.name}
                       position="top"
                       offset={6}
-                      style={{
-                        fill: color,
-                        fontSize: isMobile ? 9 : 10,
-                        fontWeight: 700,
-                      }}
-                      formatter={(value: number, _entry: unknown, labelIndex: number) =>
-                        labelIndex === data.length - 1 ? value : ''
-                      }
+                      style={{ fill: color, fontSize: isMobile ? 9 : 10, fontWeight: 700 }}
+                      formatter={(value: number, _entry: unknown, labelIndex: number) => (labelIndex === data.length - 1 ? value : '')}
                     />
                   </Line>
                 )

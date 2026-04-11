@@ -108,6 +108,7 @@ export interface ScoreBreakdownSummary {
 export interface SeriesScoreBreakdownItem {
   id: string
   series_id: string
+  event_date: string | null
   round: RoundNumber
   conference: 'East' | 'West' | 'Finals' | null
   position: number | null
@@ -126,6 +127,7 @@ export interface GameScoreBreakdownItem {
   id: string
   game_id: string
   series_id: string
+  event_date: string | null
   round: RoundNumber
   conference: 'East' | 'West' | 'Finals' | null
   game_number: number

@@ -1,5 +1,30 @@
 # Codex Changelog
 
+## 2026-04-11 - Corrida de pontuação passa a agrupar o gráfico por tempo
+
+### Objetivo
+- Reduzir o comprimento horizontal do gráfico de evolução do ranking sem perder a leitura da tendência entre os participantes.
+
+### Arquivos alterados
+- `frontend/src/components/RankingChart.tsx`
+- `frontend/src/types/index.ts`
+- `frontend/src/utils/ranking.ts`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O gráfico ganhou modos de agregação temporal:
+  - `Diário`;
+  - `3 dias`;
+  - `Semanal`.
+- O modo padrão passou a ser `3 dias`, para deixar a leitura mais compacta logo na primeira visualização.
+- O breakdown interno agora carrega `event_date` em jogos e séries, permitindo que a corrida de pontos seja agrupada com base em datas reais.
+- Os pontos continuam sendo mostrados de forma cumulativa, mas agora condensados por janela de tempo em vez de um checkpoint por evento individual.
+- O eixo X passou a mostrar faixas de datas quando o usuário escolhe agrupamentos mais largos.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
 ## 2026-04-11 - Gráfico do ranking vira uma corrida de pontuação em linhas
 
 ### Objetivo

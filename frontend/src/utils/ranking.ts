@@ -37,6 +37,21 @@ function getMatchupLabel(series: Series, teamsById: Record<string, Team | undefi
   return `${home} vs ${away}`
 }
 
+function getSeriesEventDate(series: Series, games: Game[]): string | null {
+  const seriesGames = games
+    .filter((game) => game.series_id === series.id && !!game.tip_off_at)
+    .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())
+
+  const playedGames = seriesGames.filter((game) => game.played)
+  const latestPlayed = playedGames[playedGames.length - 1]
+  if (latestPlayed?.tip_off_at) return latestPlayed.tip_off_at
+
+  const latestScheduled = seriesGames[seriesGames.length - 1]
+  if (latestScheduled?.tip_off_at) return latestScheduled.tip_off_at
+
+  return series.tip_off_at ?? null
+}
+
 interface RankingComputationInput {
   participants: Participant[]
   series: Series[]
@@ -121,6 +136,7 @@ export function buildRankingState({
         return {
           id: pick.id,
           series_id: pick.series_id,
+          event_date: getSeriesEventDate(currentSeries, normalizedGames),
           round: currentSeries.round,
           conference: currentSeries.round === 4 ? 'Finals' : normalizeBreakdownConference(currentSeries.conference),
           position: currentSeries.position,
@@ -168,6 +184,7 @@ export function buildRankingState({
           id: pick.id,
           game_id: pick.game_id,
           series_id: game.series_id,
+          event_date: game.tip_off_at,
           round: game.round!,
           conference: game.round === 4 ? 'Finals' : normalizeBreakdownConference(currentSeries?.conference),
           game_number: game.game_number,
