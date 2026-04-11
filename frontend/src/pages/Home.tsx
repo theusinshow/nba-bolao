@@ -354,6 +354,157 @@ function HeroPanel({
   )
 }
 
+function HomeContextBanner() {
+  return (
+    <section
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(200,150,60,0.12), rgba(74,144,217,0.08) 55%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+        padding: '0.95rem 1rem',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
+          <AlertTriangle size={14} />
+        </span>
+        <span
+          className="font-condensed"
+          style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+        >
+          Contexto da Home
+        </span>
+      </div>
+
+      <p style={{ color: 'var(--nba-text)', fontSize: '0.84rem', margin: 0 }}>
+        Ranking, bracket oficial e seus palpites já refletem o estado real do bolão. Próximos jogos, resultados recentes, odds e lesões continuam
+        em modo simulado enquanto vocês testam com confrontos fictícios.
+      </p>
+    </section>
+  )
+}
+
+function MyMomentCard({
+  myEntry,
+  readySeries,
+  pickedSeries,
+  totalSeries,
+  leaderPoints,
+}: {
+  myEntry?: { rank: number; total_points: number; participant_name: string }
+  readySeries: number
+  pickedSeries: number
+  totalSeries: number
+  leaderPoints: number
+}) {
+  const missingReady = Math.max(readySeries - pickedSeries, 0)
+  const gapToLeader = myEntry ? Math.max(leaderPoints - myEntry.total_points, 0) : null
+  const progress = totalSeries > 0 ? Math.round((pickedSeries / Math.max(readySeries, 1)) * 100) : 0
+
+  const primaryAction =
+    missingReady > 0
+      ? {
+          to: '/bracket',
+          label: 'Fechar meus palpites',
+          description: `${missingReady} série${missingReady !== 1 ? 's' : ''} pronta${missingReady !== 1 ? 's' : ''} sem pick`,
+          tone: 'var(--nba-gold)',
+        }
+      : myEntry && myEntry.rank > 1
+      ? {
+          to: '/ranking',
+          label: 'Caçar o líder',
+          description: `${gapToLeader ?? 0} ponto${gapToLeader === 1 ? '' : 's'} para empatar`,
+          tone: 'var(--nba-east)',
+        }
+      : {
+          to: '/games',
+          label: 'Ver jogos do dia',
+          description: 'Acompanhar os próximos movimentos do bolão',
+          tone: 'var(--nba-success)',
+        }
+
+  return (
+    <section
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.10) 45%, rgba(200,150,60,0.10) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+      }}
+    >
+      <CardTitle icon={<Sparkles size={14} />}>Seu Momento Agora</CardTitle>
+
+      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
+        {[
+          { label: 'Séries prontas', value: String(readySeries), tone: 'var(--nba-text)' },
+          { label: 'Faltando palpitar', value: String(missingReady), tone: missingReady > 0 ? 'var(--nba-gold)' : 'var(--nba-success)' },
+          { label: 'Distância do líder', value: myEntry ? String(gapToLeader ?? 0) : '—', tone: 'var(--nba-east)' },
+        ].map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.35rem', lineHeight: 1 }}>
+              {item.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          marginTop: 12,
+          padding: '12px 14px',
+          borderRadius: 10,
+          background: 'rgba(12,12,18,0.42)',
+          border: '1px solid rgba(200,150,60,0.16)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <div>
+            <div className="font-condensed font-bold" style={{ color: primaryAction.tone, fontSize: '1rem', lineHeight: 1 }}>
+              {primaryAction.label}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 4 }}>
+              {primaryAction.description}
+            </div>
+          </div>
+
+          <Link
+            to={primaryAction.to}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 14px',
+              borderRadius: 10,
+              textDecoration: 'none',
+              color: 'var(--nba-text)',
+              border: '1px solid rgba(200,150,60,0.18)',
+              background: 'rgba(28,28,38,0.9)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              flexShrink: 0,
+            }}
+          >
+            Abrir
+            <ChevronRight size={15} />
+          </Link>
+        </div>
+
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 10 }}>
+          Progresso útil agora: {pickedSeries}/{readySeries || totalSeries} séries prontas preenchidas.
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function LastNightResultsTicker() {
   const tickerItems = [...LAST_NIGHT_RESULTS, ...LAST_NIGHT_RESULTS]
 
@@ -1177,12 +1328,46 @@ function MyPicksCard({
     const status: keyof typeof STATUS_STYLE = s?.is_complete
       ? p.winner_id === s?.winner_id ? 'correct' : 'wrong'
       : 'pending'
-    return { pick: p, series: s, pickedTeam, status }
+      return { pick: p, series: s, pickedTeam, status }
   })
+  const completedSeries = picks.filter((pick) => {
+    const currentSeries = series.find((item) => item.id === pick.series_id)
+    return !!currentSeries?.is_complete
+  }).length
+  const pendingSeries = Math.max(picks.length - completedSeries, 0)
 
   return (
     <div style={card}>
       <CardTitle>Meus Palpites</CardTitle>
+
+      <div style={{ display: 'grid', gap: 8, marginBottom: 12 }} className="grid-cols-2">
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.14)',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Palpites salvos</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.25rem', lineHeight: 1 }}>
+            {picks.length}
+          </div>
+        </div>
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.14)',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Ainda em aberto</div>
+          <div className="font-condensed font-bold" style={{ color: pendingSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '1.25rem', lineHeight: 1 }}>
+            {pendingSeries}
+          </div>
+        </div>
+      </div>
 
       {recent.length === 0 ? (
         <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem' }}>
@@ -1246,6 +1431,7 @@ export function Home({ participantId }: Props) {
   const { series, picks } = useSeries(participantId)
 
   const myEntry       = ranking.find((r) => r.participant_id === participantId)
+  const leader = ranking[0]
   const completedSeries = series.filter((s) => s.is_complete).length
   const readySeries = series.filter(isSeriesReadyForPick)
   const readySeriesIds = new Set(readySeries.map((item) => item.id))
@@ -1283,6 +1469,16 @@ export function Home({ participantId }: Props) {
             myEntry={myEntry}
             pickedSeries={pickedSeries}
             readySeries={readySeries.length}
+          />
+
+          <HomeContextBanner />
+
+          <MyMomentCard
+            myEntry={myEntry}
+            readySeries={readySeries.length}
+            pickedSeries={pickedSeries}
+            totalSeries={series.length}
+            leaderPoints={leader?.total_points ?? 0}
           />
 
           <LastNightResultsTicker />

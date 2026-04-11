@@ -1,5 +1,34 @@
 # Codex Changelog
 
+## 2026-04-11 - Home fica mais clara e mais útil no modo fictício atual
+
+### Objetivo
+- Melhorar a Home sem depender da ativação da API real, deixando a tela mais honesta sobre o que é simulado e mais acionável para quem está usando o bolão agora.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A Home ganhou um banner de contexto explicando com clareza o que já reflete o estado real do bolão e quais blocos ainda continuam simulados.
+- Foi criado o card `Seu Momento Agora`, focado em ação:
+  - mostra quantas séries já estão prontas;
+  - quantas ainda faltam palpitar;
+  - a distância atual para o líder;
+  - e sugere o próximo melhor passo com CTA direto para a tela certa.
+- O card `Meus Palpites` ficou mais informativo:
+  - agora mostra total de palpites salvos;
+  - quantos ainda seguem em aberto;
+  - além de manter a lista compacta dos palpites mais recentes.
+
+### Impacto esperado
+- A Home passa a funcionar melhor como painel principal do usuário durante os testes com confrontos fictícios.
+- A tela reduz ambiguidade sobre dados simulados e ajuda o participante a entender rapidamente o que fazer em seguida.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
 ## 2026-04-11 - Remoção de participante deixa de gerar usuário fantasma no bolão
 
 ### Objetivo
