@@ -50,11 +50,26 @@ export function calculateGamePickPoints(pick: GamePickInput, game: GameOutcome):
 export interface RankingSortable {
   participantName: string
   totalPoints: number
+  cravadas?: number
+  seriesCorrect?: number
+  gamesCorrect?: number
 }
 
 export function compareRankingEntries(a: RankingSortable, b: RankingSortable): number {
   if (b.totalPoints !== a.totalPoints) {
     return b.totalPoints - a.totalPoints
+  }
+
+  if ((b.cravadas ?? 0) !== (a.cravadas ?? 0)) {
+    return (b.cravadas ?? 0) - (a.cravadas ?? 0)
+  }
+
+  if ((b.seriesCorrect ?? 0) !== (a.seriesCorrect ?? 0)) {
+    return (b.seriesCorrect ?? 0) - (a.seriesCorrect ?? 0)
+  }
+
+  if ((b.gamesCorrect ?? 0) !== (a.gamesCorrect ?? 0)) {
+    return (b.gamesCorrect ?? 0) - (a.gamesCorrect ?? 0)
   }
 
   return a.participantName.localeCompare(b.participantName, 'pt-BR', { sensitivity: 'base' })

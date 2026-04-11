@@ -184,6 +184,8 @@ function RankingHero({
 }
 
 function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }) {
+  const [showTiebreakInfo, setShowTiebreakInfo] = useState(false)
+
   return (
     <div
       style={{
@@ -231,6 +233,55 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
       <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', marginBottom: 12 }}>
         Acertar o vencedor do jogo ou da série gera pontos. Se acertar também em quantos jogos a série termina, vira cravada.
       </p>
+
+      <div style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          onClick={() => setShowTiebreakInfo((current) => !current)}
+          aria-label="Explicar o critério de desempate"
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: '999px',
+            border: '1px solid rgba(200,150,60,0.35)',
+            background: 'rgba(200,150,60,0.14)',
+            color: 'var(--nba-gold)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <Info size={12} />
+        </button>
+
+        {showTiebreakInfo && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.96)',
+              border: '1px solid rgba(200,150,60,0.26)',
+              color: 'var(--nba-text)',
+              fontSize: '0.78rem',
+              lineHeight: 1.45,
+            }}
+          >
+            Critério de desempate:
+            <br />
+            1. total de pontos
+            <br />
+            2. cravadas
+            <br />
+            3. acertos de série
+            <br />
+            4. acertos de jogo
+            <br />
+            5. ordem alfabética
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'grid', gap: 10 }}>
         {([1, 2, 3, 4] as const).map((round) => (

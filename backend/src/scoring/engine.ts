@@ -10,6 +10,9 @@ export interface RankingSnapshotEntry {
   participant_id: string
   participant_name: string
   total_points: number
+  cravadas: number
+  series_correct: number
+  games_correct: number
 }
 
 export async function computeRankingSnapshot(): Promise<RankingSnapshotEntry[]> {
@@ -46,22 +49,33 @@ export async function computeRankingSnapshot(): Promise<RankingSnapshotEntry[]> 
     const myGamePicks = (allGamePicks as GamePickRow[]).filter((pick) => pick.participant_id === participantId)
 
     let total = 0
+    let cravadas = 0
+    let seriesCorrect = 0
+    let gamesCorrect = 0
 
     for (const pick of mySeriesPicks) {
       const series = seriesMap[pick.series_id]
       if (!series) continue
 
-      total += calculateSeriesPickPoints(
+      const points = calculateSeriesPickPoints(
         { winnerId: pick.winner_id, gamesCount: pick.games_count },
         { winnerId: series.winner_id, gamesPlayed: series.games_played, isComplete: series.is_complete, round: series.round }
       )
+      total += points
+
+      if (points > 0) {
+        seriesCorrect += 1
+        if (pick.winner_id === series.winner_id && pick.games_count === series.games_played) {
+          cravadas += 1
+        }
+      }
     }
 
     for (const pick of myGamePicks) {
       const game = gameMap[pick.game_id]
       if (!game) continue
 
-      total += calculateGamePickPoints(
+      const points = calculateGamePickPoints(
         { winnerId: pick.winner_id },
         {
           winnerId: game.winner_id,
@@ -69,18 +83,35 @@ export async function computeRankingSnapshot(): Promise<RankingSnapshotEntry[]> 
           round: seriesMap[game.series_id]?.round ?? inferRoundFromSeriesId(game.series_id),
         }
       )
+      total += points
+      if (points > 0) gamesCorrect += 1
     }
 
     ranking.push({
       participant_id: participantId,
       participant_name: participantName,
       total_points: total,
+      cravadas,
+      series_correct: seriesCorrect,
+      games_correct: gamesCorrect,
     })
   }
 
   ranking.sort((a, b) => compareRankingEntries(
-    { participantName: a.participant_name, totalPoints: a.total_points },
-    { participantName: b.participant_name, totalPoints: b.total_points }
+    {
+      participantName: a.participant_name,
+      totalPoints: a.total_points,
+      cravadas: a.cravadas,
+      seriesCorrect: a.series_correct,
+      gamesCorrect: a.games_correct,
+    },
+    {
+      participantName: b.participant_name,
+      totalPoints: b.total_points,
+      cravadas: b.cravadas,
+      seriesCorrect: b.series_correct,
+      gamesCorrect: b.games_correct,
+    }
   ))
 
   return ranking

@@ -260,8 +260,20 @@ function buildRankingRows(data: BackupData): RankingBackupRow[] {
   })
 
   rows.sort((left, right) => compareRankingEntries(
-    { participantName: left.participant_name, totalPoints: left.total_points },
-    { participantName: right.participant_name, totalPoints: right.total_points }
+    {
+      participantName: left.participant_name,
+      totalPoints: left.total_points,
+      cravadas: left.cravadas,
+      seriesCorrect: left.series_correct,
+      gamesCorrect: left.games_correct,
+    },
+    {
+      participantName: right.participant_name,
+      totalPoints: right.total_points,
+      cravadas: right.cravadas,
+      seriesCorrect: right.series_correct,
+      gamesCorrect: right.games_correct,
+    }
   ))
 
   return rows.map((row, index) => ({ ...row, rank: index + 1 }))

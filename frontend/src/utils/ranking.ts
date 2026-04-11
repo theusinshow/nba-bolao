@@ -18,6 +18,18 @@ export function compareRankingEntries(a: RankingEntry, b: RankingEntry): number 
     return b.total_points - a.total_points
   }
 
+  if (b.cravadas !== a.cravadas) {
+    return b.cravadas - a.cravadas
+  }
+
+  if (b.series_correct !== a.series_correct) {
+    return b.series_correct - a.series_correct
+  }
+
+  if (b.games_correct !== a.games_correct) {
+    return b.games_correct - a.games_correct
+  }
+
   return a.participant_name.localeCompare(b.participant_name, 'pt-BR', { sensitivity: 'base' })
 }
 

@@ -1,5 +1,86 @@
 # Codex Changelog
 
+## 2026-04-11 - Seção de pontuação ganha ajuda visual para o critério de desempate
+
+### Objetivo
+- Deixar a regra de desempate fácil de encontrar dentro da própria aba `Ranking`, sem precisar depender de explicação externa.
+
+### Arquivos alterados
+- `frontend/src/pages/Ranking.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A seção `Pontuação` passou a exibir um botão circular com ícone de informação.
+- Ao tocar/clicar no ícone, o usuário vê uma caixa curta com a ordem do critério de desempate:
+  1. `total_points`
+  2. `cravadas`
+  3. `series_correct`
+  4. `games_correct`
+  5. ordem alfabética
+- A explicação fica dentro do próprio card, preservando clareza sem ocupar espaço o tempo todo.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
+## 2026-04-11 - Critério de desempate do ranking passa a priorizar mérito antes do nome
+
+### Objetivo
+- Deixar o desempate do ranking mais justo, usando desempenho real no bolão antes de cair no critério alfabético.
+
+### Arquivos alterados
+- `frontend/src/utils/ranking.ts`
+- `backend/src/scoring/rules.ts`
+- `backend/src/scoring/engine.ts`
+- `backend/src/backup/exportOperationalSnapshot.ts`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O ranking deixou de desempatar diretamente por nome após empatar em pontos.
+- A nova ordem de desempate passou a ser:
+  1. `total_points`
+  2. `cravadas`
+  3. `series_correct`
+  4. `games_correct`
+  5. nome em ordem alfabética apenas como último critério técnico
+- A mesma regra foi aplicada em todos os lugares onde o ranking pode ser calculado ou ordenado:
+  - ranking do frontend;
+  - snapshot de scoring do backend;
+  - exportação do backup operacional.
+- O snapshot do backend também passou a carregar `cravadas`, `series_correct` e `games_correct`, para conseguir ordenar com a mesma justiça da interface principal.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo no frontend, mas sem falha de compilação.
+
+## 2026-04-11 - Backlog de futuras implementações foi limpo para refletir o estado real do produto
+
+### Objetivo
+- Remover do backlog os itens que já foram implementados, evitando que o documento continue listando features já entregues como se ainda fossem pendentes.
+
+### Arquivos alterados
+- `updates/futuras-implementacoes.md`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O backlog foi reduzido para manter apenas as frentes que ainda continuam abertas:
+  - bracket mobile;
+  - salvar todos os jogos disponíveis de uma vez;
+  - Home com APIs reais.
+- Foram removidos do documento os itens já absorvidos pelo produto, como:
+  - comparação jogo a jogo;
+  - `Vai na fé`;
+  - backup operacional;
+  - melhorias do gráfico;
+  - revelação de palpites pós-lock;
+  - resultados recentes da Home;
+  - mensagem de série encerrada no fluxo jogo a jogo.
+- A ordem recomendada de execução também foi reescrita para bater com o backlog atualizado.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi apenas documental.
+
 ## 2026-04-11 - Corrida de pontuação passa a agrupar o gráfico por tempo
 
 ### Objetivo
