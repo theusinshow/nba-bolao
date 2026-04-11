@@ -1,5 +1,43 @@
 # Codex Changelog
 
+## 2026-04-11 - Remoção completa de participante vira rotina operacional do bolão
+
+### Objetivo
+- Parar de depender de exclusão manual incompleta no Supabase e criar uma forma confiável de remover um participante do bolão inteiro, sem deixar picks órfãos nem duplicatas aparecendo na interface.
+
+### Arquivos alterados
+- `backend/src/admin/removeParticipant.ts`
+- `backend/src/routes/admin.ts`
+- `backend/src/scripts/removeParticipant.ts`
+- `backend/package.json`
+- `supabase/user-management-guide.md`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criada a rotina `removeParticipantCompletely`, que localiza um participante por:
+  - `participantId`
+  - `email`
+  - ou `userId`
+- A remoção agora limpa de forma explícita:
+  - `series_picks`
+  - `game_picks`
+  - `simulation_series_picks`
+  - `simulation_game_picks`
+  - o registro em `participants`
+  - e o email em `allowed_emails`
+- O backend ganhou o endpoint administrativo:
+  - `POST /admin/participants/remove`
+- Também foi criado um script operacional para uso direto no terminal:
+  - `npm run remove:participant -- --email email@exemplo.com`
+- O guia de usuários do Supabase foi atualizado para parar de recomendar `delete from participants` como fluxo principal.
+
+### Observação operacional
+- Essa rotina remove a pessoa do bolão, mas não apaga a conta dela no Supabase Auth.
+- A ideia é impedir reaparecimento funcional no app sem assumir a responsabilidade de excluir credenciais de autenticação.
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+
 ## 2026-04-11 - Home fica mais clara e mais útil no modo fictício atual
 
 ### Objetivo

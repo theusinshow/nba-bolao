@@ -4,6 +4,7 @@ import { syncNBA } from '../jobs/syncNBA'
 import { recalculateAllScores } from '../scoring/engine'
 import { supabase } from '../lib/supabase'
 import { SERIES_SEED } from './seedData'
+import { removeParticipantCompletely } from '../admin/removeParticipant'
 
 const router = Router()
 
@@ -86,6 +87,38 @@ router.post('/seed', async (_req, res) => {
 // GET /admin/health
 router.get('/health', (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() })
+})
+
+// POST /admin/participants/remove — fully remove one participant and related data
+router.post('/participants/remove', async (req, res) => {
+  try {
+    const participantId = typeof req.body?.participantId === 'string' ? req.body.participantId.trim() : ''
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+    const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : ''
+
+    const provided = [participantId, email, userId].filter(Boolean)
+    if (provided.length !== 1) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Provide exactly one identifier: participantId, email, or userId.',
+      })
+    }
+
+    const result = participantId
+      ? await removeParticipantCompletely({ participantId })
+      : email
+      ? await removeParticipantCompletely({ email })
+      : await removeParticipantCompletely({ userId })
+
+    res.json({
+      ok: true,
+      message: `Participant ${result.participant.name} removed completely from the bolao.`,
+      result,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/participants/remove] Removal failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
 })
 
 export default router

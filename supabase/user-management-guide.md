@@ -128,14 +128,42 @@ where p.id is null
 order by u.email;
 ```
 
-## 14. Limpar participante de teste
+## 14. Remover um participante do bolão por completo
 
-Use com cuidado. Isso remove o participante, mas não apaga automaticamente a conta do Auth.
+Importante:
+- não use mais apenas `delete from participants`, porque isso pode deixar palpites órfãos e registros antigos aparecendo na interface;
+- a remoção operacional correta agora é pelo script do backend, que limpa os vínculos do participante no bolão inteiro.
 
-```sql
-delete from participants
-where email = 'email@exemplo.com';
+No terminal:
+
+```powershell
+cd C:\Dev\pessoal\projetos\nba-bolao\backend
+npm run remove:participant -- --email email@exemplo.com
 ```
+
+Você também pode remover por:
+
+```powershell
+npm run remove:participant -- --participant-id UUID_DO_PARTICIPANTE
+```
+
+ou:
+
+```powershell
+npm run remove:participant -- --user-id UUID_DO_AUTH_USER
+```
+
+O processo remove:
+- `series_picks`
+- `game_picks`
+- `simulation_series_picks`
+- `simulation_game_picks`
+- o registro em `participants`
+- o email em `allowed_emails`
+
+Observação:
+- a conta do usuário no Supabase Auth não é apagada;
+- o objetivo é remover a pessoa do bolão de forma completa, sem deixar rastro funcional no app.
 
 ## 15. Checklist rápido para liberar um amigo
 
