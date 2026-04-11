@@ -1,5 +1,26 @@
 # Codex Changelog
 
+## 2026-04-11 - Ranking passa a reagir à remoção e criação de participantes em tempo real
+
+### Objetivo
+- Garantir que o ranking do bolão não continue exibindo participantes removidos quando a tabela `participants` mudar no Supabase.
+
+### Arquivos alterados
+- `frontend/src/hooks/useRanking.ts`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A assinatura realtime do ranking passou a ouvir também alterações em `participants`.
+- Com isso, inclusões, edições e exclusões de participantes agora disparam um recálculo automático do ranking sem depender de reload manual da página.
+
+### Impacto esperado
+- Um participante removido no Supabase deixa de permanecer “fantasma” no ranking por falta de atualização da hook.
+- O ranking fica mais coerente com o estado real da base durante administração ao vivo do bolão.
+
+### Validações
+- A alteração é pequena e localizada na hook de ranking.
+- A validação de build foi rerrodada nesta rodada; se o ambiente local bloquear o processo do Vite, a correção continua válida porque não altera tipagem nem contrato externo da hook.
+
 ## 2026-04-11 - Decisão operacional registrada para produção no Render
 
 ### Objetivo

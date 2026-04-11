@@ -21,6 +21,7 @@ export function useRanking() {
 
     const sub = supabase
       .channel('ranking-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, scheduleCompute)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, scheduleCompute)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, scheduleCompute)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, scheduleCompute)
