@@ -1,5 +1,27 @@
 # Codex Changelog
 
+## 2026-04-11 - Decisão operacional registrada para produção no Render
+
+### Objetivo
+- Documentar a escolha de infraestrutura feita para suportar o bolão com atualização mais frequente dos dados da API.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi registrado que o projeto passou a contar com o plano pago de aproximadamente `US$ 7` no Render para a operação atual do bolão.
+- A intenção operacional registrada é rodar a atualização dos dados da API em intervalo de `2 em 2 minutos`.
+- Essa cadência foi considerada adequada para o produto por equilibrar:
+  - atualização frequente de placares e status;
+  - custo controlado;
+  - operação simples para o volume atual do bolão.
+
+### Observação de contexto
+- A infraestrutura já está mais preparada para o modo real, mas o app continua em fase de testes fictícios até a decisão de reativar o sync real da API.
+
+### Validações
+- Não foi necessário rodar build nesta rodada, porque a alteração foi apenas documental.
+
 ## 2026-04-11 - Ajustes da auditoria aplicados sem ativar o modo real da API
 
 ### Objetivo
