@@ -1,5 +1,41 @@
 # Codex Changelog
 
+## 2026-04-11 - Comparação jogo a jogo fica mais compacta e mais clara
+
+### Objetivo
+- Reduzir a altura excessiva da seção de comparação jogo a jogo e deixar muito mais óbvio quem acertou, quem errou e onde os palpites divergem.
+
+### Arquivos alterados
+- `frontend/src/pages/Compare.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A seção `Comparação jogo a jogo` deixou de abrir todas as partidas de todas as séries de uma vez.
+- O conteúdo agora usa cards colapsáveis por série, reduzindo bastante o scroll vertical da página.
+- Cada card de série passou a mostrar no cabeçalho um resumo rápido com:
+  - quantidade de jogos iguais;
+  - quantidade de divergências;
+  - leitura rápida de acertos acumulados entre os dois participantes.
+- Ao expandir uma série, cada jogo agora destaca melhor:
+  - se as escolhas foram iguais ou diferentes;
+  - qual foi o resultado real quando o jogo já terminou;
+  - se cada participante acertou ou errou;
+  - quando só um dos dois chegou a palpitar.
+- Os blocos individuais dos dois participantes passaram a usar estados visuais mais fortes:
+  - verde para acerto;
+  - vermelho para erro;
+  - tons neutros quando o jogo ainda está pendente ou sem palpite.
+- A primeira série mais relevante continua abrindo por padrão, priorizando confronto com jogo já resolvido ou divergência, para acelerar a leitura.
+- A seção também ganhou filtros rápidos no topo:
+  - `Todos`;
+  - `Só divergências`;
+  - `Só resolvidos`.
+- Quando um filtro não encontra partidas compatíveis, a interface agora mostra um estado vazio curto e claro em vez de deixar a área parecer quebrada.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-11 - Palpites de jogo passam a ser revelados apos o lock
 
 ### Objetivo
