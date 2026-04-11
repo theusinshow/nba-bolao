@@ -26,11 +26,12 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
   const teamADisplay = getSeriesTeamDisplay(series, 'home')
   const teamBDisplay = getSeriesTeamDisplay(series, 'away')
   const matchupReady = isSeriesReadyForPick(series)
+  const seriesLocked = !!series.tip_off_at && new Date(series.tip_off_at) <= new Date()
 
   const roundLabel = ['R1', 'R2', 'Conf Finals', 'NBA Finals'][series.round - 1]
   const confLabel = series.conference ?? ''
 
-  const canSave = selectedWinner !== '' && selectedGames !== 0 && !readOnly && !series.is_complete && matchupReady
+  const canSave = selectedWinner !== '' && selectedGames !== 0 && !readOnly && !series.is_complete && matchupReady && !seriesLocked
 
   async function handleSave() {
     if (!canSave) return
@@ -71,6 +72,15 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
           </div>
         )}
 
+        {seriesLocked && !series.is_complete && (
+          <div className="mb-4 p-3 rounded-lg border border-nba-danger/30 bg-nba-surface-2">
+            <div className="text-nba-danger text-xs font-condensed uppercase mb-1">Palpite travado</div>
+            <div className="text-nba-text text-sm">
+              Esta série já começou e não aceita mais alterações de palpite.
+            </div>
+          </div>
+        )}
+
         {/* Team picker */}
         <p className="text-nba-muted text-xs mb-2">Quem vai vencer?</p>
         <div className="flex gap-2 mb-4">
@@ -81,7 +91,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
             return (
               <button
                 key={team.id}
-                disabled={readOnly || series.is_complete || !matchupReady}
+                disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
                 onClick={() => setSelectedWinner(team.id)}
                 className={`flex-1 py-3 px-2 rounded-lg border text-center transition-all ${
                   isSelected
@@ -104,7 +114,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
           {GAMES_OPTIONS.map((n) => (
             <button
               key={n}
-              disabled={readOnly || series.is_complete || !matchupReady}
+              disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
               onClick={() => setSelectedGames(n)}
               className={`flex-1 py-2 rounded-lg border font-condensed text-lg transition-all ${
                 selectedGames === n
@@ -133,7 +143,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
             onClick={handleSave}
             disabled={!canSave || saving}
           >
-            {saving ? 'Salvando...' : !matchupReady ? 'Aguardando definição do confronto' : existingPick ? 'Atualizar Palpite' : 'Salvar Palpite'}
+            {saving ? 'Salvando...' : !matchupReady ? 'Aguardando definição do confronto' : seriesLocked ? 'Palpite travado' : existingPick ? 'Atualizar Palpite' : 'Salvar Palpite'}
           </button>
         )}
       </div>

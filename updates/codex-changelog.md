@@ -1,5 +1,38 @@
 # Codex Changelog
 
+## 2026-04-11 - Ajustes da auditoria aplicados sem ativar o modo real da API
+
+### Objetivo
+- Corrigir achados da auditoria que já fazem sentido no ambiente atual de testes fictícios, sem mexer nas frentes que dependem do sync real da API.
+
+### Arquivos alterados
+- `frontend/src/hooks/useSeries.ts`
+- `frontend/src/components/SeriesModal.tsx`
+- `frontend/src/pages/Home.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O salvamento de palpite de série passou a respeitar o horário do primeiro jogo da série:
+  - `useSeries` agora monta `tip_off_at` da série a partir do primeiro jogo encontrado;
+  - a hook também passou a reagir a mudanças em `games`, não só em `series`.
+- `savePick` de série deixou de falhar em silêncio:
+  - agora lança erro quando a série não existe;
+  - quando a série já terminou;
+  - ou quando o lock por horário já foi alcançado.
+- O `SeriesModal` foi ajustado para refletir isso na UX:
+  - inputs ficam desabilitados quando a série já começou;
+  - uma mensagem de `Palpite travado` aparece no modal;
+  - o CTA deixa claro quando a série já não aceita alterações.
+- Na Home, o card `Próximos Jogos` deixou de sugerir que os dados daquele bloco já são reais:
+  - a nota inferior agora informa explicitamente que os jogos continuam simulados por enquanto.
+
+### Observação de contexto
+- Os achados relacionados ao sync real da NBA não foram mexidos nesta rodada, porque o projeto ainda está rodando com jogos fictícios para testes internos.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
 ## 2026-04-11 - Seção de pontuação ganha ajuda visual para o critério de desempate
 
 ### Objetivo

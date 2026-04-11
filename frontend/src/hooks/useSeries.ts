@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Series, SeriesPick } from '../types'
+import type { Game, Series, SeriesPick } from '../types'
 import { getSeriesSlot } from '../utils/bracket'
+
+function getSeriesLockTipOff(seriesId: string, games: Game[]): string | null {
+  const datedGames = games
+    .filter((game) => game.series_id === seriesId && !!game.tip_off_at)
+    .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())
+
+  return datedGames[0]?.tip_off_at ?? null
+}
 
 export function useSeries(participantId?: string) {
   const [series, setSeries] = useState<Series[]>([])
@@ -14,6 +22,9 @@ export function useSeries(participantId?: string) {
     const seriesSub = supabase
       .channel('series-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, () => {
+        fetchSeries()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
         fetchSeries()
       })
       .subscribe()
@@ -32,15 +43,18 @@ export function useSeries(participantId?: string) {
   }
 
   async function fetchSeries() {
-    const [{ data: seriesData }, { data: teamsData }] = await Promise.all([
+    const [{ data: seriesData }, { data: teamsData }, { data: gamesData }] = await Promise.all([
       supabase.from('series').select('*').order('round', { ascending: true }).order('position', { ascending: true }),
       supabase.from('teams').select('*'),
+      supabase.from('games').select('series_id, tip_off_at'),
     ])
     if (!seriesData) return
     const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
+    const games = (gamesData ?? []) as Pick<Game, 'series_id' | 'tip_off_at'>[] as Game[]
     const merged = seriesData.map((s) => ({
       ...s,
       slot: getSeriesSlot({ id: s.id, slot: (s as Series).slot ?? null }),
+      tip_off_at: getSeriesLockTipOff(s.id, games),
       home_team: teamMap[s.home_team_id] ?? null,
       away_team: teamMap[s.away_team_id] ?? null,
       winner: s.winner_id ? (teamMap[s.winner_id] ?? null) : null,
@@ -58,10 +72,14 @@ export function useSeries(participantId?: string) {
   }
 
   async function savePick(seriesId: string, winnerId: string, gamesCount: number) {
-    if (!participantId) return
+    if (!participantId) throw new Error('Participante não identificado')
 
     const currentSeries = getSeriesById(seriesId)
-    if (!currentSeries || currentSeries.is_complete) return
+    if (!currentSeries) throw new Error('Série não encontrada')
+    if (currentSeries.is_complete) throw new Error('Série já encerrada')
+    if (currentSeries.tip_off_at && new Date(currentSeries.tip_off_at) <= new Date()) {
+      throw new Error('Os palpites desta série já foram travados')
+    }
 
     const existing = picks.find((p) => p.series_id === seriesId)
 
@@ -72,14 +90,16 @@ export function useSeries(participantId?: string) {
         .eq('id', existing.id)
         .select()
         .single()
-      if (data) setPicks((prev) => prev.map((p) => (p.id === existing.id ? (data as SeriesPick) : p)))
+      if (!data) throw new Error('Não foi possível atualizar o palpite da série')
+      setPicks((prev) => prev.map((p) => (p.id === existing.id ? (data as SeriesPick) : p)))
     } else {
       const { data } = await supabase
         .from('series_picks')
         .insert({ participant_id: participantId, series_id: seriesId, winner_id: winnerId, games_count: gamesCount })
         .select()
         .single()
-      if (data) setPicks((prev) => [...prev, data as SeriesPick])
+      if (!data) throw new Error('Não foi possível salvar o palpite da série')
+      setPicks((prev) => [...prev, data as SeriesPick])
     }
   }
 

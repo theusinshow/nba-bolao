@@ -975,7 +975,7 @@ function NextGamesCard() {
           )
         })}
       </div>
-      <SimNote>Jogos reais sincronizados automaticamente</SimNote>
+      <SimNote>Jogos simulados por enquanto — integração com dados reais virá depois.</SimNote>
     </div>
   )
 }
