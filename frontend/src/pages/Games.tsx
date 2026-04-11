@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3 } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useUIStore } from '../store/useUIStore'
-import type { Game, GamePick, Team } from '../types'
+import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
 
@@ -52,6 +52,10 @@ interface AutoPickDayGroup {
 }
 
 type SavePickSource = 'manual' | 'auto'
+
+interface RevealedGamePick extends GamePick {
+  participant_name: string
+}
 
 // ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
 
@@ -392,6 +396,13 @@ function persistAutoPickIds(participantId: string, ids: string[]) {
   window.localStorage.setItem(getAutoPickStorageKey(participantId), JSON.stringify(ids))
 }
 
+function isGameRevealed(game: GameWithTeams): boolean {
+  if (isSeriesClosedBeforeGame(game)) return true
+  if (game.played) return true
+  if (!game.tip_off_at) return false
+  return new Date(game.tip_off_at) <= new Date()
+}
+
 // ─── Empty state (no games) ───────────────────────────────────────────────────
 
 function EmptyState() {
@@ -727,6 +738,198 @@ function AutoPickModal({
   )
 }
 
+function RevealedPicksModal({
+  game,
+  picks,
+  onClose,
+}: {
+  game: GameWithTeams
+  picks: RevealedGamePick[]
+  onClose: () => void
+}) {
+  const homeVotes = picks.filter((pick) => pick.winner_id === game.home_team_id)
+  const awayVotes = picks.filter((pick) => pick.winner_id === game.away_team_id)
+  const totalVotes = picks.length
+  const homePct = totalVotes > 0 ? Math.round((homeVotes.length / totalVotes) * 100) : 0
+  const awayPct = totalVotes > 0 ? Math.round((awayVotes.length / totalVotes) * 100) : 0
+  const loneHomeVote = totalVotes > 1 && homeVotes.length === 1
+  const loneAwayVote = totalVotes > 1 && awayVotes.length === 1
+  const sortedPicks = [...picks].sort((left, right) =>
+    left.participant_name.localeCompare(right.participant_name, 'pt-BR', { sensitivity: 'base' })
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 560,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          background: 'var(--nba-surface)',
+          border: '1px solid rgba(200,150,60,0.22)',
+          borderRadius: 14,
+          padding: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div>
+            <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', marginBottom: 4 }}>
+              Palpites revelados
+            </div>
+            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+              Jogo {game.game_number} • {game.team_a?.abbreviation ?? game.home_team_id} vs {game.team_b?.abbreviation ?? game.away_team_id}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              border: '1px solid rgba(200,150,60,0.14)',
+              background: 'rgba(12,12,18,0.34)',
+              color: 'var(--nba-text-muted)',
+              borderRadius: 10,
+              padding: '6px 10px',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10, marginBottom: 14 }} className="grid-cols-1 sm:grid-cols-2">
+          <div
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: `${game.team_a?.primary_color ?? '#4a90d9'}18`,
+              border: `1px solid ${game.team_a?.primary_color ?? '#4a90d9'}40`,
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_a?.name ?? game.home_team_id}</div>
+            <div className="font-condensed font-bold" style={{ color: game.team_a?.primary_color ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
+              {homeVotes.length}
+              <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 6 }}>{homePct}%</span>
+            </div>
+            {loneHomeVote && (
+              <div style={{ color: 'var(--nba-gold)', fontSize: '0.68rem', marginTop: 4 }}>
+                Voto solitário
+              </div>
+            )}
+          </div>
+          <div
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: `${game.team_b?.primary_color ?? '#e05c3a'}18`,
+              border: `1px solid ${game.team_b?.primary_color ?? '#e05c3a'}40`,
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_b?.name ?? game.away_team_id}</div>
+            <div className="font-condensed font-bold" style={{ color: game.team_b?.primary_color ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
+              {awayVotes.length}
+              <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 6 }}>{awayPct}%</span>
+            </div>
+            {loneAwayVote && (
+              <div style={{ color: 'var(--nba-gold)', fontSize: '0.68rem', marginTop: 4 }}>
+                Voto solitário
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(12,12,18,0.34)',
+            border: '1px solid rgba(200,150,60,0.14)',
+            color: 'var(--nba-text-muted)',
+            fontSize: '0.76rem',
+          }}
+        >
+          {totalVotes > 0
+            ? `${totalVotes} participante${totalVotes !== 1 ? 's' : ''} já tiveram o palpite revelado para este jogo.`
+            : 'Ninguém registrou palpite para este jogo até o fechamento.'}
+        </div>
+
+        {totalVotes > 0 && (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {sortedPicks.map((pick) => {
+              const pickedTeam = pick.winner_id === game.home_team_id ? game.team_a : game.team_b
+              const pickedTeamVotes = pick.winner_id === game.home_team_id ? homeVotes.length : awayVotes.length
+              const isLoneVote = totalVotes > 1 && pickedTeamVotes === 1
+              const isCorrect = game.played && game.winner_id != null && pick.winner_id === game.winner_id
+              return (
+                <div
+                  key={pick.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: 'rgba(12,12,18,0.34)',
+                    border: '1px solid rgba(200,150,60,0.12)',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.86rem' }}>
+                      {pick.participant_name}
+                    </div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {isLoneVote && (
+                        <span style={{ color: 'var(--nba-gold)' }}>
+                          voto solitário
+                        </span>
+                      )}
+                      {game.played && (
+                        <span style={{ color: isCorrect ? 'var(--nba-success)' : 'var(--nba-danger)' }}>
+                          {isCorrect ? 'acertou' : 'errou'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <span
+                      className="font-condensed font-bold"
+                      style={{
+                        color: pickedTeam?.primary_color ?? 'var(--nba-gold)',
+                        background: pickedTeam?.primary_color ? `${pickedTeam.primary_color}22` : 'rgba(200,150,60,0.12)',
+                        border: `1px solid ${pickedTeam?.primary_color ?? 'rgba(200,150,60,0.22)'}`,
+                        borderRadius: 999,
+                        padding: '4px 9px',
+                        fontSize: '0.78rem',
+                        letterSpacing: '0.06em',
+                      }}
+                    >
+                      {pickedTeam?.abbreviation ?? pick.winner_id}
+                    </span>
+                    {game.played && (
+                      <span
+                        className="font-condensed font-bold"
+                        style={{
+                          color: isCorrect ? 'var(--nba-success)' : 'var(--nba-danger)',
+                          fontSize: '0.74rem',
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {isCorrect ? '✓ acertou' : '✕ errou'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Date group header ────────────────────────────────────────────────────────
 
 function DateHeader({ iso, count }: { iso: string; count: number }) {
@@ -981,9 +1184,11 @@ interface GameCardProps {
   pick: GamePick | undefined
   onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<boolean>
   wasAutoPicked: boolean
+  revealedPicks: RevealedGamePick[]
+  onOpenRevealedPicks: (game: GameWithTeams) => void
 }
 
-function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
+function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenRevealedPicks }: GameCardProps) {
   const [pending, setPending] = useState<string | null>(null)
   const [saving,  setSaving]  = useState(false)
   const seriesClosedBeforeGame =
@@ -1012,8 +1217,8 @@ function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
     if (!pending) return
     setSaving(true)
     try {
-      await onSave(game.id, pending, 'manual')
-      setPending(null)
+      const saved = await onSave(game.id, pending, 'manual')
+      if (saved) setPending(null)
     } catch (err) {
       console.error('[GameCard] handleSave threw:', err)
     } finally {
@@ -1033,6 +1238,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
   const roundColor = ROUND_COLOR[round]
   const urgency = getUrgency(game)
   const stateMeta = getGameStateMeta(game, !!savedId, hasPending)
+  const canRevealPicks = isGameRevealed(game)
 
   // Border: gold when selected or saved, else default
   const cardBorder =
@@ -1304,6 +1510,51 @@ function GameCard({ game, pick, onSave, wasAutoPicked }: GameCardProps) {
         </div>
       )}
 
+      {canRevealPicks && (
+        <div
+          style={{
+            padding: '10px 12px',
+            borderTop: '1px solid rgba(74,144,217,0.18)',
+            background: 'rgba(74,144,217,0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--nba-text)', fontSize: '0.8rem', fontWeight: 700 }}>
+              Palpites revelados
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 3 }}>
+              {revealedPicks.length > 0
+                ? `${revealedPicks.length} participante${revealedPicks.length !== 1 ? 's' : ''} com palpite visível para este jogo.`
+                : 'Nenhum palpite registrado ficou visível para este jogo.'}
+            </div>
+          </div>
+          <button
+            onClick={() => onOpenRevealedPicks(game)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              border: '1px solid rgba(74,144,217,0.3)',
+              background: 'rgba(12,12,18,0.34)',
+              color: 'var(--nba-east)',
+              borderRadius: 10,
+              padding: '8px 10px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.76rem',
+            }}
+          >
+            <Users size={13} />
+            Ver palpites
+          </button>
+        </div>
+      )}
+
       {/* ── Save action (appears when pending) ── */}
       {hasPending && !seriesClosedBeforeGame && (
         <div style={{ padding: 12, borderTop: '1px solid rgba(200,150,60,0.18)', background: 'rgba(200,150,60,0.06)' }}>
@@ -1494,6 +1745,7 @@ function GamesHero({
 export function Games({ participantId }: Props) {
   const [games,   setGames]   = useState<GameWithTeams[]>([])
   const [picks,   setPicks]   = useState<GamePick[]>([])
+  const [revealedPicksByGameId, setRevealedPicksByGameId] = useState<Record<string, RevealedGamePick[]>>({})
   const [loading, setLoading] = useState(true)
   const [isMock,  setIsMock]  = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -1503,6 +1755,7 @@ export function Games({ participantId }: Props) {
   const [autoPickPreview, setAutoPickPreview] = useState<AutoPickPreviewItem[]>([])
   const [autoPickSaving, setAutoPickSaving] = useState(false)
   const [autoPickGameIds, setAutoPickGameIds] = useState<string[]>([])
+  const [revealedGame, setRevealedGame] = useState<GameWithTeams | null>(null)
   const { addToast } = useUIStore()
 
   useEffect(() => {
@@ -1584,12 +1837,39 @@ export function Games({ participantId }: Props) {
   async function fetchPicks() {
     if (!participantId || games.length === 0 || isMock) return
     const gameIds = games.map((g) => g.id)
-    const { data } = await supabase
-      .from('game_picks')
-      .select('*')
-      .eq('participant_id', participantId)
-      .in('game_id', gameIds)
-    if (data) setPicks(data as GamePick[])
+    const [{ data: myPicks }, { data: allPicks }, { data: participants }] = await Promise.all([
+      supabase
+        .from('game_picks')
+        .select('*')
+        .eq('participant_id', participantId)
+        .in('game_id', gameIds),
+      supabase
+        .from('game_picks')
+        .select('*')
+        .in('game_id', gameIds),
+      supabase
+        .from('participants')
+        .select('id, name'),
+    ])
+
+    if (myPicks) setPicks(myPicks as GamePick[])
+
+    if (allPicks && participants) {
+      const participantNames = Object.fromEntries((participants as Pick<Participant, 'id' | 'name'>[]).map((participant) => [participant.id, participant.name]))
+      const nextRevealedPicksByGameId = (allPicks as GamePick[]).reduce<Record<string, RevealedGamePick[]>>((acc, pick) => {
+        const game = games.find((item) => item.id === pick.game_id)
+        if (!game || !isGameRevealed(game)) return acc
+
+        if (!acc[pick.game_id]) acc[pick.game_id] = []
+        acc[pick.game_id].push({
+          ...pick,
+          participant_name: participantNames[pick.participant_id] ?? 'Participante',
+        })
+        return acc
+      }, {})
+
+      setRevealedPicksByGameId(nextRevealedPicksByGameId)
+    }
   }
 
   async function savePick(gameId: string, winnerId: string, source: SavePickSource = 'manual'): Promise<boolean> {
@@ -1802,6 +2082,8 @@ export function Games({ participantId }: Props) {
             onToggle={() => toggleSeries(group.seriesId)}
             onSave={savePick}
             autoPickGameIds={autoPickGameIds}
+            revealedPicksByGameId={revealedPicksByGameId}
+            onOpenRevealedPicks={setRevealedGame}
           />
         ))}
       </div>
@@ -1822,6 +2104,14 @@ export function Games({ participantId }: Props) {
           onConfirm={confirmAutoPick}
         />
       )}
+
+      {revealedGame && (
+        <RevealedPicksModal
+          game={revealedGame}
+          picks={revealedPicksByGameId[revealedGame.id] ?? []}
+          onClose={() => setRevealedGame(null)}
+        />
+      )}
     </div>
   )
 }
@@ -1833,6 +2123,8 @@ function SeriesCard({
   onToggle,
   onSave,
   autoPickGameIds,
+  revealedPicksByGameId,
+  onOpenRevealedPicks,
 }: {
   group: SeriesGroup
   picks: GamePick[]
@@ -1840,6 +2132,8 @@ function SeriesCard({
   onToggle: () => void
   onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<boolean>
   autoPickGameIds: string[]
+  revealedPicksByGameId: Record<string, RevealedGamePick[]>
+  onOpenRevealedPicks: (game: GameWithTeams) => void
 }) {
   const completionPct = group.effectiveGamesCount > 0 ? Math.round((group.pickedGames / group.effectiveGamesCount) * 100) : 0
   const roundColor = ROUND_COLOR[group.round]
@@ -1998,6 +2292,8 @@ function SeriesCard({
                 pick={picks.find((pick) => pick.game_id === game.id)}
                 onSave={onSave}
                 wasAutoPicked={autoPickGameIds.includes(game.id)}
+                revealedPicks={revealedPicksByGameId[game.id] ?? []}
+                onOpenRevealedPicks={onOpenRevealedPicks}
               />
             ))}
           </div>

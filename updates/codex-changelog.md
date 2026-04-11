@@ -1,5 +1,38 @@
 # Codex Changelog
 
+## 2026-04-11 - Palpites de jogo passam a ser revelados apos o lock
+
+### Objetivo
+- Manter o sigilo dos palpites antes do fechamento, mas liberar a visualizacao dos palpites da galera assim que o jogo estiver travado ou finalizado.
+
+### Arquivos alterados
+- `frontend/src/pages/Games.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A aba `Jogos` passou a carregar, alem do palpite do usuario atual, os palpites jogo a jogo dos demais participantes para os jogos da tela.
+- A regra de visibilidade ficou explicita na interface:
+  - antes de `tip_off_at`, os palpites continuam ocultos;
+  - depois do lock, os palpites daquele jogo podem ser revelados;
+  - jogos ja finalizados tambem entram como revelados;
+  - jogos que deixaram de existir porque a serie acabou antes tambem podem exibir o historico registrado.
+- Cada `GameCard` agora mostra um bloco `Palpites revelados` somente quando o jogo ja pode ser aberto para consulta.
+- Foi adicionado um modal `Ver palpites` com:
+  - total de votos em cada lado do confronto;
+  - quantidade total de participantes com palpite visivel naquele jogo;
+  - lista nominal de quem escolheu cada time.
+- O modal foi refinado para destacar melhor a resenha do pos-lock:
+  - percentual de votos por time;
+  - marcador de voto solitario quando apenas uma pessoa foi em um lado;
+  - indicacao de quem acertou ou errou depois que o jogo termina.
+- O fluxo continua preservando a proposta central do bolao:
+  - independencia antes do fechamento;
+  - resenha e comparacao depois que o prazo acaba.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning de chunk grande do Vite permanece, mas sem falha de compilação.
+
 ## 2026-04-10 - Vai na fé deixa de confirmar sucesso em caso de falha parcial
 
 ### Objetivo
