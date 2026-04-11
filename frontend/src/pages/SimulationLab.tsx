@@ -190,6 +190,15 @@ export function SimulationLab({ participantId, isAdmin }: Props) {
 
   useEffect(() => {
     fetchAll()
+
+    const sub = supabase
+      .channel('simulation-lab-participants')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, fetchAll)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sub)
+    }
   }, [])
 
   const rankingState = useMemo(() => {

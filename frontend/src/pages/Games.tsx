@@ -1813,6 +1813,21 @@ export function Games({ participantId }: Props) {
     setAutoPickGameIds(loadAutoPickIds(participantId))
   }, [participantId])
 
+  useEffect(() => {
+    if (isMock) return
+
+    const sub = supabase
+      .channel('games-participants')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, () => {
+        if (games.length > 0) fetchPicks()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sub)
+    }
+  }, [games, participantId, isMock])
+
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
   const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
 
@@ -1901,11 +1916,13 @@ export function Games({ participantId }: Props) {
       const nextRevealedPicksByGameId = (allPicks as GamePick[]).reduce<Record<string, RevealedGamePick[]>>((acc, pick) => {
         const game = games.find((item) => item.id === pick.game_id)
         if (!game || !isGameRevealed(game)) return acc
+        const participantName = participantNames[pick.participant_id]
+        if (!participantName) return acc
 
         if (!acc[pick.game_id]) acc[pick.game_id] = []
         acc[pick.game_id].push({
           ...pick,
-          participant_name: participantNames[pick.participant_id] ?? 'Participante',
+          participant_name: participantName,
         })
         return acc
       }, {})

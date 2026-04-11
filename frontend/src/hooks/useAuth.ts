@@ -25,6 +25,44 @@ export function useAuth() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (auth.status !== 'authorized') return
+
+    const email = auth.user.email ?? ''
+    const participantId = auth.participantId
+
+    const sub = supabase
+      .channel(`participant-access-${participantId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `id=eq.${participantId}` }, async (payload) => {
+        if (payload.eventType === 'DELETE') {
+          setAuth({ status: 'unauthorized', email })
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('participants')
+          .select('id, is_admin')
+          .eq('id', participantId)
+          .maybeSingle()
+
+        if (error || !data) {
+          setAuth({ status: 'unauthorized', email })
+          return
+        }
+
+        setAuth((current) =>
+          current.status === 'authorized' && current.user.id === auth.user.id
+            ? { ...current, isAdmin: data.is_admin ?? false }
+            : current
+        )
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sub)
+    }
+  }, [auth])
+
   async function handleUser(user: User) {
     const email = user.email!
 
@@ -59,23 +97,8 @@ export function useAuth() {
     }
 
     if (!participant) {
-      const { data: created, error: createError } = await supabase
-        .from('participants')
-        .insert({
-          user_id: user.id,
-          name: user.user_metadata.full_name ?? email.split('@')[0],
-          email,
-        })
-        .select('id, is_admin')
-        .single()
-
-      if (createError || !created) {
-        console.error('[useAuth] Failed to create participant:', createError?.message)
-        setAuth({ status: 'unauthenticated' })
-        return
-      }
-
-      participant = created
+      setAuth({ status: 'unauthorized', email })
+      return
     }
 
     setAuth({

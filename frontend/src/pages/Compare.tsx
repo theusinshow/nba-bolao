@@ -1306,10 +1306,38 @@ export function Compare() {
   const { ranking } = useRanking()
 
   useEffect(() => {
-    supabase.from('participants').select('*').then(({ data }) => {
+    const loadParticipants = async () => {
+      const { data } = await supabase.from('participants').select('*').order('name')
       if (data) setParticipants(data as Participant[])
-    })
+    }
+
+    loadParticipants()
+
+    const sub = supabase
+      .channel('compare-participants')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, loadParticipants)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sub)
+    }
   }, [])
+
+  useEffect(() => {
+    const participantIds = new Set(participants.map((participant) => participant.id))
+
+    if (leftId && !participantIds.has(leftId)) {
+      setLeftId('')
+      setLeftPicks([])
+      setLeftGamePicks([])
+    }
+
+    if (rightId && !participantIds.has(rightId)) {
+      setRightId('')
+      setRightPicks([])
+      setRightGamePicks([])
+    }
+  }, [participants, leftId, rightId])
 
   useEffect(() => {
     supabase

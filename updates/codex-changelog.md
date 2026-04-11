@@ -1,5 +1,36 @@
 # Codex Changelog
 
+## 2026-04-11 - Remoção de participante deixa de gerar usuário fantasma no bolão
+
+### Objetivo
+- Fazer com que um participante removido no Supabase desapareça de forma consistente do app inteiro, sem continuar visível no ranking, comparação, palpites revelados ou sessões abertas.
+
+### Arquivos alterados
+- `frontend/src/hooks/useAuth.ts`
+- `frontend/src/pages/Compare.tsx`
+- `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/SimulationLab.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- `useAuth` deixou de recriar automaticamente um participante ausente:
+  - se o usuário autenticado não tiver mais registro em `participants`, o app passa a tratá-lo como fora do bolão;
+  - sessões abertas também reagem em tempo real se o participante atual for removido.
+- A aba `Comparar` passou a recarregar a lista de participantes via Realtime:
+  - remoções e inclusões entram sem reload;
+  - seleções antigas são limpas se o participante deixar de existir.
+- A aba `Jogos` deixou de exibir palpites revelados órfãos:
+  - se um `game_pick` continuar no banco sem participante correspondente, ele não aparece mais na UI;
+  - alterações em `participants` também disparam atualização desse bloco.
+- O `SimulationLab` também passou a reagir a mudanças na tabela `participants`, evitando listas defasadas em ferramentas internas.
+
+### Observação operacional
+- Com essa proteção, apagar um registro em `participants` efetivamente remove a pessoa do bolão visível no app.
+- Se no futuro vocês quiserem voltar ao fluxo de criação automática no primeiro login, vale redesenhar isso com um onboarding/admin flow explícito para não reintroduzir usuários fantasmas.
+
+### Validações
+- Validação de frontend executada após a mudança.
+
 ## 2026-04-11 - Ranking passa a reagir à remoção e criação de participantes em tempo real
 
 ### Objetivo
