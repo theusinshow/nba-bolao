@@ -1,5 +1,48 @@
 # Codex Changelog
 
+## 2026-04-12 - Logo é otimizado para uso real no site e no favicon
+
+### Objetivo
+- Transformar a arte bruta do logo em assets adequados para web, com fundo transparente, tamanhos separados e peso muito menor para navegação real.
+
+### Arquivos alterados
+- `frontend/public/logo-bolao-nba-transparent.png`
+- `frontend/public/logo-bolao-nba-512.png`
+- `frontend/public/apple-touch-icon.png`
+- `frontend/public/favicon-64.png`
+- `frontend/public/favicon-32.png`
+- `frontend/public/favicon.ico`
+- `frontend/src/pages/Login.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/index.html`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi gerada uma versão do logo com fundo transparente.
+- O site deixou de usar o PNG bruto pesado e passou a usar a versão otimizada `512x512`.
+- Foram gerados arquivos específicos para:
+  - uso principal do logo no site;
+  - `apple-touch-icon`;
+  - favicon em PNG;
+  - favicon em `.ico`.
+- Login, navegação e Home foram atualizados para usar a versão mais leve e apropriada da marca.
+- O `index.html` passou a referenciar os favicons corretos em vez de apontar para o PNG grande.
+
+### Resultado prático
+- `logo-bolao-nba-512.png`: ~`120 KB`
+- `apple-touch-icon.png`: ~`28 KB`
+- `favicon-64.png`: ~`6.7 KB`
+- `favicon-32.png`: ~`2.3 KB`
+- `favicon.ico`: ~`14.5 KB`
+
+### Observação
+- O arquivo bruto original foi mantido no projeto apenas como referência (`logo-bolao-nba.png`), mas o site já não depende mais dele.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
 ## 2026-04-12 - Logo oficial passa a compor a identidade visual do produto
 
 ### Objetivo

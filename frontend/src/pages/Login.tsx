@@ -30,7 +30,7 @@ export function Login({ onSignIn }: Props) {
         {/* Logo */}
         <div>
           <img
-            src="/logo-bolao-nba.png"
+            src="/logo-bolao-nba-512.png"
             alt="Logo do Bolão NBA"
             style={{
               width: 120,

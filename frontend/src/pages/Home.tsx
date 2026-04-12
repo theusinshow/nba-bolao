@@ -199,7 +199,7 @@ function HeroPanel({
         <div style={{ position: 'relative', display: 'grid', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
             <img
-              src="/logo-bolao-nba.png"
+              src="/logo-bolao-nba-512.png"
               alt="Logo do Bolão NBA"
               style={{
                 width: 28,

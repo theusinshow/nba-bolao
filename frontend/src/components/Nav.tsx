@@ -60,7 +60,7 @@ export function Nav({ auth, onSignOut }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 <img
-                  src="/logo-bolao-nba.png"
+                  src="/logo-bolao-nba-512.png"
                   alt="Logo do Bolão NBA"
                   style={{
                     width: 38,
