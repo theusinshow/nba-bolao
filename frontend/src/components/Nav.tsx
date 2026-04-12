@@ -59,45 +59,23 @@ export function Nav({ auth, onSignOut }: Props) {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                {avatar ? (
-                  <img
-                    src={avatar}
-                    alt={name}
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: '999px',
-                      border: '1px solid rgba(200,150,60,0.22)',
-                      objectFit: 'cover',
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: '999px',
-                      background: 'rgba(200,150,60,0.12)',
-                      border: '1px solid rgba(200,150,60,0.18)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.8rem',
-                      color: 'var(--nba-gold)',
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {initials || '?'}
-                  </div>
-                )}
+                <img
+                  src="/logo-bolao-nba.png"
+                  alt="Logo do Bolão NBA"
+                  style={{
+                    width: 38,
+                    height: 38,
+                    objectFit: 'contain',
+                    flexShrink: 0,
+                    filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.28))',
+                  }}
+                />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ color: 'var(--nba-text)', fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {shortName}
+                    Bolão NBA
                   </div>
                   <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                    Menu rápido
+                    {shortName} • Menu rápido
                   </div>
                 </div>
               </div>

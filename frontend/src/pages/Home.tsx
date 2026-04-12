@@ -196,11 +196,21 @@ function HeroPanel({
         }}
       />
 
-      <div style={{ position: 'relative', display: 'grid', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
-          <Sparkles size={15} />
-          <span
-            className="font-condensed"
+        <div style={{ position: 'relative', display: 'grid', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
+            <img
+              src="/logo-bolao-nba.png"
+              alt="Logo do Bolão NBA"
+              style={{
+                width: 28,
+                height: 28,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.28))',
+              }}
+            />
+            <Sparkles size={15} />
+            <span
+              className="font-condensed"
             style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
           >
             Painel do participante

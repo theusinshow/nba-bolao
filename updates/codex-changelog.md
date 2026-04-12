@@ -1,5 +1,33 @@
 # Codex Changelog
 
+## 2026-04-12 - Logo oficial passa a compor a identidade visual do produto
+
+### Objetivo
+- Incorporar a nova marca visual do bolão na experiência do site, em vez de usar apenas texto e favicon padrão do Vite.
+
+### Arquivos alterados
+- `frontend/public/logo-bolao-nba.png`
+- `frontend/src/pages/Login.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/index.html`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O logo foi adicionado como asset público oficial do frontend.
+- A tela de login passou a exibir a marca acima do lockup textual do produto.
+- O menu rápido da navegação agora usa o logo como referência visual da marca.
+- A Home ganhou o logo no topo do hero, reforçando identidade sem poluir a interface.
+- O favicon e o `apple-touch-icon` passaram a apontar para a nova arte em vez do ícone padrão do Vite.
+
+### Impacto esperado
+- O produto ganha presença de marca mais forte e coerente.
+- Login, navegação e browser passam a ter identidade visual própria.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Observação: o warning já conhecido de chunk grande do Vite continua aparecendo, mas sem falha de compilação.
+
 ## 2026-04-11 - Aba Admin evolui para painel operacional completo
 
 ### Objetivo

@@ -29,6 +29,17 @@ export function Login({ onSignIn }: Props) {
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-[360px] text-center">
         {/* Logo */}
         <div>
+          <img
+            src="/logo-bolao-nba.png"
+            alt="Logo do Bolão NBA"
+            style={{
+              width: 120,
+              height: 120,
+              objectFit: 'contain',
+              margin: '0 auto 14px',
+              filter: 'drop-shadow(0 10px 28px rgba(0,0,0,0.42))',
+            }}
+          />
           <div
             className="text-5xl sm:text-6xl md:text-8xl font-bebas tracking-[0.08em]"
             style={{ color: 'var(--nba-gold)', textShadow: '0 0 40px rgba(200,150,60,0.4)' }}
