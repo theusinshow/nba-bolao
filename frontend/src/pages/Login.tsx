@@ -14,16 +14,25 @@ export function Login({ onSignIn }: Props) {
         viewBox="0 0 800 600"
         preserveAspectRatio="xMidYMid slice"
       >
-        <circle cx="400" cy="300" r="80" fill="none" stroke="#c8963c" strokeWidth="2" />
-        <circle cx="400" cy="300" r="180" fill="none" stroke="#c8963c" strokeWidth="1" />
-        <circle cx="400" cy="300" r="300" fill="none" stroke="#c8963c" strokeWidth="1" />
         <line x1="400" y1="0" x2="400" y2="600" stroke="#c8963c" strokeWidth="1" />
-        <rect x="50" y="150" width="160" height="300" fill="none" stroke="#c8963c" strokeWidth="1.5" />
-        <rect x="590" y="150" width="160" height="300" fill="none" stroke="#c8963c" strokeWidth="1.5" />
-        <rect x="50" y="210" width="80" height="180" fill="none" stroke="#c8963c" strokeWidth="1" />
-        <rect x="670" y="210" width="80" height="180" fill="none" stroke="#c8963c" strokeWidth="1" />
-        <circle cx="50" cy="300" r="60" fill="none" stroke="#c8963c" strokeWidth="1" />
-        <circle cx="750" cy="300" r="60" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <circle cx="400" cy="300" r="78" fill="none" stroke="#c8963c" strokeWidth="2" />
+        <line x1="360" y1="300" x2="440" y2="300" stroke="#c8963c" strokeWidth="1" />
+
+        <rect x="0" y="0" width="800" height="600" fill="none" stroke="#c8963c" strokeWidth="1" />
+
+        <rect x="0" y="170" width="150" height="260" fill="none" stroke="#c8963c" strokeWidth="1.5" />
+        <rect x="0" y="225" width="60" height="150" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <circle cx="150" cy="300" r="60" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <path d="M 0 230 A 220 220 0 0 1 0 370" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <path d="M 60 270 A 30 30 0 0 0 60 330" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <line x1="40" y1="260" x2="40" y2="340" stroke="#c8963c" strokeWidth="1" />
+
+        <rect x="650" y="170" width="150" height="260" fill="none" stroke="#c8963c" strokeWidth="1.5" />
+        <rect x="740" y="225" width="60" height="150" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <circle cx="650" cy="300" r="60" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <path d="M 800 230 A 220 220 0 0 0 800 370" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <path d="M 740 270 A 30 30 0 0 1 740 330" fill="none" stroke="#c8963c" strokeWidth="1" />
+        <line x1="760" y1="260" x2="760" y2="340" stroke="#c8963c" strokeWidth="1" />
       </svg>
 
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-[360px] text-center">
