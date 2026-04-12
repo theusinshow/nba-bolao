@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BarChart3, CheckCircle2, ChevronDown, ChevronRight, CircleOff, Flame, Layers3, Trophy, XCircle } from 'lucide-react'
 import type { GameScoreBreakdownItem, ParticipantScoreBreakdown, RoundNumber, SeriesScoreBreakdownItem } from '../types'
+import { LoadingBasketball } from './LoadingBasketball'
 
 interface Props {
   breakdown?: ParticipantScoreBreakdown
@@ -109,7 +110,7 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }} />
+        <LoadingBasketball size={32} />
       </div>
     )
   }

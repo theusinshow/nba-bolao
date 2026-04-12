@@ -7,6 +7,7 @@ import { useUIStore } from '../store/useUIStore'
 import { supabase } from '../lib/supabase'
 import type { Series } from '../types'
 import { getSeriesSlot } from '../utils/bracket'
+import { LoadingBasketball } from '../components/LoadingBasketball'
 
 interface Props {
   isAdmin: boolean
@@ -61,7 +62,7 @@ export function OfficialBracket({ isAdmin }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-nba-gold border-t-transparent rounded-full animate-spin" />
+        <LoadingBasketball size={32} />
       </div>
     )
   }

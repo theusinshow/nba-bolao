@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Info } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
+import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useUIStore } from '../store/useUIStore'
 import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
@@ -2051,10 +2052,7 @@ export function Games({ participantId }: Props) {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div
-          className="rounded-full border-2 animate-spin"
-          style={{ width: 32, height: 32, borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }}
-        />
+        <LoadingBasketball size={32} />
       </div>
     )
   }

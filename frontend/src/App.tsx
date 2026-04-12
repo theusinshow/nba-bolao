@@ -13,6 +13,7 @@ import { Compare } from './pages/Compare'
 import { Games } from './pages/Games'
 import { SimulationLab } from './pages/SimulationLab'
 import { Admin } from './pages/Admin'
+import { LoadingBasketball } from './components/LoadingBasketball'
 
 export default function App() {
   const { auth, signInWithGoogle, signOut } = useAuth()
@@ -20,7 +21,7 @@ export default function App() {
   if (auth.status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="w-10 h-10 border-2 border-nba-gold border-t-transparent rounded-full animate-spin" />
+        <LoadingBasketball size={40} />
       </div>
     )
   }

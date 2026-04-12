@@ -3,6 +3,7 @@ import {
   ArrowUp, ArrowDown, Minus, Trophy, Users, Target,
   AlertTriangle, Clock, TrendingUp, Star, ChevronRight, Sparkles, GitBranch, BarChart3,
 } from 'lucide-react'
+import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { isSeriesReadyForPick } from '../utils/bracket'
@@ -653,7 +654,7 @@ function RankingCard({
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-          <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }} />
+          <LoadingBasketball size={20} />
         </div>
       ) : (
         <div>
@@ -910,10 +911,7 @@ function PodiumCard({
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-          <div
-            className="w-6 h-6 rounded-full border-2 animate-spin"
-            style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }}
-          />
+          <LoadingBasketball size={24} />
         </div>
       ) : top3.length === 0 ? (
         <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem' }}>Sem dados ainda.</p>

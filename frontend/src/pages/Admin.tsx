@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase'
 import { adminGet, adminPost } from '../lib/adminApi'
 import { useUIStore } from '../store/useUIStore'
 import type { Participant } from '../types'
+import { LoadingBasketball } from '../components/LoadingBasketball'
 
 interface Props {
   participantId: string
@@ -621,7 +622,7 @@ export function Admin({ participantId }: Props) {
 
             {loadingParticipants ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-                <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }} />
+                <LoadingBasketball size={24} />
               </div>
             ) : filteredParticipants.length === 0 ? (
               <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem' }}>Nenhum participante encontrado para esse filtro.</p>
@@ -860,7 +861,7 @@ export function Admin({ participantId }: Props) {
 
             {loadingAllowedEmails ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-                <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }} />
+                <LoadingBasketball size={24} />
               </div>
             ) : allowedEmails.length === 0 ? (
               <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem' }}>Nenhum email liberado no momento.</p>

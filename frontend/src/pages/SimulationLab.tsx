@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Beaker, Lock, RefreshCw, Sparkles, Trophy, Users } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
+import { LoadingBasketball } from '../components/LoadingBasketball'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
 import { RankingTable } from '../components/RankingTable'
 import { SeriesModal } from '../components/SeriesModal'
@@ -452,7 +453,7 @@ export function SimulationLab({ participantId, isAdmin }: Props) {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--nba-gold)', borderTopColor: 'transparent' }} />
+        <LoadingBasketball size={32} />
       </div>
     )
   }

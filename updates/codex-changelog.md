@@ -1,5 +1,34 @@
 # Codex Changelog
 
+## 2026-04-12 - Loader do app vira bola de basquete dourada
+
+### Objetivo
+- Trocar o spinner circular genérico por um carregamento mais alinhado à identidade visual do bolão.
+
+### Arquivos alterados
+- `frontend/src/components/LoadingBasketball.tsx`
+- `frontend/src/App.tsx`
+- `frontend/src/components/ProtectedRoute.tsx`
+- `frontend/src/components/GamePickModal.tsx`
+- `frontend/src/components/ParticipantScoreReport.tsx`
+- `frontend/src/pages/OfficialBracket.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `frontend/src/pages/SimulationLab.tsx`
+- `frontend/src/pages/BracketEditor.tsx`
+- `frontend/src/pages/Games.tsx`
+- `frontend/src/pages/Admin.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criado um componente reutilizável `LoadingBasketball` com visual de bola de basquete dourada.
+- Os principais estados de carregamento do app passaram a usar esse novo loader em vez do círculo com borda girando.
+- A troca foi aplicada em autenticação, rotas protegidas, ranking, jogos, Home, Admin, bracket e relatórios.
+
+### Resultado prático
+- O carregamento ficou mais temático e coerente com o branding novo do site.
+- A experiência visual agora usa um elemento único e reconhecível em vez de vários spinners diferentes.
+
 ## 2026-04-12 - Logo é otimizado para uso real no site e no favicon
 
 ### Objetivo

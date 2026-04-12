@@ -5,6 +5,7 @@ import { getTeam } from '../data/teams2025'
 import { useGamePicks } from '../hooks/useGamePicks'
 import { useUIStore } from '../store/useUIStore'
 import { CountdownTimer } from './CountdownTimer'
+import { LoadingBasketball } from './LoadingBasketball'
 import { normalizeGame } from '../utils/bracket'
 
 interface Props {
@@ -49,7 +50,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
 
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-2 border-nba-gold border-t-transparent rounded-full animate-spin" />
+            <LoadingBasketball size={24} />
           </div>
         ) : games.length === 0 ? (
           <p className="text-nba-muted text-center py-8">Nenhum jogo cadastrado ainda.</p>
