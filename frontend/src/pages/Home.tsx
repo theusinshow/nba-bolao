@@ -196,18 +196,25 @@ function HeroPanel({
   myEntry,
   pickedSeries,
   readySeries,
+  totalSeries,
+  leaderPoints,
 }: {
   myEntry?: { rank: number; total_points: number; participant_name: string }
   pickedSeries: number
   readySeries: number
+  totalSeries: number
+  leaderPoints: number
 }) {
   const progress = readySeries > 0 ? Math.round((pickedSeries / readySeries) * 100) : 0
+  const missingReady = Math.max(readySeries - pickedSeries, 0)
+  const gapToLeader = myEntry ? Math.max(leaderPoints - myEntry.total_points, 0) : null
 
-  const actions = [
-    { to: '/bracket', label: 'Completar bracket', sublabel: `${pickedSeries}/${readySeries} séries disponíveis` },
-    { to: '/games', label: 'Ver jogos', sublabel: 'Acompanhe os próximos palpites' },
-    { to: '/ranking', label: 'Abrir ranking', sublabel: 'Confira sua posição no bolão' },
-  ]
+  const primaryAction =
+    missingReady > 0
+      ? { to: '/bracket', label: 'Fechar meus palpites', description: `${missingReady} série${missingReady !== 1 ? 's' : ''} pronta${missingReady !== 1 ? 's' : ''} sem pick`, tone: 'var(--nba-gold)' }
+      : myEntry && myEntry.rank > 1
+      ? { to: '/ranking', label: 'Caçar o líder', description: `${gapToLeader ?? 0} ponto${gapToLeader === 1 ? '' : 's'} para empatar`, tone: 'var(--nba-east)' }
+      : { to: '/games', label: 'Ver jogos do dia', description: 'Acompanhar os próximos movimentos do bolão', tone: 'var(--nba-success)' }
 
   return (
     <section
@@ -222,205 +229,70 @@ function HeroPanel({
     >
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top right, rgba(232,180,90,0.18), transparent 34%)', pointerEvents: 'none' }} />
 
-      <div style={{ position: 'relative', display: 'grid', gap: 16 }}>
+      <div style={{ position: 'relative', display: 'grid', gap: 14 }}>
+        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nba-gold)' }}>
-          <img src="/logo-bolao-nba-512.png" alt="Logo do Bolão NBA" style={{ width: 28, height: 28, objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.28))' }} />
-          <Sparkles size={15} />
-          <span className="font-condensed" style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <img src="/logo-bolao-nba-512.png" alt="Logo do Bolão NBA" style={{ width: 26, height: 26, objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.28))' }} />
+          <Sparkles size={14} />
+          <span className="font-condensed" style={{ fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Painel do participante
           </span>
         </div>
 
-        <div style={{ display: 'grid', gap: 12 }} className="md:grid-cols-[1.4fr_1fr]">
-          <div>
-            <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: 'clamp(2.5rem, 6vw, 3.6rem)', lineHeight: 0.95, margin: 0 }}>
-              Bolão NBA 2026
-            </h1>
-            <p style={{ color: 'var(--nba-text)', fontSize: '1rem', margin: '10px 0 6px' }}>
-              {myEntry ? `${myEntry.participant_name.split(' ')[0]}, você está no jogo.` : 'Seu painel está pronto para os playoffs.'}
-            </p>
-            <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', maxWidth: 560, margin: 0 }}>
-              Acompanhe sua posição, veja o andamento do bracket e entre nos palpites mais importantes antes do bloqueio.
-            </p>
-          </div>
+        {/* Title + greeting */}
+        <div>
+          <h1 className="title" style={{ color: 'var(--nba-gold)', fontSize: 'clamp(2rem, 5vw, 3rem)', lineHeight: 0.95, margin: 0 }}>
+            Bolão NBA 2026
+          </h1>
+          <p style={{ color: 'var(--nba-text)', fontSize: '0.95rem', margin: '8px 0 0' }}>
+            {myEntry ? `${myEntry.participant_name.split(' ')[0]}, você está no jogo.` : 'Seu painel está pronto para os playoffs.'}
+          </p>
+        </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignSelf: 'start' }}>
-            <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Minha posição</div>
-              <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '2rem', lineHeight: 1.05 }}>
-                {myEntry ? `#${myEntry.rank}` : '—'}
-              </div>
+        {/* 3 stat chips */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Minha posição</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.7rem', lineHeight: 1 }}>
+              {myEntry ? `#${myEntry.rank}` : '—'}
             </div>
-            <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Meus pontos</div>
-              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '2rem', lineHeight: 1.05 }}>
-                {myEntry?.total_points ?? 0}
-              </div>
+          </div>
+          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Meus pontos</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.7rem', lineHeight: 1 }}>
+              {myEntry?.total_points ?? 0}
+            </div>
+          </div>
+          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Dist. do líder</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-east)', fontSize: '1.7rem', lineHeight: 1 }}>
+              {myEntry ? (gapToLeader === 0 ? 'LÍDER' : `${gapToLeader}`) : '—'}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 12, alignItems: 'start' }} className="md:grid-cols-[1.1fr_1fr]">
-          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '12px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <span style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.88rem' }}>Progresso do bracket</span>
-              <span className="font-condensed font-bold" style={{ color: progress === 100 ? 'var(--nba-success)' : 'var(--nba-gold)' }}>
-                {progress}%
-              </span>
-            </div>
-            <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 8 }}>
-              <div
-                style={{
-                  width: `${progress}%`,
-                  height: '100%',
-                  borderRadius: 999,
-                  background: progress === 100 ? 'linear-gradient(90deg, #2ecc71, #7ae6a5)' : 'linear-gradient(90deg, var(--nba-gold), var(--nba-gold-light))',
-                }}
-              />
-            </div>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem' }}>
-              {pickedSeries} de {readySeries} séries definidas preenchidas.
-            </div>
+        {/* Progress bar */}
+        <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <span style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.84rem' }}>Progresso do bracket</span>
+            <span className="font-condensed font-bold" style={{ color: progress === 100 ? 'var(--nba-success)' : 'var(--nba-gold)' }}>
+              {pickedSeries}/{readySeries || totalSeries} — {progress}%
+            </span>
           </div>
-
-          <div style={{ display: 'grid', gap: 8 }}>
-            {actions.map((action) => (
-              <Link
-                key={action.to}
-                to={action.to}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  textDecoration: 'none',
-                  background: 'rgba(12,12,18,0.34)',
-                  border: '1px solid rgba(200,150,60,0.16)',
-                  color: 'var(--nba-text)',
-                }}
-              >
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontSize: '0.86rem' }}>{action.label}</span>
-                  <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
-                    {action.sublabel}
-                  </span>
-                </span>
-                <ChevronRight size={16} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
-              </Link>
-            ))}
+          <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+            <div style={{
+              width: `${progress}%`,
+              height: '100%',
+              borderRadius: 999,
+              background: progress === 100 ? 'linear-gradient(90deg, #2ecc71, #7ae6a5)' : 'linear-gradient(90deg, var(--nba-gold), var(--nba-gold-light))',
+              transition: 'width 0.6s ease',
+            }} />
           </div>
         </div>
-      </div>
-    </section>
-  )
-}
 
-function PanelPulseBar({
-  readySeries,
-  pickedSeries,
-  myRank,
-}: {
-  readySeries: number
-  pickedSeries: number
-  myRank?: number
-}) {
-  const pending = Math.max(readySeries - pickedSeries, 0)
-
-  return (
-    <section
-      style={{
-        display: 'grid',
-        gap: 10,
-        padding: '0.85rem 1rem',
-        borderRadius: 12,
-        background: 'linear-gradient(135deg, rgba(200,150,60,0.10), rgba(74,144,217,0.06) 55%, rgba(19,19,26,1) 100%)',
-        border: '1px solid rgba(200,150,60,0.18)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
-            <Target size={14} />
-          </span>
-          <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Pulso do dia
-          </span>
-        </div>
-        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-          Home focada em ação; radar completo segue em Análise
-        </span>
-      </div>
-
-      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Prontas para palpitar</div>
-          <div className="font-condensed font-bold" style={{ color: readySeries > 0 ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>
-            {readySeries}
-          </div>
-        </div>
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Pedindo ação</div>
-          <div className="font-condensed font-bold" style={{ color: pending > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '1.25rem', lineHeight: 1 }}>
-            {pending}
-          </div>
-        </div>
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Minha posição agora</div>
-          <div className="font-condensed font-bold" style={{ color: myRank != null ? 'var(--nba-gold)' : 'var(--nba-text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>
-            {myRank != null ? `#${myRank}` : '—'}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function MyMomentCard({
-  myEntry,
-  readySeries,
-  pickedSeries,
-  totalSeries,
-  leaderPoints,
-}: {
-  myEntry?: { rank: number; total_points: number; participant_name: string }
-  readySeries: number
-  pickedSeries: number
-  totalSeries: number
-  leaderPoints: number
-}) {
-  const missingReady = Math.max(readySeries - pickedSeries, 0)
-  const gapToLeader = myEntry ? Math.max(leaderPoints - myEntry.total_points, 0) : null
-
-  const primaryAction =
-    missingReady > 0
-      ? { to: '/bracket', label: 'Fechar meus palpites', description: `${missingReady} série${missingReady !== 1 ? 's' : ''} pronta${missingReady !== 1 ? 's' : ''} sem pick`, tone: 'var(--nba-gold)' }
-      : myEntry && myEntry.rank > 1
-      ? { to: '/ranking', label: 'Caçar o líder', description: `${gapToLeader ?? 0} ponto${gapToLeader === 1 ? '' : 's'} para empatar`, tone: 'var(--nba-east)' }
-      : { to: '/games', label: 'Ver jogos do dia', description: 'Acompanhar os próximos movimentos do bolão', tone: 'var(--nba-success)' }
-
-  return (
-    <section style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.10) 45%, rgba(200,150,60,0.10) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
-      <CardTitle icon={<Sparkles size={14} />}>Seu Momento Agora</CardTitle>
-
-      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
-        {[
-          { label: 'Séries prontas', value: String(readySeries), tone: 'var(--nba-text)' },
-          { label: 'Faltando palpitar', value: String(missingReady), tone: missingReady > 0 ? 'var(--nba-gold)' : 'var(--nba-success)' },
-          { label: 'Distância do líder', value: myEntry ? String(gapToLeader ?? 0) : '—', tone: 'var(--nba-east)' },
-        ].map((item) => (
-          <div key={item.label} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
-            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.35rem', lineHeight: 1 }}>
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.42)', border: '1px solid rgba(200,150,60,0.16)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-          <div>
+        {/* Smart CTA */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.42)', border: `1px solid color-mix(in srgb, ${primaryAction.tone} 20%, transparent)`, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
             <div className="font-condensed font-bold" style={{ color: primaryAction.tone, fontSize: '1rem', lineHeight: 1 }}>
               {primaryAction.label}
             </div>
@@ -428,15 +300,12 @@ function MyMomentCard({
               {primaryAction.description}
             </div>
           </div>
-
-          <Link to={primaryAction.to} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, textDecoration: 'none', color: 'var(--nba-text)', border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(28,28,38,0.9)', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
-            Abrir
-            <ChevronRight size={15} />
+          <Link
+            to={primaryAction.to}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 10, textDecoration: 'none', background: primaryAction.tone, color: '#0a0a0f', fontWeight: 700, fontSize: '0.82rem', flexShrink: 0, whiteSpace: 'nowrap' }}
+          >
+            Ir agora <ChevronRight size={14} />
           </Link>
-        </div>
-
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 10 }}>
-          Progresso útil agora: {pickedSeries}/{readySeries || totalSeries} séries prontas preenchidas.
         </div>
       </div>
     </section>
@@ -811,10 +680,8 @@ export function Home({ participantId }: Props) {
 
       <div className="flex flex-col gap-4 min-w-0">
         <div className="animate-in-1"><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} /></div>
-        <div className="animate-in-2"><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} /></div>
-        <div className="animate-in-3"><PanelPulseBar readySeries={readySeries.length} pickedSeries={pickedSeries} myRank={myEntry?.rank} /></div>
-        <div className="animate-in-4"><MyMomentCard myEntry={myEntry} readySeries={readySeries.length} pickedSeries={pickedSeries} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></div>
-        <div className="animate-in-5"><HomeQuickDeck /></div>
+        <div className="animate-in-2"><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></div>
+        <div className="animate-in-3"><HomeQuickDeck /></div>
 
         <div className="xl:hidden flex flex-col gap-4">
           <MyPicksCard series={series} picks={picks} />

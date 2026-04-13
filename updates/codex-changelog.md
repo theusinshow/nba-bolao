@@ -1,5 +1,33 @@
 # Codex Changelog
 
+## 2026-04-13 - Fusão do hero da Home em bloco único (Claude Code)
+
+### Objetivo
+- Eliminar repetição de informação na Home: posição, pontos e séries apareciam 3 vezes em blocos distintos.
+- Reduzir o scroll no mobile de 5 blocos para 3 na coluna principal.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+- Removidos os componentes `PanelPulseBar` e `MyMomentCard` inteiramente.
+- `HeroPanel` reescrito para absorver toda a responsabilidade dos três blocos anteriores.
+- O novo hero exibe em sequência: label "Painel do participante", título "Bolão NBA 2026", saudação personalizada, 3 chips de estatística (posição / pontos / distância do líder), barra de progresso do bracket com contagem e percentual, e CTA inteligente com botão sólido colorido (dourado se há picks pendentes, azul se está atrás do líder, verde se está em dia).
+- A prop `totalSeries` e `leaderPoints` foram adicionadas ao `HeroPanel` para suportar a lógica do CTA inteligente que antes vivia no `MyMomentCard`.
+- O render principal da Home passou de 5 wrappers com stagger para 3: `LastNightRecap`, `HeroPanel`, `HomeQuickDeck`.
+- A transição da barra de progresso ganhou `transition: width 0.6s ease` para animar o preenchimento.
+
+### Resultado prático
+- A posição e os pontos do participante aparecem uma única vez, com hierarquia clara.
+- O mobile ficou significativamente mais curto e direto.
+- O bundle da Home encolheu de 29.10 kB para 24.38 kB (remoção dos dois componentes).
+- Nenhuma informação relevante foi perdida — apenas a duplicação.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso — zero erros ou warnings.
+
+---
+
 ## 2026-04-13 - Efeitos visuais e animações globais (Claude Code)
 
 ### Objetivo
