@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight,
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
+import { useGameFeed } from '../hooks/useGameFeed'
 import { isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
@@ -74,7 +75,29 @@ function Badge({ label, color }: { label: string; color: string }) {
   )
 }
 
-function LastNightRecap() {
+function formatShortDateTime(dateValue: string | null | undefined) {
+  if (!dateValue) return 'Sem horário'
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(dateValue))
+}
+
+function LastNightRecap({ games, isRealData }: { games: ReturnType<typeof useGameFeed>['recentCompletedGames']; isRealData: boolean }) {
+  const sourceGames = games.length > 0
+    ? games.map((game) => ({
+        home: game.home_team?.abbreviation ?? game.home_team_id,
+        away: game.away_team?.abbreviation ?? game.away_team_id,
+        homeScore: game.home_score ?? 0,
+        awayScore: game.away_score ?? 0,
+        round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
+        note: formatShortDateTime(game.tip_off_at),
+      }))
+    : LAST_NIGHT_RESULTS
+
   return (
     <section style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 1rem', marginBottom: 10 }}>
@@ -87,7 +110,7 @@ function LastNightRecap() {
           </h2>
         </div>
         <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-          base rápida para entrar no dia
+          {isRealData ? 'placares reais sincronizados' : 'base rápida para entrar no dia'}
         </span>
       </div>
 
@@ -100,7 +123,7 @@ function LastNightRecap() {
           scrollSnapType: 'x proximity',
         }}
       >
-        {LAST_NIGHT_RESULTS.map((game) => {
+        {sourceGames.map((game) => {
           return (
             <div
               key={`${game.home}-${game.away}`}
@@ -136,7 +159,9 @@ function LastNightRecap() {
       </div>
 
       <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 10, padding: '0 1rem', lineHeight: 1.4 }}>
-        Resultados simulados por enquanto — integração com dados reais virá depois.
+        {isRealData
+          ? 'Bloco alimentado por jogos reais vindos do banco sincronizado.'
+          : 'Resultados simulados por enquanto — integração com dados reais virá depois.'}
       </div>
     </section>
   )
@@ -743,6 +768,7 @@ function HomeQuickDeck() {
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks } = useSeries(participantId)
+  const { recentCompletedGames, hasRealGames } = useGameFeed()
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
   const leader = ranking[0]
@@ -759,7 +785,7 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
-        <LastNightRecap />
+        <LastNightRecap games={recentCompletedGames} isRealData={hasRealGames && recentCompletedGames.length > 0} />
         <HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} />
         <PanelPulseBar readySeries={readySeries.length} pickedSeries={pickedSeries} myRank={myEntry?.rank} />
         <MyMomentCard myEntry={myEntry} readySeries={readySeries.length} pickedSeries={pickedSeries} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} />

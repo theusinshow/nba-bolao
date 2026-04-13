@@ -1,5 +1,62 @@
 # Codex Changelog
 
+## 2026-04-13 13:08 - Primeira camada de dados reais conecta Home e Analise ao feed de jogos
+
+### Objetivo
+- Iniciar a fase de dados reais aproveitando a pipeline já existente de sync para alimentar `Home` e `Analise` com jogos vindos do banco, em vez de manter tudo preso a blocos estáticos.
+
+### Arquivos alterados
+- `frontend/src/hooks/useGameFeed.ts`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Analysis.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criada a nova camada compartilhada `useGameFeed` para buscar do `Supabase`:
+  - jogos;
+  - times;
+  - séries.
+- O hook enriquece os jogos com referência de times e série e expõe dois recortes principais:
+  - `recentCompletedGames`
+  - `upcomingGames`
+- O hook também passa a ouvir mudanças em tempo real nas tabelas:
+  - `games`
+  - `series`
+  - `teams`
+- A `Home` deixou de depender apenas do array estático de `Jogos da última noite`.
+- O topo da `Home` agora consome os jogos finalizados mais recentes do banco quando houver dados reais disponíveis, com fallback para conteúdo estático quando o feed ainda estiver vazio.
+- A aba `Análise` passou a consumir os próximos jogos reais sincronizados para:
+  - métricas do hero;
+  - card `Próximos confrontos`;
+  - contexto visual da página.
+- A `Análise` agora sinaliza explicitamente quando os confrontos e resultados recentes já estão vindos de dados reais.
+
+### Auditoria da pipeline atual
+- O backend já possui uma job real de sync em `backend/src/jobs/syncNBA.ts`.
+- A integração atual usa `Ball Don't Lie` como fonte de jogos de pós-temporada.
+- O backend grava e atualiza os dados em `games` e `series` no `Supabase`.
+- Ao final do sync, o backend já recalcula as pontuações com `recalculateAllScores()`.
+- O backend também já agenda sync recorrente via `node-cron` em `backend/src/index.ts`.
+- O principal gargalo observado nesta rodada não estava no banco, e sim no frontend:
+  - `Home` ainda tinha recap estático;
+  - `Analysis` ainda estava fortemente simulada.
+
+### Resultado prático
+- O app começou a aproveitar melhor a infraestrutura real que já existia.
+- `Home` e `Análise` agora reagem ao estado real do banco sem precisar esperar a integração completa de odds e lesões.
+- A próxima fase fica mais clara:
+  - reforçar a job de sync;
+  - expandir o uso de dados reais;
+  - tratar odds e lesões com provedores dedicados.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- O build precisou ser executado fora do sandbox por limitação do `esbuild` no ambiente Windows restrito, mas compilou normalmente após isso.
+
+### Pendências
+- `Analysis` ainda mantém odds e lesões em modo simulado.
+- A próxima rodada ideal é aprofundar a auditoria de `backend/src/jobs/syncNBA.ts` e reforçar a camada de sync com mais metadados operacionais e maior cobertura de status de jogo.
+
 ## 2026-04-13 12:35 - Prompt completo criado para migracao para outra conta do Codex
 
 ### Objetivo

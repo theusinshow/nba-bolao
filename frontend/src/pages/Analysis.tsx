@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Activity, ChevronRight, Clock, Sparkles, Star, TrendingUp } from 'lucide-react'
+import { useGameFeed } from '../hooks/useGameFeed'
 
 type InjuryStatus = 'out' | 'questionable' | 'probable' | 'available'
 
@@ -49,6 +50,8 @@ const ROUND_BADGE_COLOR: Record<string, string> = {
   CF: '#e05c3a',
 }
 
+const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
+
 const card: React.CSSProperties = {
   background: 'var(--nba-surface)',
   border: '1px solid var(--nba-border)',
@@ -94,7 +97,26 @@ function SimNote({ children }: { children: React.ReactNode }) {
   return <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 8, lineHeight: 1.4 }}>{children}</p>
 }
 
-function AnalysisHero() {
+function formatShortDateTime(dateValue: string | null | undefined) {
+  if (!dateValue) return 'Sem horário'
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(dateValue))
+}
+
+function AnalysisHero({
+  nextGamesCount,
+  recentResultsCount,
+  hasRealGames,
+}: {
+  nextGamesCount: number
+  recentResultsCount: number
+  hasRealGames: boolean
+}) {
   return (
     <section
       style={{
@@ -131,8 +153,8 @@ function AnalysisHero() {
 
           <div style={{ display: 'grid', gap: 10 }} className="grid-cols-2">
             {[
-              { label: 'Próximos confrontos', value: NEXT_GAMES.length, tone: 'var(--nba-text)' },
-              { label: 'Resultados recentes', value: LAST_NIGHT_RESULTS.length, tone: 'var(--nba-gold)' },
+              { label: 'Próximos confrontos', value: nextGamesCount, tone: 'var(--nba-text)' },
+              { label: 'Resultados recentes', value: recentResultsCount, tone: 'var(--nba-gold)' },
               { label: 'Odds em destaque', value: ODDS.length, tone: 'var(--nba-east)' },
               { label: 'Radar de lesões', value: INJURIES.length, tone: 'var(--nba-success)' },
             ].map((item) => (
@@ -145,12 +167,15 @@ function AnalysisHero() {
             ))}
           </div>
         </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+          {hasRealGames ? 'Confrontos e resultados já usam jogos reais sincronizados.' : 'Ainda há placeholders enquanto a integração completa não entra.'}
+        </div>
       </div>
     </section>
   )
 }
 
-function AnalysisContextCard() {
+function AnalysisContextCard({ hasRealGames }: { hasRealGames: boolean }) {
   return (
     <section style={{ ...card, background: 'linear-gradient(135deg, rgba(200,150,60,0.10), rgba(74,144,217,0.06) 55%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -163,8 +188,8 @@ function AnalysisContextCard() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-gold)', background: 'rgba(200,150,60,0.10)', border: '1px solid rgba(200,150,60,0.18)' }}>
-          Conteúdo em modo simulado
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: hasRealGames ? 'var(--nba-success)' : 'var(--nba-gold)', background: hasRealGames ? 'rgba(46,204,113,0.10)' : 'rgba(200,150,60,0.10)', border: hasRealGames ? '1px solid rgba(46,204,113,0.18)' : '1px solid rgba(200,150,60,0.18)' }}>
+          {hasRealGames ? 'Jogos reais conectados' : 'Conteúdo em modo simulado'}
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-success)', background: 'rgba(46,204,113,0.10)', border: '1px solid rgba(46,204,113,0.18)' }}>
           Home focada no bolão real
@@ -172,14 +197,31 @@ function AnalysisContextCard() {
       </div>
 
       <p style={{ color: 'var(--nba-text)', fontSize: '0.82rem', margin: 0, lineHeight: 1.45 }}>
-        Esta seção ainda funciona como radar visual enquanto a integração real desses dados não entra. A separação em aba própria foi feita para manter a Home mais limpa e a navegação mais coerente.
+        {hasRealGames
+          ? 'Próximos confrontos e resultados recentes já usam dados reais do banco sincronizado. Odds e lesões ainda seguem como radar visual enquanto a próxima camada de integração não entra.'
+          : 'Esta seção ainda funciona como radar visual enquanto a integração real desses dados não entra. A separação em aba própria foi feita para manter a Home mais limpa e a navegação mais coerente.'}
       </p>
     </section>
   )
 }
 
-function NextGamesCard() {
-  const featured = NEXT_GAMES[0]
+function NextGamesCard({
+  games,
+  isRealData,
+}: {
+  games: ReturnType<typeof useGameFeed>['upcomingGames']
+  isRealData: boolean
+}) {
+  const sourceGames = games.length > 0
+    ? games.map((game) => ({
+        home: game.home_team?.abbreviation ?? game.home_team_id,
+        away: game.away_team?.abbreviation ?? game.away_team_id,
+        date: formatShortDateTime(game.tip_off_at),
+        time: '',
+        round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
+      }))
+    : NEXT_GAMES
+  const featured = sourceGames[0]
 
   return (
     <div style={card}>
@@ -197,7 +239,7 @@ function NextGamesCard() {
             {featured.home} vs {featured.away}
           </div>
           <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
-            {featured.date} às {featured.time} BRT
+            {featured.time ? `${featured.date} às ${featured.time} BRT` : featured.date}
           </div>
           <Link to="/games" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--nba-gold)', fontSize: '0.78rem', marginTop: 10, textDecoration: 'none' }}>
             Ir para jogos
@@ -207,7 +249,7 @@ function NextGamesCard() {
       )}
 
       <div>
-        {NEXT_GAMES.map((g, i) => {
+        {sourceGames.map((g, i) => {
           const color = ROUND_BADGE_COLOR[g.round] ?? '#888'
           return (
             <div key={i}>
@@ -217,17 +259,17 @@ function NextGamesCard() {
                     {g.home} <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span> {g.away}
                   </div>
                   <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
-                    {g.date} · {g.time} BRT
+                    {g.time ? `${g.date} · ${g.time} BRT` : g.date}
                   </div>
                 </div>
                 <Badge label={g.round} color={color} small />
               </div>
-              {i < NEXT_GAMES.length - 1 && <Divider />}
+              {i < sourceGames.length - 1 && <Divider />}
             </div>
           )
         })}
       </div>
-      <SimNote>Agenda simulada por enquanto — integração com dados reais virá depois.</SimNote>
+      <SimNote>{isRealData ? 'Agenda alimentada por jogos reais sincronizados do banco.' : 'Agenda simulada por enquanto — integração com dados reais virá depois.'}</SimNote>
     </div>
   )
 }
@@ -316,14 +358,20 @@ function AnalysisActionsCard() {
 }
 
 export function Analysis() {
+  const { upcomingGames, recentCompletedGames, hasRealGames } = useGameFeed()
+
   return (
     <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
-      <AnalysisHero />
-      <AnalysisContextCard />
+      <AnalysisHero
+        nextGamesCount={upcomingGames.length || NEXT_GAMES.length}
+        recentResultsCount={recentCompletedGames.length || LAST_NIGHT_RESULTS.length}
+        hasRealGames={hasRealGames}
+      />
+      <AnalysisContextCard hasRealGames={hasRealGames} />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
         <div className="flex flex-col gap-4 min-w-0">
-          <NextGamesCard />
+          <NextGamesCard games={upcomingGames} isRealData={hasRealGames && upcomingGames.length > 0} />
           <OddsCard />
         </div>
         <div className="flex flex-col gap-4 min-w-0">
