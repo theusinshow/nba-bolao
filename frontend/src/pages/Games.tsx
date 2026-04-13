@@ -68,119 +68,6 @@ interface PickFocusEntry {
   statusColor: string
 }
 
-// ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
-
-const MOCK_TEAMS: Record<string, Team> = {
-  OKC:   { id: 'OKC',   name: 'Oklahoma City Thunder',    abbreviation: 'OKC',  conference: 'West', seed: 1, primary_color: '#007AC1' },
-  HOU:   { id: 'HOU',   name: 'Houston Rockets',          abbreviation: 'HOU',  conference: 'West', seed: 2, primary_color: '#CE1141' },
-  DEN:   { id: 'DEN',   name: 'Denver Nuggets',           abbreviation: 'DEN',  conference: 'West', seed: 4, primary_color: '#0E2240' },
-  MIN:   { id: 'MIN',   name: 'Minnesota Timberwolves',   abbreviation: 'MIN',  conference: 'West', seed: 7, primary_color: '#0C2340' },
-  LAL:   { id: 'LAL',   name: 'Los Angeles Lakers',       abbreviation: 'LAL',  conference: 'West', seed: 6, primary_color: '#552583' },
-  SAS:   { id: 'SAS',   name: 'San Antonio Spurs',        abbreviation: 'SAS',  conference: 'West', seed: 5, primary_color: '#C4CED4' },
-  CLE:   { id: 'CLE',   name: 'Cleveland Cavaliers',      abbreviation: 'CLE',  conference: 'East', seed: 1, primary_color: '#860038' },
-  BOS:   { id: 'BOS',   name: 'Boston Celtics',           abbreviation: 'BOS',  conference: 'East', seed: 2, primary_color: '#007A33' },
-  NYK:   { id: 'NYK',   name: 'New York Knicks',          abbreviation: 'NYK',  conference: 'East', seed: 3, primary_color: '#F58426' },
-  DET:   { id: 'DET',   name: 'Detroit Pistons',          abbreviation: 'DET',  conference: 'East', seed: 5, primary_color: '#C8102E' },
-  ATL:   { id: 'ATL',   name: 'Atlanta Hawks',            abbreviation: 'ATL',  conference: 'East', seed: 6, primary_color: '#E03A3E' },
-  TBDW7: { id: 'TBDW7', name: 'Play-In Oeste #7',         abbreviation: 'TBD',  conference: 'West', seed: 7, primary_color: '#556677' },
-  TBDW8: { id: 'TBDW8', name: 'Play-In Oeste #8',         abbreviation: 'TBD',  conference: 'West', seed: 8, primary_color: '#556677' },
-  TBDE6: { id: 'TBDE6', name: 'Play-In Leste #6',         abbreviation: 'TBD',  conference: 'East', seed: 6, primary_color: '#556677' },
-  TBDE7: { id: 'TBDE7', name: 'Play-In Leste #7',         abbreviation: 'TBD',  conference: 'East', seed: 7, primary_color: '#556677' },
-  TBDE8: { id: 'TBDE8', name: 'Play-In Leste #8',         abbreviation: 'TBD',  conference: 'East', seed: 8, primary_color: '#556677' },
-}
-
-// BRT = UTC-3 → add 3 h to convert BRT to UTC
-// Handles overflow when hBrt + 3 >= 24 (crosses midnight UTC)
-function brt(date: string, hBrt: number, mBrt = 0): string {
-  const utcHours = hBrt + 3
-  const h = String(utcHours % 24).padStart(2, '0')
-  const m = String(mBrt).padStart(2, '0')
-
-  if (utcHours >= 24) {
-    const d = new Date(`${date}T00:00:00Z`)
-    d.setUTCDate(d.getUTCDate() + 1)
-    const nextDate = d.toISOString().slice(0, 10)
-    return `${nextDate}T${h}:${m}:00Z`
-  }
-
-  return `${date}T${h}:${m}:00Z`
-}
-
-const MOCK_GAMES: GameWithTeams[] = [
-  {
-    id: 'mock-1', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'OKC',   team_b_id: 'TBDW8',
-    winner_id: null, home_team_id: 'OKC', away_team_id: 'TBDW8',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-19', 18, 0), balldontlie_id: null,
-    team_a: MOCK_TEAMS.OKC, team_b: MOCK_TEAMS.TBDW8,
-  },
-  {
-    id: 'mock-2', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'DET',   team_b_id: 'TBDE8',
-    winner_id: null, home_team_id: 'DET', away_team_id: 'TBDE8',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-19', 20, 30), balldontlie_id: null,
-    team_a: MOCK_TEAMS.DET, team_b: MOCK_TEAMS.TBDE8,
-  },
-  {
-    id: 'mock-3', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'SAS',   team_b_id: 'TBDW7',
-    winner_id: null, home_team_id: 'SAS', away_team_id: 'TBDW7',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-20', 15, 0), balldontlie_id: null,
-    team_a: MOCK_TEAMS.SAS, team_b: MOCK_TEAMS.TBDW7,
-  },
-  {
-    id: 'mock-4', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'BOS',   team_b_id: 'TBDE7',
-    winner_id: null, home_team_id: 'BOS', away_team_id: 'TBDE7',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-20', 17, 30), balldontlie_id: null,
-    team_a: MOCK_TEAMS.BOS, team_b: MOCK_TEAMS.TBDE7,
-  },
-  {
-    id: 'mock-5', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'DEN',   team_b_id: 'MIN',
-    winner_id: null, home_team_id: 'DEN', away_team_id: 'MIN',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-20', 20, 0), balldontlie_id: null,
-    team_a: MOCK_TEAMS.DEN, team_b: MOCK_TEAMS.MIN,
-  },
-  {
-    id: 'mock-6', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'HOU',   team_b_id: 'LAL',
-    winner_id: null, home_team_id: 'HOU', away_team_id: 'LAL',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-21', 19, 0), balldontlie_id: null,
-    team_a: MOCK_TEAMS.HOU, team_b: MOCK_TEAMS.LAL,
-  },
-  {
-    id: 'mock-7', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'NYK',   team_b_id: 'ATL',
-    winner_id: null, home_team_id: 'NYK', away_team_id: 'ATL',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-21', 21, 30), balldontlie_id: null,
-    team_a: MOCK_TEAMS.NYK, team_b: MOCK_TEAMS.ATL,
-  },
-  {
-    id: 'mock-8', series_id: '', game_number: 1, round: 1,
-    team_a_id: 'CLE',   team_b_id: 'TBDE6',
-    winner_id: null, home_team_id: 'CLE', away_team_id: 'TBDE6',
-    home_score: null, away_score: null, nba_game_id: null,
-    score_a: null, score_b: null, played: false,
-    tip_off_at: brt('2026-04-22', 19, 0), balldontlie_id: null,
-    team_a: MOCK_TEAMS.CLE, team_b: MOCK_TEAMS.TBDE6,
-  },
-]
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dateKeyBRT(iso: string) {
@@ -1760,13 +1647,11 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
 function GamesHero({
   games,
   picks,
-  isMock,
   pendingSeries,
   urgentSeries,
 }: {
   games: GameWithTeams[]
   picks: GamePick[]
-  isMock: boolean
   pendingSeries: number
   urgentSeries: number
 }) {
@@ -1818,9 +1703,7 @@ function GamesHero({
               Jogos
             </h1>
             <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', margin: '8px 0 0' }}>
-              {isMock
-                ? 'Dados simulados para validar layout e fluxo de palpites'
-                : 'Fique de olho nos horários para não perder nenhum fechamento'}
+              Fique de olho nos horários para não perder nenhum fechamento
             </p>
           </div>
 
@@ -2029,7 +1912,6 @@ export function Games({ participantId }: Props) {
   const [picks,   setPicks]   = useState<GamePick[]>([])
   const [revealedPicksByGameId, setRevealedPicksByGameId] = useState<Record<string, RevealedGamePick[]>>({})
   const [loading, setLoading] = useState(true)
-  const [isMock,  setIsMock]  = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [expandedSeriesIds, setExpandedSeriesIds] = useState<string[]>([])
   const [autoPickGroup, setAutoPickGroup] = useState<AutoPickDayGroup | null>(null)
@@ -2056,8 +1938,6 @@ export function Games({ participantId }: Props) {
   }, [participantId])
 
   useEffect(() => {
-    if (isMock) return
-
     const sub = supabase
       .channel('games-participants')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, () => {
@@ -2068,7 +1948,7 @@ export function Games({ participantId }: Props) {
     return () => {
       supabase.removeChannel(sub)
     }
-  }, [games, participantId, isMock])
+  }, [games, participantId])
 
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
   const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
@@ -2125,7 +2005,6 @@ export function Games({ participantId }: Props) {
 
     if (gamesError || teamsError) {
       setGames([])
-      setIsMock(false)
       setLoadError('Nao foi possivel carregar os jogos agora.')
       setLoading(false)
       return
@@ -2148,20 +2027,14 @@ export function Games({ participantId }: Props) {
         series_is_complete: seriesMetaById[g.series_id]?.is_complete ?? false,
       }))
       setGames(merged as GameWithTeams[])
-      setIsMock(false)
-    } else if (import.meta.env.DEV) {
-      // No real games yet — use mock data for layout testing
-      setGames(MOCK_GAMES)
-      setIsMock(true)
     } else {
       setGames([])
-      setIsMock(false)
     }
     setLoading(false)
   }
 
   async function fetchPicks() {
-    if (!participantId || games.length === 0 || isMock) return
+    if (!participantId || games.length === 0) return
     const gameIds = games.map((g) => g.id)
     const [{ data: myPicks }, { data: allPicks }, { data: participants }] = await Promise.all([
       supabase
@@ -2201,34 +2074,6 @@ export function Games({ participantId }: Props) {
   }
 
   async function savePick(gameId: string, winnerId: string, source: SavePickSource = 'manual'): Promise<boolean> {
-    if (isMock) {
-      const fake: GamePick = {
-        id: `mock-pick-${gameId}`,
-        participant_id: participantId,
-        game_id: gameId,
-        winner_id: winnerId,
-        points: 0,
-      }
-      setPicks((prev) => {
-        const exists = prev.find((p) => p.game_id === gameId)
-        return exists
-          ? prev.map((p) => p.game_id === gameId ? { ...p, winner_id: winnerId } : p)
-          : [...prev, fake]
-      })
-      setAutoPickGameIds((current) => {
-        const next = source === 'auto'
-          ? Array.from(new Set([...current, gameId]))
-          : current.filter((id) => id !== gameId)
-        persistAutoPickIds(participantId, next)
-        return next
-      })
-      if (source === 'manual') {
-        setRecentlySavedGameId(gameId)
-        addToast('Palpite salvo! (simulação)', 'success')
-      }
-      return true
-    }
-
     if (!participantId) {
       addToast('Erro: participante não identificado', 'error')
       return false
@@ -2356,7 +2201,6 @@ export function Games({ participantId }: Props) {
       <GamesHero
         games={games}
         picks={picks}
-        isMock={isMock}
         pendingSeries={filterCounts.pending}
         urgentSeries={filterCounts.urgent}
       />

@@ -11,9 +11,24 @@ export interface BDLGame {
   id: number
   date: string
   status: string
+  datetime?: string | null
   period: number
-  home_team: { id: number; abbreviation: string }
-  visitor_team: { id: number; abbreviation: string }
+  home_team: {
+    id: number
+    abbreviation: string
+    conference?: 'East' | 'West' | null
+    city?: string | null
+    name?: string | null
+    full_name?: string | null
+  }
+  visitor_team: {
+    id: number
+    abbreviation: string
+    conference?: 'East' | 'West' | null
+    city?: string | null
+    name?: string | null
+    full_name?: string | null
+  }
   home_team_score: number
   visitor_team_score: number
   postseason: boolean

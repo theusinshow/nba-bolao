@@ -3,7 +3,6 @@ import type { Request, Response, NextFunction } from 'express'
 import { syncNBA } from '../jobs/syncNBA'
 import { recalculateAllScores } from '../scoring/engine'
 import { supabase } from '../lib/supabase'
-import { SERIES_SEED } from './seedData'
 import { removeParticipantCompletely } from '../admin/removeParticipant'
 import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
 
@@ -181,28 +180,6 @@ router.post('/rescore', async (_req, res) => {
     res.json({ ok: true, message: 'Rescoring completed successfully' })
   } catch (err: unknown) {
     console.error('[admin/rescore] Rescore failed:', err)
-    res.status(500).json({ ok: false, error: String(err) })
-  }
-})
-
-// POST /admin/seed — seed series data for 2025 playoffs
-router.post('/seed', async (_req, res) => {
-  try {
-    for (const s of SERIES_SEED) {
-      const { data: existing } = await supabase
-        .from('series')
-        .select('id')
-        .eq('id', s.id)
-        .single()
-
-      if (existing) {
-        await supabase.from('series').update(s).eq('id', existing.id)
-      } else {
-        await supabase.from('series').insert(s)
-      }
-    }
-    res.json({ ok: true, message: `Seeded ${SERIES_SEED.length} series` })
-  } catch (err: unknown) {
     res.status(500).json({ ok: false, error: String(err) })
   }
 })

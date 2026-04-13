@@ -1,5 +1,43 @@
 # Codex Changelog
 
+## 2026-04-13 13:29 - Fluxo oficial deixa de reintroduzir seeds e mocks no bolão real
+
+### Objetivo
+- Proteger o bolão oficial contra reintrodução de dados fictícios de pontuação e contra fallback visual de jogos simulados no fluxo principal.
+
+### Arquivos alterados
+- `backend/src/routes/admin.ts`
+- `frontend/src/pages/Games.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A rota `POST /admin/seed` foi removida do backend.
+- O `admin.ts` deixou de importar `SERIES_SEED` como parte do fluxo operacional.
+- Com isso, o painel admin do bolão oficial não expõe mais a entrada rápida que podia reescrever séries com resultados seedados de teste.
+- A página `Games` deixou de manter o modo `mock` no fluxo principal.
+- Foram removidos da rota oficial de jogos:
+  - `MOCK_GAMES`;
+  - `MOCK_TEAMS`;
+  - `brt()` de apoio ao cenário falso;
+  - estado `isMock`;
+  - fallback de picks salvos localmente em simulação;
+  - mensagem visual de “dados simulados”.
+- A aba `Games` agora depende apenas dos jogos reais carregados do banco.
+- Se não houver jogos reais disponíveis, a tela passa a assumir estado vazio ou indisponível, em vez de inventar agenda de teste.
+
+### Resultado prático
+- O bolão oficial ficou mais seguro contra confusão entre ambiente real e cenário de teste.
+- O admin perde um atalho perigoso para regravar séries com seeds fictícios.
+- A aba `Games` para de mascarar ausência de dados reais com partidas falsas.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+
+### Pendências
+- Os scripts SQL de teste ainda existem em `supabase/test-scenarios` como material de ambiente separado.
+- Se você quiser, a próxima rodada pode adicionar uma limpeza administrativa guiada para remover do banco os resíduos de cenários fictícios já executados.
+
 ## 2026-04-13 13:08 - Primeira camada de dados reais conecta Home e Analise ao feed de jogos
 
 ### Objetivo
@@ -2301,3 +2339,40 @@
 ### Pendências
 - Os placeholders desta rodada são genéricos por estrutura da chave, não por nomes reais dos times do play-in.
 - Se você quiser textos como “OKC vs LAL/MIN” com candidatos reais, isso pode entrar numa segunda rodada com uma camada específica para o estado do play-in.
+
+## 2026-04-13 15:02 - Sync real corrige confrontos antigos e atualiza jogos da rodada atual
+
+### Objetivo
+- Corrigir o sync que ainda estava preso em confrontos antigos do playoff e impedir que `Home`, `Bracket` e `Games` continuassem mostrando séries defasadas no Supabase.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `backend/src/lib/nba.ts`
+- `backend/src/jobs/syncNBA.ts`
+
+### Mudanças feitas
+- `backend/src/jobs/syncNBA.ts` deixou de depender do mapa estático `SERIES_ID_BY_TEAMS`, que ainda refletia combinações antigas como `OKC x MEM`.
+- O sync agora:
+  - agrupa os jogos reais da Ball Don't Lie por confronto;
+  - tenta reaproveitar séries já compatíveis no banco;
+  - reassina séries de primeira rodada quando o par antigo não existe mais na temporada atual;
+  - remove jogos locais cujo `nba_game_id` não pertence mais ao feed real atual, limpando resíduos antigos da tabela `games`.
+- A leitura do horário do jogo foi corrigida para suportar o formato atual da Ball Don't Lie, que já entrega `datetime/status` em ISO. Com isso, `tip_off_at` volta a ser gravado corretamente para jogos futuros.
+- O sync passou a garantir a presença dos times necessários antes de inserir jogos, usando os metadados vindos da própria API.
+- A recomputação das séries ficou iterativa:
+  - recalcula vencedor/placar de cada série a partir dos jogos reais;
+  - propaga vencedores para as rodadas seguintes (`W2`, `E2`, finais de conferência e finais);
+  - persiste no Supabase apenas os campos realmente alterados.
+- Durante a validação, foi necessário inserir `TOR` diretamente na tabela `teams` do Supabase para destravar o primeiro sync real, porque o schema exigia `seed` e o banco ainda não tinha esse time cadastrado.
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+- `backend`: execução real de `syncNBA()` com a `.env` local concluída com sucesso
+- Resultado validado no Supabase após sync:
+  - `games` passou a conter os jogos reais de 18/04/2026
+  - `series` deixou de exibir combinações antigas como `OKC x MEM`
+  - `tip_off_at` ficou preenchido com os horários reais dos jogos vindos da API
+
+### Pendências
+- O backend publicado no Render ainda precisa receber deploy com esse patch; sem isso, o sync automático remoto continuará rodando a lógica antiga.
+- A tabela `teams` do Supabase merece uma revisão para cobrir todos os times possíveis sem depender de inserção corretiva pontual.
