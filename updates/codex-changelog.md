@@ -1,5 +1,39 @@
 # Codex Changelog
 
+## 2026-04-13 12:35 - Prompt completo criado para migracao para outra conta do Codex
+
+### Objetivo
+- Criar um prompt robusto, em arquivo Markdown, para iniciar outra conta do Codex já com contexto, direção de implementação e exigência explícita de documentação operacional.
+
+### Arquivos alterados
+- `updates/prompt-outra-conta-codex-dados-reais.md`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criado um prompt completo para colar na outra conta do Codex.
+- O prompt deixa explícito:
+  - stack atual com `Supabase`, `Ball Don't Lie`, `Render`, `Node/Express`, `React/Vite`;
+  - ordem de leitura dos arquivos mais importantes;
+  - prioridade da fase de dados reais;
+  - necessidade de auditar `syncNBA.ts`;
+  - necessidade de implementação real e não só análise;
+  - exigência de documentação prática sobre env vars, chaves, provedores, endpoints, testes e validação operacional.
+- O prompt também obriga a outra conta a explicar:
+  - onde colocar as chaves da API;
+  - quais APIs usar para odds e lesões;
+  - como validar localmente, no Render e no Supabase;
+  - como rodar e monitorar o sync manualmente.
+
+### Resultado prático
+- Agora existe um prompt pronto para iniciar a outra conta com bem menos ambiguidade.
+- Isso aumenta a chance da próxima sessão já entrar direto na fase certa: integração real de dados + documentação operacional.
+
+### Validações
+- Arquivo Markdown criado com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\updates`
+
+### Pendências
+- Se voce quiser, ainda posso gerar uma segunda versao mais curta, focada apenas em backend/sync, para usar caso voce queira economizar contexto na outra conta.
+
 ## 2026-04-13 12:26 - Documento de handoff criado para migracao de contexto entre contas do Codex
 
 ### Objetivo
