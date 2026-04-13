@@ -29,9 +29,9 @@ function TopThreeCards({
   if (topThree.length === 0) return null
 
   const styles = [
-    { label: 'Líder', icon: <Crown size={16} />, color: '#ffd166', glow: 'rgba(255,209,102,0.18)' },
-    { label: 'Vice', icon: <Medal size={16} />, color: '#c9d1d9', glow: 'rgba(201,209,217,0.14)' },
-    { label: '3º lugar', icon: <Trophy size={16} />, color: '#d68c45', glow: 'rgba(214,140,69,0.14)' },
+    { label: 'Líder', icon: <Crown size={16} />, color: '#ffd166', glow: 'rgba(255,209,102,0.18)', glowClass: 'podium-gold' },
+    { label: 'Vice', icon: <Medal size={16} />, color: '#c9d1d9', glow: 'rgba(201,209,217,0.14)', glowClass: 'podium-silver' },
+    { label: '3º lugar', icon: <Trophy size={16} />, color: '#d68c45', glow: 'rgba(214,140,69,0.14)', glowClass: 'podium-bronze' },
   ]
 
   return (
@@ -43,12 +43,14 @@ function TopThreeCards({
         return (
           <div
             key={entry.participant_id}
+            className={style.glowClass}
             style={{
               background: `linear-gradient(180deg, ${style.glow}, rgba(19,19,26,0.96))`,
               border: `1px solid ${style.color}33`,
               borderRadius: 12,
               padding: '1rem',
               boxShadow: isMe ? '0 0 0 1px rgba(200,150,60,0.28) inset' : 'none',
+              transition: 'transform 0.22s ease',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
@@ -340,7 +342,7 @@ export function Ranking({ participantId }: Props) {
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1180 }}>
-      <RankingHero ranking={ranking} participantId={participantId} />
+      <div className="animate-in"><RankingHero ranking={ranking} participantId={participantId} /></div>
 
       {error && (
         <div style={{ margin: '16px 0', padding: '12px 16px', borderRadius: 8, background: 'rgba(231,76,60,0.10)', border: '1px solid rgba(231,76,60,0.3)', color: 'var(--nba-danger)', fontSize: '0.875rem' }}>
@@ -419,7 +421,7 @@ export function Ranking({ participantId }: Props) {
                 gap: 16,
               }}
             >
-              <TopThreeCards ranking={ranking} participantId={participantId} />
+              <div className="animate-in-2"><TopThreeCards ranking={ranking} participantId={participantId} /></div>
 
               {/* Chart card */}
               <div

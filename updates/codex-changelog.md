@@ -1,5 +1,54 @@
 # Codex Changelog
 
+## 2026-04-13 - Efeitos visuais e animações globais (Claude Code)
+
+### Objetivo
+- Elevar o nível visual do app adicionando animações e efeitos de profundidade sem alterar nenhuma lógica, hook, rota ou integração.
+
+### Arquivos alterados
+- `frontend/src/index.css`
+- `frontend/src/pages/Login.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Ranking.tsx`
+
+### Mudanças feitas
+
+#### `index.css` — efeitos globais
+- Adicionado `@keyframes fadeInUp` com classes utilitárias `.animate-in` e `.animate-in-1` a `.animate-in-5` para entrada escalonada (stagger de 0.05s até 0.36s) de blocos e cards ao carregar qualquer página.
+- Adicionado `@keyframes pulseGoldText` e classe `.title-glow` para o título principal na Login pulsar o brilho dourado de forma suave e contínua.
+- Adicionados `@keyframes glowGold`, `glowSilver`, `glowBronze` e classes `.podium-gold`, `.podium-silver`, `.podium-bronze` para os cards do pódio no Ranking emitirem aura animada por posição (ouro, prata, bronze).
+- Adicionado `@keyframes courtFade` e classe `.court-lines` para as linhas da quadra SVG na Login respirarem suavemente entre 4% e 8% de opacidade.
+- Melhorado `.card:hover`: adicionados `transform: translateY(-2px)` e `box-shadow` com sombra escura + borda dourada sutil, criando efeito de lift ao passar o mouse sobre qualquer card do site.
+- Adicionada classe utilitária `.glass` com `backdrop-filter: blur(14px)` para glassmorphism opcional em elementos futuros.
+
+#### `Login.tsx`
+- SVG da quadra de fundo passou de `opacity-5` estático para a classe `.court-lines` com animação de respiração.
+- Título "Bolão NBA" ganhou a classe `.title-glow` para o pulso de brilho dourado animado (substituiu o `textShadow` estático inline).
+- Container principal ganhou `.animate-in` para entrada suave com fade ao carregar a página.
+
+#### `Home.tsx`
+- Blocos principais da coluna central encapsulados em wrappers com stagger `.animate-in-1` a `.animate-in-5`: `LastNightRecap`, `HeroPanel`, `PanelPulseBar`, `MyMomentCard` e `HomeQuickDeck`.
+
+#### `Ranking.tsx`
+- `RankingHero` encapsulado em wrapper `.animate-in` para entrada com fade.
+- `TopThreeCards` encapsulado em wrapper `.animate-in-2` para entrada escalonada após o hero.
+- Cards do pódio receberam propriedade `glowClass` (`podium-gold`, `podium-silver`, `podium-bronze`) aplicada via `className` para o glow animado por posição.
+- Cards do pódio ganharam `transition: transform 0.22s ease` para suavizar interações futuras.
+
+### Resultado prático
+- O app ganhou sensação de fluidez e profissionalismo sem nenhuma alteração de comportamento.
+- Os efeitos são todos em CSS puro, sem dependências novas.
+- As classes utilitárias (`.animate-in-*`, `.glass`, `.podium-*`, `.title-glow`) ficam disponíveis para reuso em qualquer página ou componente futuro.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso — zero erros ou warnings.
+
+### Pendências
+- A classe `.glass` está disponível mas ainda não aplicada em nenhum componente — pode ser usada nos modais (SeriesModal, GamePickModal) ou no menu da Nav em rodadas futuras.
+- Os cards das páginas `Games`, `Analysis` e `Compare` ainda não têm stagger de entrada — podem ser adicionados seguindo o mesmo padrão das classes já criadas.
+
+---
+
 ## 2026-04-13 13:29 - Fluxo oficial deixa de reintroduzir seeds e mocks no bolão real
 
 ### Objetivo

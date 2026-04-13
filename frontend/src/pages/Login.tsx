@@ -10,7 +10,7 @@ export function Login({ onSignIn }: Props) {
     >
       {/* Court lines SVG background */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-5"
+        className="absolute inset-0 w-full h-full court-lines"
         viewBox="0 0 800 600"
         preserveAspectRatio="xMidYMid slice"
       >
@@ -35,7 +35,7 @@ export function Login({ onSignIn }: Props) {
         <line x1="760" y1="260" x2="760" y2="340" stroke="#c8963c" strokeWidth="1" />
       </svg>
 
-      <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-[360px] text-center">
+      <div className="animate-in relative z-10 flex flex-col items-center gap-6 w-full max-w-[360px] text-center">
         {/* Logo */}
         <div>
           <img
@@ -50,8 +50,8 @@ export function Login({ onSignIn }: Props) {
             }}
           />
           <div
-            className="text-5xl sm:text-6xl md:text-8xl font-bebas tracking-[0.08em]"
-            style={{ color: 'var(--nba-gold)', textShadow: '0 0 40px rgba(200,150,60,0.4)' }}
+            className="text-5xl sm:text-6xl md:text-8xl font-bebas tracking-[0.08em] title-glow"
+            style={{ color: 'var(--nba-gold)' }}
           >
             Bolão NBA
           </div>
