@@ -2625,3 +2625,5 @@
 
 ### Pendências
 - Se você quiser depois, dá para estender o mesmo resumo para `Home` ou `Compare`, mantendo a mesma estratégia econômica.
+- O backlog futuro também ganhou a frente operacional de automatizar a extração diária de dados de participantes, hoje dependente do PC de casa, registrada em `updates/futuras-implementacoes.md`.
+- O backlog futuro também passou a incluir a geração automática de um resumo textual diário dos palpites para conferência no grupo após o último fechamento do dia.
