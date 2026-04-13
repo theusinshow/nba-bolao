@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -26,14 +25,6 @@ const ROUND_BADGE_COLOR: Record<string, string> = {
   R2: '#9b59b6',
   CF: '#e05c3a',
 }
-
-const LAST_NIGHT_RESULTS = [
-  { home: 'BOS', away: 'NYK', homeScore: 112, awayScore: 105, round: 'R1', note: 'BOS abriu 1-0' },
-  { home: 'DEN', away: 'MIN', homeScore: 108, awayScore: 101, round: 'R1', note: 'Jokic com 29 pts' },
-  { home: 'OKC', away: 'IND', homeScore: 121, awayScore: 116, round: 'Finals', note: 'SGA decisivo no fim' },
-  { home: 'DET', away: 'MIL', homeScore: 99, awayScore: 94, round: 'R1', note: 'Detroit roubou mando' },
-  { home: 'LAL', away: 'HOU', homeScore: 118, awayScore: 114, round: 'R1', note: 'LeBron fechou no clutch' },
-]
 
 function CardTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
   return (
@@ -86,17 +77,24 @@ function formatShortDateTime(dateValue: string | null | undefined) {
   }).format(new Date(dateValue))
 }
 
-function LastNightRecap({ games, isRealData }: { games: ReturnType<typeof useGameFeed>['recentCompletedGames']; isRealData: boolean }) {
-  const sourceGames = games.length > 0
-    ? games.map((game) => ({
-        home: game.home_team?.abbreviation ?? game.home_team_id,
-        away: game.away_team?.abbreviation ?? game.away_team_id,
-        homeScore: game.home_score ?? 0,
-        awayScore: game.away_score ?? 0,
-        round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
-        note: formatShortDateTime(game.tip_off_at),
-      }))
-    : LAST_NIGHT_RESULTS
+function LastNightRecap({
+  games,
+  upcomingGames,
+  isRealData,
+}: {
+  games: ReturnType<typeof useGameFeed>['recentCompletedGames']
+  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
+  isRealData: boolean
+}) {
+  const sourceGames = games.map((game) => ({
+    home: game.home_team?.abbreviation ?? game.home_team_id,
+    away: game.away_team?.abbreviation ?? game.away_team_id,
+    homeScore: game.home_score ?? 0,
+    awayScore: game.away_score ?? 0,
+    round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
+    note: formatShortDateTime(game.tip_off_at),
+  }))
+  const nextRealGame = upcomingGames[0]
 
   return (
     <section style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
@@ -110,58 +108,85 @@ function LastNightRecap({ games, isRealData }: { games: ReturnType<typeof useGam
           </h2>
         </div>
         <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-          {isRealData ? 'placares reais sincronizados' : 'base rápida para entrar no dia'}
+          {isRealData ? 'placares reais sincronizados' : 'aguardando primeiros resultados reais'}
         </span>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 10,
-          overflowX: 'auto',
-          padding: '0 1rem 0.2rem',
-          scrollSnapType: 'x proximity',
-        }}
-      >
-        {sourceGames.map((game) => {
-          return (
-            <div
-              key={`${game.home}-${game.away}`}
-              style={{
-                minWidth: 250,
-                padding: '12px 14px',
-                borderRadius: 10,
-                background: 'rgba(12,12,18,0.42)',
-                border: '1px solid rgba(200,150,60,0.14)',
-                scrollSnapAlign: 'start',
-                display: 'grid',
-                gap: 8,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
-                  {game.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {game.away}
-                </span>
-                <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
-              </div>
+      {sourceGames.length > 0 ? (
+        <div
+          style={{
+            display: 'flex',
+            gap: 10,
+            overflowX: 'auto',
+            padding: '0 1rem 0.2rem',
+            scrollSnapType: 'x proximity',
+          }}
+        >
+          {sourceGames.map((game) => {
+            return (
+              <div
+                key={`${game.home}-${game.away}`}
+                style={{
+                  minWidth: 250,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: 'rgba(12,12,18,0.42)',
+                  border: '1px solid rgba(200,150,60,0.14)',
+                  scrollSnapAlign: 'start',
+                  display: 'grid',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
+                    {game.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {game.away}
+                  </span>
+                  <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
+                </div>
 
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.35rem', lineHeight: 1 }}>
-                  {game.homeScore} - {game.awayScore}
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>final</span>
-              </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.35rem', lineHeight: 1 }}>
+                    {game.homeScore} - {game.awayScore}
+                  </span>
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>final</span>
+                </div>
 
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{game.note}</div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{game.note}</div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div style={{ padding: '0 1rem 0.2rem' }}>
+          <div
+            style={{
+              borderRadius: 10,
+              padding: '14px 16px',
+              background: 'rgba(12,12,18,0.42)',
+              border: '1px solid rgba(200,150,60,0.14)',
+              display: 'grid',
+              gap: 8,
+            }}
+          >
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
+              Ainda não há jogos finalizados nesta pós-temporada
             </div>
-          )
-        })}
-      </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+              A Home agora mostra só placares reais. Quando o primeiro jogo terminar, este bloco será atualizado automaticamente pelo feed sincronizado do Supabase.
+            </div>
+            {nextRealGame && (
+              <div style={{ color: 'var(--nba-gold)', fontSize: '0.76rem' }}>
+                Próximo jogo confirmado: {nextRealGame.home_team?.abbreviation ?? nextRealGame.home_team_id} vs {nextRealGame.away_team?.abbreviation ?? nextRealGame.away_team_id} em {formatShortDateTime(nextRealGame.tip_off_at)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 10, padding: '0 1rem', lineHeight: 1.4 }}>
         {isRealData
           ? 'Bloco alimentado por jogos reais vindos do banco sincronizado.'
-          : 'Resultados simulados por enquanto — integração com dados reais virá depois.'}
+          : 'Sem fallback fictício: este espaço só mostra resultados reais da API depois que os jogos forem concluídos.'}
       </div>
     </section>
   )
@@ -768,7 +793,7 @@ function HomeQuickDeck() {
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks } = useSeries(participantId)
-  const { recentCompletedGames, hasRealGames } = useGameFeed()
+  const { recentCompletedGames, upcomingGames, hasRealGames } = useGameFeed()
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
   const leader = ranking[0]
@@ -785,7 +810,7 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
-        <LastNightRecap games={recentCompletedGames} isRealData={hasRealGames && recentCompletedGames.length > 0} />
+        <LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} />
         <HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} />
         <PanelPulseBar readySeries={readySeries.length} pickedSeries={pickedSeries} myRank={myEntry?.rank} />
         <MyMomentCard myEntry={myEntry} readySeries={readySeries.length} pickedSeries={pickedSeries} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} />

@@ -2376,3 +2376,120 @@
 ### Pendências
 - O backend publicado no Render ainda precisa receber deploy com esse patch; sem isso, o sync automático remoto continuará rodando a lógica antiga.
 - A tabela `teams` do Supabase merece uma revisão para cobrir todos os times possíveis sem depender de inserção corretiva pontual.
+
+## 2026-04-13 15:18 - Home deixa de mascarar falta de placares reais com fallback fictício
+
+### Objetivo
+- Impedir que a Home continuasse exibindo resultados estáticos antigos no bloco `Jogos da última noite` quando o banco ainda não tinha jogos finalizados reais da pós-temporada.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+- Removido o array estático `LAST_NIGHT_RESULTS` da Home.
+- O componente `LastNightRecap` agora trabalha em dois estados honestos:
+  - se houver jogos finalizados reais no `Supabase`, renderiza o recap normalmente;
+  - se ainda não houver finais reais, mostra um estado vazio explicando que a pós-temporada ainda não teve resultados sincronizados.
+- Quando ainda não existem finais reais, a Home passa a mostrar o próximo jogo confirmado da rodada usando `upcomingGames`, em vez de inventar um placar.
+- O texto auxiliar do card foi atualizado para deixar explícito que o bloco só mostra dados reais vindos da API/sync.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+
+### Pendências
+- O título `Jogos da última noite` pode ser refinado no futuro para algo adaptativo, como `Últimos resultados` ou `Radar da rodada`, caso você queira que ele sirva melhor tanto antes quanto depois do primeiro jogo encerrado.
+
+## 2026-04-13 15:31 - Aba Analise passa a refletir o estado real das integrações
+
+### Objetivo
+- Limpar a aba `Análise` de dados mockados e alinhá-la com o que realmente está conectado hoje no projeto.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Analysis.tsx`
+
+### Mudanças feitas
+- Removidos os arrays estáticos de:
+  - `INJURIES`
+  - `NEXT_GAMES`
+  - `LAST_NIGHT_RESULTS`
+  - `ODDS`
+- A aba `Análise` agora usa apenas dados reais do `useGameFeed` para:
+  - próximos confrontos
+  - resultados recentes
+- Os blocos de `odds` e `lesões` deixaram de mostrar conteúdo fictício e viraram cards de status operacional, explicando claramente por que ainda estão indisponíveis.
+- O hero da página foi reescrito para mostrar:
+  - quantidade real de jogos futuros
+  - quantidade real de resultados sincronizados
+  - quantas seções já estão prontas de fato
+  - quantos bloqueios ainda existem por limitação de API/plano
+- O card de contexto agora deixa explícito que:
+  - `jogos/agenda` já usam Ball Don't Lie + backend + Supabase
+  - `odds` e `player_injuries` estão bloqueados pela chave atual
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Teste prático da chave atual da Ball Don't Lie:
+  - `GET /v1/player_injuries` retornou `401`
+  - `GET /v2/odds` retornou `401`
+
+### Pendências
+- Para manter tudo em uma única API, a Ball Don't Lie precisa de plano com acesso a:
+  - `player_injuries`: pelo menos `ALL-STAR`
+  - `odds`: `GOAT`
+- Se você não quiser subir de plano na Ball Don't Lie, aí sim será necessária uma segunda API para odds e/ou lesões.
+
+## 2026-04-13 16:02 - Segunda camada de APIs entra no backend para odds e lesões
+
+### Objetivo
+- Integrar provedores separados para `odds` e `lesões`, mantendo a Ball Don’t Lie responsável apenas por `jogos` e `placares`.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `backend/.env.example`
+- `backend/src/index.ts`
+- `backend/src/lib/odds.ts`
+- `backend/src/lib/injuries.ts`
+- `backend/src/routes/analysis.ts`
+- `frontend/src/hooks/useAnalysisInsights.ts`
+- `frontend/src/pages/Analysis.tsx`
+
+### Mudanças feitas
+- Criada a integração de `odds` no backend via `The Odds API` em `backend/src/lib/odds.ts`.
+- Criada a integração de `lesões` no backend via `SportsDataIO` em `backend/src/lib/injuries.ts`.
+- Adicionada a rota pública `GET /analysis/insights` em `backend/src/routes/analysis.ts`, que devolve:
+  - status operacional dos provedores
+  - lista de odds disponíveis
+  - lista de lesões disponíveis
+- O backend principal passou a expor essa rota em `backend/src/index.ts`.
+- A `Analysis` do frontend foi ligada ao backend através do novo hook `frontend/src/hooks/useAnalysisInsights.ts`.
+- A página `frontend/src/pages/Analysis.tsx` agora:
+  - continua usando `useGameFeed` para jogos/resultados reais;
+  - consome `odds` e `lesões` do backend;
+  - cruza odds com os confrontos reais da rodada;
+  - cruza lesões com os times dos próximos jogos;
+  - mostra mensagens operacionais claras quando faltam env vars ou quando o provedor externo estiver indisponível.
+- `backend/.env.example` ganhou as variáveis novas:
+  - `ODDS_API_KEY`
+  - `ODDS_API_REGIONS`
+  - `ODDS_API_MARKETS`
+  - `SPORTSDATAIO_API_KEY`
+  - `SPORTSDATAIO_BASE_URL`
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- Validação sem chaves configuradas:
+  - `fetchNBAGameOdds()` retornou status operacional com `ODDS_API_KEY não configurada.`
+  - `fetchNBAInjuries()` retornou status operacional com `SPORTSDATAIO_API_KEY não configurada.`
+
+### Configuração necessária
+- Para ativar `odds`, configurar `ODDS_API_KEY` no backend/Render.
+- Para ativar `lesões`, configurar `SPORTSDATAIO_API_KEY` no backend/Render.
+- Se você usar a base padrão da SportsDataIO, manter:
+  - `SPORTSDATAIO_BASE_URL=https://api.sportsdata.io/v3/nba/scores/json`
+
+### Pendências
+- Ainda falta inserir as chaves reais no `.env` local e no Render para ativar as duas integrações em produção.
+- Dependendo do plano contratado na SportsDataIO, o endpoint `/Players` pode exigir ajuste de feed/permissão.

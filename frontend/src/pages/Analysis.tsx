@@ -1,47 +1,8 @@
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Activity, ChevronRight, Clock, Sparkles, Star, TrendingUp } from 'lucide-react'
+import { Activity, AlertTriangle, ChevronRight, Clock, Database, ShieldAlert, Sparkles, TrendingUp } from 'lucide-react'
+import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useGameFeed } from '../hooks/useGameFeed'
-
-type InjuryStatus = 'out' | 'questionable' | 'probable' | 'available'
-
-const INJURIES: { player: string; team: string; status: InjuryStatus; detail: string }[] = [
-  { player: 'Nikola Jokic', team: 'DEN', status: 'questionable', detail: 'Joelho direito' },
-  { player: 'Victor Wembanyama', team: 'SAS', status: 'probable', detail: 'Fadiga' },
-  { player: 'Jayson Tatum', team: 'BOS', status: 'available', detail: 'Retorno confirmado' },
-  { player: 'LeBron James', team: 'LAL', status: 'questionable', detail: 'Tornozelo' },
-  { player: 'Shai Gilgeous-Alexander', team: 'OKC', status: 'available', detail: '' },
-]
-
-const NEXT_GAMES = [
-  { home: 'OKC', away: 'IND', date: '18/04', time: '21:30', round: 'Finals' },
-  { home: 'BOS', away: 'NYK', date: '19/04', time: '15:00', round: 'R1' },
-  { home: 'DEN', away: 'MIN', date: '19/04', time: '17:30', round: 'R1' },
-  { home: 'NYK', away: 'DET', date: '20/04', time: '14:00', round: 'R1' },
-  { home: 'GSW', away: 'HOU', date: '20/04', time: '18:00', round: 'R1' },
-]
-
-const LAST_NIGHT_RESULTS = [
-  { home: 'BOS', away: 'NYK', homeScore: 112, awayScore: 105, round: 'R1', note: 'BOS abriu 1-0' },
-  { home: 'DEN', away: 'MIN', homeScore: 108, awayScore: 101, round: 'R1', note: 'Jokic com 29 pts' },
-  { home: 'OKC', away: 'IND', homeScore: 121, awayScore: 116, round: 'Finals', note: 'SGA decisivo no fim' },
-  { home: 'DET', away: 'MIL', homeScore: 99, awayScore: 94, round: 'R1', note: 'Detroit roubou mando' },
-  { home: 'LAL', away: 'HOU', homeScore: 118, awayScore: 114, round: 'R1', note: 'LeBron fechou no clutch' },
-]
-
-const ODDS = [
-  { abbr: 'OKC', name: 'Thunder', odds: '+180', favorite: true, color: '#007AC1' },
-  { abbr: 'BOS', name: 'Celtics', odds: '+220', favorite: true, color: '#007A33' },
-  { abbr: 'DET', name: 'Pistons', odds: '+300', favorite: false, color: '#C8102E' },
-  { abbr: 'SAS', name: 'Spurs', odds: '+350', favorite: false, color: '#C4CED4' },
-  { abbr: 'DEN', name: 'Nuggets', odds: '+400', favorite: false, color: '#FEC524' },
-]
-
-const INJURY_META: Record<InjuryStatus, { label: string; color: string }> = {
-  out: { label: 'Out', color: '#e74c3c' },
-  questionable: { label: 'Questionável', color: '#f39c12' },
-  probable: { label: 'Provável', color: '#27ae60' },
-  available: { label: 'Disponível', color: '#2ecc71' },
-}
+import { type AnalysisInjuryItem, type AnalysisOddsItem, useAnalysisInsights } from '../hooks/useAnalysisInsights'
 
 const ROUND_BADGE_COLOR: Record<string, string> = {
   Finals: 'var(--nba-gold)',
@@ -93,10 +54,6 @@ function Badge({ label, color, small }: { label: string; color: string; small?: 
   )
 }
 
-function SimNote({ children }: { children: React.ReactNode }) {
-  return <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 8, lineHeight: 1.4 }}>{children}</p>
-}
-
 function formatShortDateTime(dateValue: string | null | undefined) {
   if (!dateValue) return 'Sem horário'
   return new Intl.DateTimeFormat('pt-BR', {
@@ -108,15 +65,51 @@ function formatShortDateTime(dateValue: string | null | undefined) {
   }).format(new Date(dateValue))
 }
 
+function normalizeName(value: string | null | undefined) {
+  return value
+    ?.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim() ?? ''
+}
+
+function formatAmericanOdds(value: number | null) {
+  if (value == null) return '—'
+  return value > 0 ? `+${value}` : `${value}`
+}
+
+function formatInjuryStatus(value: string) {
+  const lower = value.toLowerCase()
+  if (lower === 'out') return 'Fora'
+  if (lower === 'questionable') return 'Questionável'
+  if (lower === 'probable') return 'Provável'
+  if (lower === 'doubtful') return 'Duvidoso'
+  return value
+}
+
+function getInjuryColor(value: string) {
+  const lower = value.toLowerCase()
+  if (lower === 'out') return '#e74c3c'
+  if (lower === 'questionable') return '#f39c12'
+  if (lower === 'probable') return '#27ae60'
+  if (lower === 'doubtful') return '#d35400'
+  return '#4a90d9'
+}
+
 function AnalysisHero({
   nextGamesCount,
   recentResultsCount,
-  hasRealGames,
+  oddsReady,
+  injuriesReady,
 }: {
   nextGamesCount: number
   recentResultsCount: number
-  hasRealGames: boolean
+  oddsReady: boolean
+  injuriesReady: boolean
 }) {
+  const sectionsReady = [nextGamesCount > 0 || recentResultsCount > 0, oddsReady, injuriesReady].filter(Boolean).length
+
   return (
     <section
       style={{
@@ -144,19 +137,19 @@ function AnalysisHero({
               Análise da Rodada
             </h1>
             <p style={{ color: 'var(--nba-text)', fontSize: '0.96rem', margin: '10px 0 6px' }}>
-              Um espaço separado para radar, tendência e contexto dos playoffs.
+              Odds, lesões e agenda real concentradas em uma única aba.
             </p>
             <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', maxWidth: 620, margin: 0 }}>
-              Esta aba concentra os blocos de leitura que estavam disputando espaço com a operação diária do bolão. A Home agora fica mais objetiva, e a análise ganha um lugar próprio para crescer.
+              Jogos e resultados seguem vindo do Supabase sincronizado com Ball Don’t Lie. Odds e lesões agora passam pelo backend para proteger as chaves externas e filtrar só o que importa para a rodada.
             </p>
           </div>
 
           <div style={{ display: 'grid', gap: 10 }} className="grid-cols-2">
             {[
-              { label: 'Próximos confrontos', value: nextGamesCount, tone: 'var(--nba-text)' },
-              { label: 'Resultados recentes', value: recentResultsCount, tone: 'var(--nba-gold)' },
-              { label: 'Odds em destaque', value: ODDS.length, tone: 'var(--nba-east)' },
-              { label: 'Radar de lesões', value: INJURIES.length, tone: 'var(--nba-success)' },
+              { label: 'Próximos jogos reais', value: nextGamesCount, tone: 'var(--nba-text)' },
+              { label: 'Resultados reais', value: recentResultsCount, tone: 'var(--nba-gold)' },
+              { label: 'Odds prontas', value: oddsReady ? 'Sim' : 'Não', tone: oddsReady ? 'var(--nba-success)' : 'var(--nba-danger)' },
+              { label: 'Lesões prontas', value: injuriesReady ? 'Sim' : 'Não', tone: injuriesReady ? 'var(--nba-success)' : 'var(--nba-danger)' },
             ].map((item) => (
               <div key={item.label} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
@@ -167,15 +160,24 @@ function AnalysisHero({
             ))}
           </div>
         </div>
+
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-          {hasRealGames ? 'Confrontos e resultados já usam jogos reais sincronizados.' : 'Ainda há placeholders enquanto a integração completa não entra.'}
+          {sectionsReady}/4 frentes já respondendo de forma real ou operacional.
         </div>
       </div>
     </section>
   )
 }
 
-function AnalysisContextCard({ hasRealGames }: { hasRealGames: boolean }) {
+function AnalysisContextCard({
+  generatedAt,
+  oddsReason,
+  injuriesReason,
+}: {
+  generatedAt: string | null
+  oddsReason?: string
+  injuriesReason?: string
+}) {
   return (
     <section style={{ ...card, background: 'linear-gradient(135deg, rgba(200,150,60,0.10), rgba(74,144,217,0.06) 55%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -188,146 +190,260 @@ function AnalysisContextCard({ hasRealGames }: { hasRealGames: boolean }) {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: hasRealGames ? 'var(--nba-success)' : 'var(--nba-gold)', background: hasRealGames ? 'rgba(46,204,113,0.10)' : 'rgba(200,150,60,0.10)', border: hasRealGames ? '1px solid rgba(46,204,113,0.18)' : '1px solid rgba(200,150,60,0.18)' }}>
-          {hasRealGames ? 'Jogos reais conectados' : 'Conteúdo em modo simulado'}
-        </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-success)', background: 'rgba(46,204,113,0.10)', border: '1px solid rgba(46,204,113,0.18)' }}>
-          Home focada no bolão real
+          Ball Don’t Lie para jogos/placares
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-east)', background: 'rgba(74,144,217,0.10)', border: '1px solid rgba(74,144,217,0.18)' }}>
+          The Odds API para odds
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-gold)', background: 'rgba(200,150,60,0.10)', border: '1px solid rgba(200,150,60,0.18)' }}>
+          SportsDataIO para lesões
         </span>
       </div>
 
-      <p style={{ color: 'var(--nba-text)', fontSize: '0.82rem', margin: 0, lineHeight: 1.45 }}>
-        {hasRealGames
-          ? 'Próximos confrontos e resultados recentes já usam dados reais do banco sincronizado. Odds e lesões ainda seguem como radar visual enquanto a próxima camada de integração não entra.'
-          : 'Esta seção ainda funciona como radar visual enquanto a integração real desses dados não entra. A separação em aba própria foi feita para manter a Home mais limpa e a navegação mais coerente.'}
-      </p>
+      <div style={{ display: 'grid', gap: 6 }}>
+        <p style={{ color: 'var(--nba-text)', fontSize: '0.82rem', margin: 0, lineHeight: 1.45 }}>
+          {generatedAt
+            ? `Última leitura do backend em ${formatShortDateTime(generatedAt)}.`
+            : 'Aguardando a primeira leitura do backend de análise.'}
+        </p>
+        {oddsReason && (
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', margin: 0, lineHeight: 1.45 }}>
+            Odds: {oddsReason}
+          </p>
+        )}
+        {injuriesReason && (
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', margin: 0, lineHeight: 1.45 }}>
+            Lesões: {injuriesReason}
+          </p>
+        )}
+      </div>
     </section>
   )
 }
 
 function NextGamesCard({
   games,
-  isRealData,
 }: {
   games: ReturnType<typeof useGameFeed>['upcomingGames']
-  isRealData: boolean
 }) {
-  const sourceGames = games.length > 0
-    ? games.map((game) => ({
-        home: game.home_team?.abbreviation ?? game.home_team_id,
-        away: game.away_team?.abbreviation ?? game.away_team_id,
-        date: formatShortDateTime(game.tip_off_at),
-        time: '',
-        round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
-      }))
-    : NEXT_GAMES
+  const sourceGames = games.map((game) => ({
+    home: game.home_team?.abbreviation ?? game.home_team_id,
+    away: game.away_team?.abbreviation ?? game.away_team_id,
+    date: formatShortDateTime(game.tip_off_at),
+    round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
+  }))
   const featured = sourceGames[0]
 
   return (
     <div style={card}>
       <CardTitle icon={<Clock size={14} />}>Próximos Confrontos</CardTitle>
 
-      {featured && (
-        <div style={{ background: 'linear-gradient(135deg, rgba(74,144,217,0.16), rgba(200,150,60,0.08))', border: '1px solid rgba(200,150,60,0.14)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-            <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
-              PRÓXIMO FOCO
-            </span>
-            <Badge label={featured.round} color={ROUND_BADGE_COLOR[featured.round] ?? '#888'} small />
+      {featured ? (
+        <>
+          <div style={{ background: 'linear-gradient(135deg, rgba(74,144,217,0.16), rgba(200,150,60,0.08))', border: '1px solid rgba(200,150,60,0.14)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
+                PRÓXIMO FOCO
+              </span>
+              <Badge label={featured.round} color={ROUND_BADGE_COLOR[featured.round] ?? '#888'} small />
+            </div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.25rem', lineHeight: 1 }}>
+              {featured.home} vs {featured.away}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+              {featured.date}
+            </div>
+            <Link to="/games" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--nba-gold)', fontSize: '0.78rem', marginTop: 10, textDecoration: 'none' }}>
+              Ir para jogos
+              <ChevronRight size={14} />
+            </Link>
           </div>
-          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.25rem', lineHeight: 1 }}>
-            {featured.home} vs {featured.away}
+
+          <div>
+            {sourceGames.map((g, i) => {
+              const color = ROUND_BADGE_COLOR[g.round] ?? '#888'
+              return (
+                <div key={`${g.home}-${g.away}-${g.date}`}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6, fontSize: '0.85rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem' }}>
+                        {g.home} <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span> {g.away}
+                      </div>
+                      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
+                        {g.date}
+                      </div>
+                    </div>
+                    <Badge label={g.round} color={color} small />
+                  </div>
+                  {i < sourceGames.length - 1 && <Divider />}
+                </div>
+              )
+            })}
           </div>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
-            {featured.time ? `${featured.date} às ${featured.time} BRT` : featured.date}
-          </div>
-          <Link to="/games" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--nba-gold)', fontSize: '0.78rem', marginTop: 10, textDecoration: 'none' }}>
-            Ir para jogos
-            <ChevronRight size={14} />
-          </Link>
+        </>
+      ) : (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          Nenhum próximo confronto real sincronizado no momento.
         </div>
       )}
+    </div>
+  )
+}
 
-      <div>
-        {sourceGames.map((g, i) => {
-          const color = ROUND_BADGE_COLOR[g.round] ?? '#888'
-          return (
-            <div key={i}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6, fontSize: '0.85rem' }}>
+function RecentResultsCard({
+  games,
+}: {
+  games: ReturnType<typeof useGameFeed>['recentCompletedGames']
+}) {
+  const sourceGames = games.map((game) => ({
+    home: game.home_team?.abbreviation ?? game.home_team_id,
+    away: game.away_team?.abbreviation ?? game.away_team_id,
+    homeScore: game.home_score ?? 0,
+    awayScore: game.away_score ?? 0,
+    round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
+    note: formatShortDateTime(game.tip_off_at),
+  }))
+
+  return (
+    <div style={card}>
+      <CardTitle icon={<Database size={14} />}>Resultados Recentes</CardTitle>
+
+      {sourceGames.length > 0 ? (
+        <div>
+          {sourceGames.map((game, i) => (
+            <div key={`${game.home}-${game.away}-${game.note}`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem' }}>
-                    {g.home} <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span> {g.away}
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem' }}>
+                    {game.home} <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span> {game.away}
                   </div>
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
-                    {g.time ? `${g.date} · ${g.time} BRT` : g.date}
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 2 }}>
+                    {game.note}
                   </div>
                 </div>
-                <Badge label={g.round} color={color} small />
+                <div style={{ display: 'grid', justifyItems: 'end', gap: 4 }}>
+                  <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} small />
+                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem' }}>
+                    {game.homeScore} - {game.awayScore}
+                  </span>
+                </div>
               </div>
               {i < sourceGames.length - 1 && <Divider />}
             </div>
-          )
-        })}
-      </div>
-      <SimNote>{isRealData ? 'Agenda alimentada por jogos reais sincronizados do banco.' : 'Agenda simulada por enquanto — integração com dados reais virá depois.'}</SimNote>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          Ainda não há resultados finais reais no banco para alimentar este bloco.
+        </div>
+      )}
     </div>
   )
 }
 
-function OddsCard() {
+function OddsCard({
+  odds,
+  loading,
+  reason,
+}: {
+  odds: AnalysisOddsItem[]
+  loading: boolean
+  reason?: string
+}) {
   return (
     <div style={card}>
       <CardTitle icon={<TrendingUp size={14} />}>Odds dos Confrontos</CardTitle>
-      <div>
-        {ODDS.map((o, i) => (
-          <div key={o.abbr}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6, fontSize: '0.85rem' }}>
-              <span className="font-condensed font-bold" style={{ color: o.color, width: 32, textAlign: 'center', flexShrink: 0, fontSize: '0.85rem' }}>
-                {o.abbr}
-              </span>
-              <span style={{ flex: 1, color: 'var(--nba-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {o.name}
-              </span>
-              {o.favorite && <Star size={10} fill="currentColor" style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />}
-              <span className="font-condensed font-bold" style={{ color: o.favorite ? 'var(--nba-gold)' : 'var(--nba-text-muted)', flexShrink: 0, fontSize: '0.88rem' }}>
-                {o.odds}
-              </span>
+
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '18px 0' }}>
+          <LoadingBasketball size={20} />
+        </div>
+      ) : odds.length > 0 ? (
+        <div>
+          {odds.map((item, index) => (
+            <div key={item.id}>
+              <div style={{ display: 'grid', gap: 8, padding: '8px 4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem' }}>
+                    {item.home_team_name} <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span> {item.away_team_name}
+                  </div>
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>{item.bookmaker}</span>
+                </div>
+
+                <div style={{ display: 'grid', gap: 6 }} className="sm:grid-cols-3">
+                  <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 4 }}>Moneyline</div>
+                    <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{formatAmericanOdds(item.moneyline.home)} / {formatAmericanOdds(item.moneyline.away)}</div>
+                  </div>
+                  <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 4 }}>Spread</div>
+                    <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{item.spread.home_line ?? '—'} / {item.spread.away_line ?? '—'}</div>
+                  </div>
+                  <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 4 }}>Total</div>
+                    <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{item.total.points ?? '—'}</div>
+                  </div>
+                </div>
+
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                  Atualizado em {formatShortDateTime(item.updated_at ?? item.commence_time)}
+                </div>
+              </div>
+              {index < odds.length - 1 && <Divider />}
             </div>
-            {i < ODDS.length - 1 && <Divider />}
-          </div>
-        ))}
-      </div>
-      <SimNote>Odds simuladas — integração real em breve.</SimNote>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          {reason ?? 'Nenhuma odd correspondente aos jogos atuais foi encontrada.'}
+        </div>
+      )}
     </div>
   )
 }
 
-function InjuriesCard() {
+function InjuriesCard({
+  injuries,
+  loading,
+  reason,
+}: {
+  injuries: AnalysisInjuryItem[]
+  loading: boolean
+  reason?: string
+}) {
   return (
     <div style={card}>
-      <CardTitle icon={<AlertTriangle size={14} />}>Lesões e Notícias</CardTitle>
-      <div>
-        {INJURIES.map((item, i) => {
-          const meta = INJURY_META[item.status]
-          return (
-            <div key={item.player}>
+      <CardTitle icon={<ShieldAlert size={14} />}>Lesões e Notícias</CardTitle>
+
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '18px 0' }}>
+          <LoadingBasketball size={20} />
+        </div>
+      ) : injuries.length > 0 ? (
+        <div>
+          {injuries.map((item, index) => (
+            <div key={item.id}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.83rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.player}
+                    {item.player_name}
                   </div>
                   <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                    {item.team}{item.detail ? ` — ${item.detail}` : ''}
+                    {[item.team, item.position, item.detail].filter(Boolean).join(' • ')}
                   </div>
                 </div>
-                <Badge label={meta.label} color={meta.color} small />
+                <Badge label={formatInjuryStatus(item.status)} color={getInjuryColor(item.status)} small />
               </div>
-              {i < INJURIES.length - 1 && <Divider />}
+              {index < injuries.length - 1 && <Divider />}
             </div>
-          )
-        })}
-      </div>
-      <SimNote>Radar de lesões simulado — integração real em breve.</SimNote>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          {reason ?? 'Nenhuma lesão relevante foi encontrada para os confrontos atuais.'}
+        </div>
+      )}
     </div>
   )
 }
@@ -358,29 +474,69 @@ function AnalysisActionsCard() {
 }
 
 export function Analysis() {
-  const { upcomingGames, recentCompletedGames, hasRealGames } = useGameFeed()
+  const { upcomingGames, recentCompletedGames } = useGameFeed()
+  const { loading, error, generatedAt, odds, injuries, providers } = useAnalysisInsights()
+
+  const relevantTeamNames = new Set(
+    upcomingGames.flatMap((game) => [
+      normalizeName(game.home_team?.name),
+      normalizeName(game.away_team?.name),
+    ]).filter(Boolean)
+  )
+  const relevantTeamAbbreviations = new Set(
+    upcomingGames.flatMap((game) => [
+      normalizeName(game.home_team?.abbreviation ?? game.home_team_id),
+      normalizeName(game.away_team?.abbreviation ?? game.away_team_id),
+    ]).filter(Boolean)
+  )
+
+  const filteredOdds = odds.filter((item) => (
+    relevantTeamNames.has(normalizeName(item.home_team_name)) &&
+    relevantTeamNames.has(normalizeName(item.away_team_name))
+  ))
+
+  const filteredInjuries = injuries.filter((item) => item.team && relevantTeamAbbreviations.has(normalizeName(item.team)))
+
+  const oddsReason = error
+    ? error
+    : !providers.odds.available
+    ? providers.odds.reason
+    : filteredOdds.length === 0
+    ? 'Odds carregadas, mas ainda sem correspondência para os jogos atuais da sua rodada.'
+    : undefined
+
+  const injuriesReason = error
+    ? error
+    : !providers.injuries.available
+    ? providers.injuries.reason
+    : filteredInjuries.length === 0
+    ? 'Nenhuma lesão relevante retornou para os times envolvidos nos próximos confrontos.'
+    : undefined
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
       <AnalysisHero
-        nextGamesCount={upcomingGames.length || NEXT_GAMES.length}
-        recentResultsCount={recentCompletedGames.length || LAST_NIGHT_RESULTS.length}
-        hasRealGames={hasRealGames}
+        nextGamesCount={upcomingGames.length}
+        recentResultsCount={recentCompletedGames.length}
+        oddsReady={providers.odds.available && filteredOdds.length > 0}
+        injuriesReady={providers.injuries.available && filteredInjuries.length > 0}
       />
-      <AnalysisContextCard hasRealGames={hasRealGames} />
+      <AnalysisContextCard
+        generatedAt={generatedAt}
+        oddsReason={providers.odds.available ? undefined : providers.odds.reason}
+        injuriesReason={providers.injuries.available ? undefined : providers.injuries.reason}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
         <div className="flex flex-col gap-4 min-w-0">
-          <NextGamesCard games={upcomingGames} isRealData={hasRealGames && upcomingGames.length > 0} />
-          <OddsCard />
+          <NextGamesCard games={upcomingGames} />
+          <RecentResultsCard games={recentCompletedGames} />
+          <OddsCard odds={filteredOdds} loading={loading} reason={oddsReason} />
+          <InjuriesCard injuries={filteredInjuries} loading={loading} reason={injuriesReason} />
         </div>
         <div className="flex flex-col gap-4 min-w-0">
           <AnalysisActionsCard />
         </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-1">
-        <InjuriesCard />
       </div>
     </div>
   )
