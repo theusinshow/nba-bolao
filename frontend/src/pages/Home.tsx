@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Sparkles, Star, Target, Trophy, Users } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
-import { supabase } from '../lib/supabase'
-import type { Game, Team } from '../types'
 import { isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
@@ -21,15 +19,20 @@ const card: React.CSSProperties = {
   padding: '1rem',
 }
 
-interface ScoreStripItem {
-  id: string
-  homeAbbr: string
-  awayAbbr: string
-  homeScore: number | null
-  awayScore: number | null
-  played: boolean
-  tipOffAt: string | null
+const ROUND_BADGE_COLOR: Record<string, string> = {
+  Finals: 'var(--nba-gold)',
+  R1: '#4a90d9',
+  R2: '#9b59b6',
+  CF: '#e05c3a',
 }
+
+const LAST_NIGHT_RESULTS = [
+  { home: 'BOS', away: 'NYK', homeScore: 112, awayScore: 105, round: 'R1', note: 'BOS abriu 1-0' },
+  { home: 'DEN', away: 'MIN', homeScore: 108, awayScore: 101, round: 'R1', note: 'Jokic com 29 pts' },
+  { home: 'OKC', away: 'IND', homeScore: 121, awayScore: 116, round: 'Finals', note: 'SGA decisivo no fim' },
+  { home: 'DET', away: 'MIL', homeScore: 99, awayScore: 94, round: 'R1', note: 'Detroit roubou mando' },
+  { home: 'LAL', away: 'HOU', homeScore: 118, awayScore: 114, round: 'R1', note: 'LeBron fechou no clutch' },
+]
 
 function CardTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
   return (
@@ -52,120 +55,39 @@ function RankArrow({ diff }: { diff: number }) {
   return <Minus size={10} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
 }
 
-function formatScoreStripTime(value: string | null) {
-  if (!value) return 'Sem horário'
-  return new Date(value).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
-  })
-}
-
-function GamesPulseStrip() {
-  const [items, setItems] = useState<ScoreStripItem[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchStrip()
-
-    const sub = supabase
-      .channel('home-score-strip')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, fetchStrip)
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(sub)
-    }
-  }, [])
-
-  async function fetchStrip() {
-    setLoading(true)
-
-    const [{ data: gamesData }, { data: teamsData }] = await Promise.all([
-      supabase
-        .from('games')
-        .select('id, home_team_id, away_team_id, home_score, away_score, played, tip_off_at')
-        .order('tip_off_at', { ascending: false })
-        .limit(24),
-      supabase.from('teams').select('id, abbreviation'),
-    ])
-
-    const teamMap = Object.fromEntries(((teamsData ?? []) as Pick<Team, 'id' | 'abbreviation'>[]).map((team) => [team.id, team.abbreviation]))
-    const now = Date.now()
-
-    const normalized = ((gamesData ?? []) as Pick<Game, 'id' | 'home_team_id' | 'away_team_id' | 'home_score' | 'away_score' | 'played' | 'tip_off_at'>[])
-      .map((game) => ({
-        id: game.id,
-        homeAbbr: teamMap[game.home_team_id] ?? game.home_team_id,
-        awayAbbr: teamMap[game.away_team_id] ?? game.away_team_id,
-        homeScore: game.home_score,
-        awayScore: game.away_score,
-        played: game.played,
-        tipOffAt: game.tip_off_at,
-      }))
-      .sort((left, right) => {
-        const leftTime = left.tipOffAt ? new Date(left.tipOffAt).getTime() : 0
-        const rightTime = right.tipOffAt ? new Date(right.tipOffAt).getTime() : 0
-
-        const leftLive = !left.played && left.tipOffAt && leftTime <= now
-        const rightLive = !right.played && right.tipOffAt && rightTime <= now
-        if (leftLive !== rightLive) return leftLive ? -1 : 1
-
-        const leftUpcoming = !left.played && left.tipOffAt && leftTime > now
-        const rightUpcoming = !right.played && right.tipOffAt && rightTime > now
-        if (leftUpcoming !== rightUpcoming) return leftUpcoming ? -1 : 1
-
-        return rightTime - leftTime
-      })
-      .slice(0, 8)
-
-    setItems(normalized)
-    setLoading(false)
-  }
-
-  if (loading && items.length === 0) {
-    return (
-      <section
-        style={{
-          ...card,
-          padding: '0.7rem 0.9rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 76,
-        }}
-      >
-        <LoadingBasketball size={18} />
-      </section>
-    )
-  }
-
-  if (items.length === 0) return null
-
+function Badge({ label, color }: { label: string; color: string }) {
   return (
-    <section
+    <span
       style={{
-        ...card,
-        padding: '0.55rem 0',
-        overflow: 'hidden',
-        background: 'linear-gradient(180deg, rgba(19,19,26,0.98), rgba(12,12,18,0.95))',
+        background: `${color}22`,
+        color,
+        borderRadius: 4,
+        padding: '1px 6px',
+        fontSize: '0.65rem',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '0 0.9rem 0.55rem',
-          borderBottom: '1px solid rgba(200,150,60,0.10)',
-          marginBottom: 8,
-        }}
-      >
-        <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em' }}>
-          PLACAR RÁPIDO
-        </span>
+      {label}
+    </span>
+  )
+}
+
+function LastNightRecap() {
+  return (
+    <section style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 1rem', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
+            <Clock size={14} />
+          </span>
+          <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', letterSpacing: '0.08em', lineHeight: 1, margin: 0 }}>
+            Jogos da última noite
+          </h2>
+        </div>
         <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-          últimos resultados, jogos rolando e próximos
+          base rápida para entrar no dia
         </span>
       </div>
 
@@ -174,62 +96,47 @@ function GamesPulseStrip() {
           display: 'flex',
           gap: 10,
           overflowX: 'auto',
-          padding: '0 0.9rem 0.2rem',
+          padding: '0 1rem 0.2rem',
           scrollSnapType: 'x proximity',
         }}
       >
-        {items.map((item) => {
-          const tipOffTime = item.tipOffAt ? new Date(item.tipOffAt).getTime() : 0
-          const now = Date.now()
-          const isLive = !item.played && item.tipOffAt && tipOffTime <= now
-          const isUpcoming = !item.played && item.tipOffAt && tipOffTime > now
-          const statusLabel = item.played ? 'FIM' : isLive ? 'AO VIVO' : formatScoreStripTime(item.tipOffAt)
-          const statusColor = item.played ? 'var(--nba-text-muted)' : isLive ? 'var(--nba-danger)' : 'var(--nba-gold)'
-
+        {LAST_NIGHT_RESULTS.map((game) => {
           return (
             <div
-              key={item.id}
+              key={`${game.home}-${game.away}`}
               style={{
-                minWidth: 160,
-                padding: '10px 12px',
+                minWidth: 250,
+                padding: '12px 14px',
                 borderRadius: 10,
-                background: isLive ? 'rgba(231,76,60,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${isLive ? 'rgba(231,76,60,0.18)' : 'rgba(200,150,60,0.12)'}`,
+                background: 'rgba(12,12,18,0.42)',
+                border: '1px solid rgba(200,150,60,0.14)',
                 scrollSnapAlign: 'start',
+                display: 'grid',
+                gap: 8,
               }}
             >
-              <div style={{ color: statusColor, fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', marginBottom: 8 }}>
-                {statusLabel}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
+                  {game.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {game.away}
+                </span>
+                <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
               </div>
 
-              <div style={{ display: 'grid', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem' }}>
-                    {item.homeAbbr}
-                  </span>
-                  <span className="font-condensed font-bold" style={{ color: item.homeScore != null ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '1rem' }}>
-                    {item.homeScore ?? '—'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem' }}>
-                    {item.awayAbbr}
-                  </span>
-                  <span className="font-condensed font-bold" style={{ color: item.awayScore != null ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '1rem' }}>
-                    {item.awayScore ?? '—'}
-                  </span>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.35rem', lineHeight: 1 }}>
+                  {game.homeScore} - {game.awayScore}
+                </span>
+                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>final</span>
               </div>
 
-              {isUpcoming && (
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 8 }}>
-                  jogo programado
-                </div>
-              )}
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{game.note}</div>
             </div>
           )
         })}
+      </div>
+
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 10, padding: '0 1rem', lineHeight: 1.4 }}>
+        Resultados simulados por enquanto — integração com dados reais virá depois.
       </div>
     </section>
   )
@@ -803,7 +710,7 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
-        <GamesPulseStrip />
+        <LastNightRecap />
         <HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} />
         <HomeContextBanner />
         <MyMomentCard myEntry={myEntry} readySeries={readySeries.length} pickedSeries={pickedSeries} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} />

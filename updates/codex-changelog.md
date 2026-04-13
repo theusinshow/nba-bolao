@@ -1,5 +1,71 @@
 # Codex Changelog
 
+## 2026-04-13 11:16 - Loader do app passa a usar SVG oficial de assets
+
+### Objetivo
+- Trocar o símbolo de carregamento atual pelo SVG fornecido em `assets`, reaproveitando a nova arte em todos os pontos do app que já usam o componente de loading.
+
+### Arquivos alterados
+- `frontend/public/loading-basketball.svg`
+- `frontend/src/components/LoadingBasketball.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O SVG de loading foi levado para `frontend/public/loading-basketball.svg`, permitindo uso estável em qualquer rota do frontend.
+- O componente `LoadingBasketball` deixou de desenhar a bola manualmente em SVG inline.
+- O loader agora usa a arte oficial via `<img>` mantendo:
+  - controle por `size`;
+  - rotação com `animate-spin`;
+  - acessibilidade com `role="status"` e `aria-label`.
+- Foi adicionado um `drop-shadow` sutil para melhorar presença visual do novo loader sobre fundos escuros do produto.
+
+### Resultado prático
+- Todas as telas que já usam `LoadingBasketball` passam automaticamente a exibir o novo símbolo.
+- O app ganha um loading mais coerente com a arte fornecida e mais fácil de manter no futuro.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- O novo asset público e o `LoadingBasketball` atualizado compilaram normalmente e passaram a atender todas as telas que já usam o componente.
+
+### Pendências
+- Se você quiser, numa próxima rodada dá para criar uma segunda variação do loader para telas grandes, com escala maior e animação complementar.
+
+## 2026-04-13 11:02 - Home troca faixa seca por resumo rico da última noite
+
+### Objetivo
+- Deixar o topo da Home mais informativo e mais próximo do bloco forte que já existia em `Análise`, em vez de manter uma faixa de placar rápido mais resumida.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Analysis.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O topo da `Home` deixou de usar a faixa enxuta de placar rápido.
+- A `Home` passou a exibir um bloco mais rico de `Jogos da última noite`, com:
+  - confronto;
+  - badge de rodada;
+  - placar final;
+  - nota curta de contexto.
+- O bloco equivalente foi removido da aba `Análise` para evitar duplicação entre páginas.
+- A `Análise` foi ajustada para continuar útil sem esse resumo, mantendo foco em:
+  - próximos confrontos;
+  - odds;
+  - lesões;
+  - atalhos relacionados.
+
+### Resultado prático
+- A `Home` agora abre com uma base de rodada mais forte e legível.
+- O usuário recebe mais contexto logo no início da navegação diária.
+- A aba `Análise` continua complementar, sem repetir o mesmo conteúdo do topo da Home.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- `Home` e `Análise` compilaram normalmente após a troca do bloco de resultados e a remoção da duplicação.
+
+### Pendências
+- Se você quiser, a próxima evolução pode ser tornar esse bloco da Home híbrido: resultados recentes reais quando existirem e fallback simulado quando ainda não houver dados completos.
+
 ## 2026-04-13 10:48 - Home ganha atalho direto para comparar brackets
 
 ### Objetivo

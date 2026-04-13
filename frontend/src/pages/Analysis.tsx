@@ -178,57 +178,6 @@ function AnalysisContextCard() {
   )
 }
 
-function LastNightResultsTicker() {
-  const tickerItems = [...LAST_NIGHT_RESULTS, ...LAST_NIGHT_RESULTS]
-
-  return (
-    <section style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
-      <style>{`
-        @keyframes analysis-results-marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-      `}</style>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 1rem', marginBottom: 10 }}>
-        <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
-          <Clock size={14} />
-        </span>
-        <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', letterSpacing: '0.08em', lineHeight: 1, margin: 0 }}>
-          Resultados da última noite
-        </h2>
-      </div>
-
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 42, background: 'linear-gradient(90deg, rgba(19,19,26,0.95), rgba(19,19,26,0))', pointerEvents: 'none', zIndex: 1 }} />
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 42, background: 'linear-gradient(270deg, rgba(19,19,26,0.95), rgba(19,19,26,0))', pointerEvents: 'none', zIndex: 1 }} />
-
-      <div style={{ overflow: 'hidden' }}>
-        <div style={{ display: 'flex', width: 'max-content', animation: 'analysis-results-marquee 34s linear infinite', gap: 12, padding: '0 1rem' }}>
-          {tickerItems.map((game, index) => (
-            <div key={`${game.home}-${game.away}-${index}`} style={{ minWidth: 260, display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.42)', border: '1px solid rgba(200,150,60,0.14)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
-                  {game.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {game.away}
-                </span>
-                <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} small />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.35rem', lineHeight: 1 }}>
-                  {game.homeScore} - {game.awayScore}
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>final</span>
-              </div>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{game.note}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <SimNote>Resultados simulados por enquanto — integração com dados reais virá depois.</SimNote>
-    </section>
-  )
-}
-
 function NextGamesCard() {
   const featured = NEXT_GAMES[0]
 
@@ -375,15 +324,14 @@ export function Analysis() {
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
         <div className="flex flex-col gap-4 min-w-0">
           <NextGamesCard />
-          <LastNightResultsTicker />
+          <OddsCard />
         </div>
         <div className="flex flex-col gap-4 min-w-0">
           <AnalysisActionsCard />
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <OddsCard />
+      <div className="grid gap-4 lg:grid-cols-1">
         <InjuriesCard />
       </div>
     </div>
