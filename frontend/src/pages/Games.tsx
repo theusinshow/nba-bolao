@@ -58,6 +58,16 @@ interface RevealedGamePick extends GamePick {
   participant_name: string
 }
 
+type GamesFilter = 'all' | 'pending' | 'urgent' | 'saved' | 'completed'
+
+interface PickFocusEntry {
+  game: GameWithTeams
+  pick: GamePick
+  team: Team | null
+  statusLabel: string
+  statusColor: string
+}
+
 // ─── Mock teams (Play-in / non-2025 teams) ────────────────────────────────────
 
 const MOCK_TEAMS: Record<string, Team> = {
@@ -260,6 +270,28 @@ function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPending
   return { label: 'Aguardando palpite', color: 'var(--nba-text-muted)', bg: 'rgba(255,255,255,0.04)', icon: <CircleOff size={12} /> }
 }
 
+function isUrgentSeries(group: SeriesGroup) {
+  if (!group.nextTipOff) return false
+  const diff = new Date(group.nextTipOff).getTime() - Date.now()
+  return diff > 0 && diff <= 10_800_000
+}
+
+function matchesSeriesFilter(group: SeriesGroup, filter: GamesFilter) {
+  switch (filter) {
+    case 'pending':
+      return group.openGames > 0 && group.pickedGames < group.effectiveGamesCount
+    case 'urgent':
+      return group.openGames > 0 && isUrgentSeries(group)
+    case 'saved':
+      return group.openGames > 0 && group.pickedGames > 0
+    case 'completed':
+      return group.seriesIsComplete || group.openGames === 0
+    case 'all':
+    default:
+      return true
+  }
+}
+
 const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
 const ROUND_COLOR: Record<number, string> = {
   1: '#4a90d9', 2: '#9b59b6', 3: '#e05c3a', 4: '#c8963c',
@@ -363,6 +395,60 @@ function buildAutoPickDayGroups(games: GameWithTeams[], picks: GamePick[]): Auto
       }
     })
     .sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime())
+}
+
+function buildPickFocusEntries(games: GameWithTeams[], picks: GamePick[]): PickFocusEntry[] {
+  const gameMap = Object.fromEntries(games.map((game) => [game.id, game]))
+
+  return picks
+    .map((pick) => {
+      const game = gameMap[pick.game_id]
+      if (!game) return null
+
+      const team =
+        pick.winner_id === game.team_a?.id ? game.team_a :
+        pick.winner_id === game.team_b?.id ? game.team_b :
+        null
+
+      let statusLabel = 'Palpite salvo'
+      let statusColor = 'var(--nba-success)'
+
+      if (game.played) {
+        if (pick.winner_id === game.winner_id) {
+          statusLabel = 'Acertou'
+          statusColor = 'var(--nba-success)'
+        } else {
+          statusLabel = 'Errou'
+          statusColor = 'var(--nba-danger)'
+        }
+      } else if (!isGameOpenForPick(game)) {
+        statusLabel = 'Travado'
+        statusColor = 'var(--nba-text-muted)'
+      } else if (game.tip_off_at) {
+        const diff = new Date(game.tip_off_at).getTime() - Date.now()
+        if (diff <= 10_800_000) {
+          statusLabel = 'Fecha em breve'
+          statusColor = diff <= 3_600_000 ? 'var(--nba-danger)' : 'var(--nba-gold)'
+        } else {
+          statusLabel = 'Em aberto'
+          statusColor = 'var(--nba-gold)'
+        }
+      }
+
+      return { game, pick, team, statusLabel, statusColor }
+    })
+    .filter((entry): entry is PickFocusEntry => !!entry)
+    .sort((left, right) => {
+      const leftOpen = !left.game.played && isGameOpenForPick(left.game)
+      const rightOpen = !right.game.played && isGameOpenForPick(right.game)
+      if (leftOpen !== rightOpen) return leftOpen ? -1 : 1
+
+      const leftTime = left.game.tip_off_at ? new Date(left.game.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+      const rightTime = right.game.tip_off_at ? new Date(right.game.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+
+      if (leftOpen && rightOpen) return leftTime - rightTime
+      return rightTime - leftTime
+    })
 }
 
 function generateRandomPreview(games: GameWithTeams[]): AutoPickPreviewItem[] {
@@ -1675,10 +1761,14 @@ function GamesHero({
   games,
   picks,
   isMock,
+  pendingSeries,
+  urgentSeries,
 }: {
   games: GameWithTeams[]
   picks: GamePick[]
   isMock: boolean
+  pendingSeries: number
+  urgentSeries: number
 }) {
   const openGames = games.filter((game) => !game.played)
   const lockedSoon = openGames.filter((game) => {
@@ -1778,7 +1868,156 @@ function GamesHero({
             </div>
           ))}
         </div>
+
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-2">
+          <div
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Séries pedindo ação</div>
+            <div className="font-condensed font-bold" style={{ color: pendingSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '1.35rem', lineHeight: 1.1 }}>
+              {pendingSeries}
+            </div>
+          </div>
+          <div
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Séries urgentes</div>
+            <div className="font-condensed font-bold" style={{ color: urgentSeries > 0 ? 'var(--nba-danger)' : 'var(--nba-text)', fontSize: '1.35rem', lineHeight: 1.1 }}>
+              {urgentSeries}
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function FiltersBar({
+  active,
+  counts,
+  onChange,
+}: {
+  active: GamesFilter
+  counts: Record<GamesFilter, number>
+  onChange: (filter: GamesFilter) => void
+}) {
+  const items: { id: GamesFilter; label: string }[] = [
+    { id: 'all', label: 'Todas' },
+    { id: 'pending', label: 'Sem palpite' },
+    { id: 'urgent', label: 'Urgentes' },
+    { id: 'saved', label: 'Com pick' },
+    { id: 'completed', label: 'Encerradas' },
+  ]
+
+  return (
+    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 14 }}>
+      {items.map((item) => {
+        const selected = active === item.id
+        return (
+          <button
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              borderRadius: 999,
+              padding: '8px 12px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              border: `1px solid ${selected ? 'rgba(200,150,60,0.28)' : 'rgba(200,150,60,0.12)'}`,
+              background: selected ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+              color: selected ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+              fontWeight: 700,
+              fontSize: '0.76rem',
+            }}
+          >
+            <span>{item.label}</span>
+            <span
+              className="font-condensed"
+              style={{
+                color: selected ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+                background: selected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.04)',
+                borderRadius: 999,
+                padding: '1px 7px',
+                fontSize: '0.72rem',
+              }}
+            >
+              {counts[item.id]}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function PicksFocusCard({ entries }: { entries: PickFocusEntry[] }) {
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)',
+        border: '1px solid rgba(200,150,60,0.16)',
+        borderRadius: 12,
+        padding: '1rem',
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', letterSpacing: '0.08em', lineHeight: 1 }}>
+            SEUS PALPITES EM FOCO
+          </div>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', margin: '6px 0 0' }}>
+            Um resumo rápido dos picks que mais importam neste momento.
+          </p>
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+          Você ainda não salvou palpites de jogo.
+        </p>
+      ) : (
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-2">
+          {entries.map(({ game, team, statusLabel, statusColor }) => (
+            <div
+              key={game.id}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.12)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem' }}>
+                  {game.team_a?.abbreviation ?? game.home_team_id} vs {game.team_b?.abbreviation ?? game.away_team_id}
+                </span>
+                <span style={{ color: statusColor, fontSize: '0.68rem', fontWeight: 700 }}>
+                  {statusLabel}
+                </span>
+              </div>
+              <div style={{ color: team?.primary_color ?? 'var(--nba-gold)', fontWeight: 700, fontSize: '0.82rem' }}>
+                Seu pick: {team?.abbreviation ?? '?'}
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                Jogo {game.game_number}{game.tip_off_at ? ` • ${formatTimeBRT(game.tip_off_at)} BRT` : ''}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1799,6 +2038,8 @@ export function Games({ participantId }: Props) {
   const [autoPickSaving, setAutoPickSaving] = useState(false)
   const [autoPickGameIds, setAutoPickGameIds] = useState<string[]>([])
   const [revealedGame, setRevealedGame] = useState<GameWithTeams | null>(null)
+  const [activeFilter, setActiveFilter] = useState<GamesFilter>('pending')
+  const [recentlySavedGameId, setRecentlySavedGameId] = useState<string | null>(null)
   const { addToast } = useUIStore()
 
   useEffect(() => {
@@ -1831,21 +2072,48 @@ export function Games({ participantId }: Props) {
 
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
   const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
+  const pickFocusEntries = useMemo(() => buildPickFocusEntries(games, picks).slice(0, 4), [games, picks])
+  const filterCounts = useMemo<Record<GamesFilter, number>>(() => ({
+    all: seriesGroups.length,
+    pending: seriesGroups.filter((group) => matchesSeriesFilter(group, 'pending')).length,
+    urgent: seriesGroups.filter((group) => matchesSeriesFilter(group, 'urgent')).length,
+    saved: seriesGroups.filter((group) => matchesSeriesFilter(group, 'saved')).length,
+    completed: seriesGroups.filter((group) => matchesSeriesFilter(group, 'completed')).length,
+  }), [seriesGroups])
+  const filteredSeriesGroups = useMemo(
+    () => seriesGroups.filter((group) => matchesSeriesFilter(group, activeFilter)),
+    [seriesGroups, activeFilter]
+  )
 
   useEffect(() => {
-    if (seriesGroups.length === 0) {
+    if (filteredSeriesGroups.length === 0) {
       setExpandedSeriesIds([])
       return
     }
 
     setExpandedSeriesIds((current) => {
-      const validCurrent = current.filter((seriesId) => seriesGroups.some((group) => group.seriesId === seriesId))
+      const validCurrent = current.filter((seriesId) => filteredSeriesGroups.some((group) => group.seriesId === seriesId))
       if (validCurrent.length > 0) return validCurrent
 
-      const firstOpenSeries = seriesGroups.find((group) => group.openGames > 0)
-      return [firstOpenSeries?.seriesId ?? seriesGroups[0].seriesId]
+      const firstOpenSeries = filteredSeriesGroups.find((group) => group.openGames > 0)
+      return [firstOpenSeries?.seriesId ?? filteredSeriesGroups[0].seriesId]
     })
-  }, [seriesGroups])
+  }, [filteredSeriesGroups])
+
+  useEffect(() => {
+    if (filterCounts[activeFilter] > 0) return
+    if (filterCounts.pending > 0) {
+      setActiveFilter('pending')
+      return
+    }
+    setActiveFilter('all')
+  }, [activeFilter, filterCounts])
+
+  useEffect(() => {
+    if (!recentlySavedGameId) return
+    const timeout = window.setTimeout(() => setRecentlySavedGameId(null), 2600)
+    return () => window.clearTimeout(timeout)
+  }, [recentlySavedGameId])
 
   async function fetchAll() {
     setLoading(true)
@@ -1955,6 +2223,7 @@ export function Games({ participantId }: Props) {
         return next
       })
       if (source === 'manual') {
+        setRecentlySavedGameId(gameId)
         addToast('Palpite salvo! (simulação)', 'success')
       }
       return true
@@ -2002,6 +2271,7 @@ export function Games({ participantId }: Props) {
       })
 
       if (source === 'manual') {
+        setRecentlySavedGameId(gameId)
         addToast('Palpite salvo!', 'success')
       }
       return true
@@ -2083,8 +2353,16 @@ export function Games({ participantId }: Props) {
 
   return (
     <div style={{ padding: '16px 16px 96px', maxWidth: 680, margin: '0 auto' }}>
-      <GamesHero games={games} picks={picks} isMock={isMock} />
+      <GamesHero
+        games={games}
+        picks={picks}
+        isMock={isMock}
+        pendingSeries={filterCounts.pending}
+        urgentSeries={filterCounts.urgent}
+      />
       <DailyAutoPickCard groups={autoPickDayGroups} onOpen={openAutoPick} />
+      <PicksFocusCard entries={pickFocusEntries} />
+      <FiltersBar active={activeFilter} counts={filterCounts} onChange={setActiveFilter} />
 
       <div
         style={{
@@ -2125,17 +2403,45 @@ export function Games({ participantId }: Props) {
             padding: '2px 8px',
           }}
         >
-          {seriesGroups.length} série{seriesGroups.length !== 1 ? 's' : ''}
+          {filteredSeriesGroups.length} série{filteredSeriesGroups.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {seriesGroups.map((group) => (
+        {filteredSeriesGroups.length === 0 && (
+          <div
+            style={{
+              padding: '18px 16px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.48)',
+              border: '1px solid var(--nba-border)',
+              color: 'var(--nba-text-muted)',
+            }}
+          >
+            <div
+              className="font-condensed font-bold"
+              style={{
+                color: 'var(--nba-text)',
+                fontSize: '0.95rem',
+                letterSpacing: '0.08em',
+                marginBottom: 6,
+              }}
+            >
+              NENHUMA SÉRIE NESTE FILTRO
+            </div>
+            <p style={{ margin: 0, fontSize: '0.84rem', lineHeight: 1.5 }}>
+              Troque o filtro acima para voltar a navegar por todas as séries ou focar em outro recorte da rodada.
+            </p>
+          </div>
+        )}
+
+        {filteredSeriesGroups.map((group) => (
           <SeriesCard
             key={group.key}
             group={group}
             picks={picks}
             expanded={expandedSeriesIds.includes(group.seriesId)}
+            isHighlighted={recentlySavedGameId != null && group.games.some((game) => game.id === recentlySavedGameId)}
             onToggle={() => toggleSeries(group.seriesId)}
             onSave={savePick}
             autoPickGameIds={autoPickGameIds}
@@ -2177,6 +2483,7 @@ function SeriesCard({
   group,
   picks,
   expanded,
+  isHighlighted,
   onToggle,
   onSave,
   autoPickGameIds,
@@ -2186,6 +2493,7 @@ function SeriesCard({
   group: SeriesGroup
   picks: GamePick[]
   expanded: boolean
+  isHighlighted: boolean
   onToggle: () => void
   onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<boolean>
   autoPickGameIds: string[]
@@ -2195,14 +2503,29 @@ function SeriesCard({
   const completionPct = group.effectiveGamesCount > 0 ? Math.round((group.pickedGames / group.effectiveGamesCount) * 100) : 0
   const roundColor = ROUND_COLOR[group.round]
   const hasOpenGames = group.openGames > 0
+  const urgentSeries = isUrgentSeries(group)
+  const borderColor = isHighlighted
+    ? 'rgba(46,204,113,0.38)'
+    : expanded
+      ? 'rgba(200,150,60,0.24)'
+      : urgentSeries
+        ? 'rgba(231,76,60,0.24)'
+        : 'var(--nba-border)'
+  const boxShadow = isHighlighted
+    ? '0 18px 36px rgba(46,204,113,0.12)'
+    : urgentSeries
+      ? '0 14px 28px rgba(231,76,60,0.08)'
+      : 'none'
 
   return (
     <div
       style={{
         background: 'var(--nba-surface)',
-        border: `1px solid ${expanded ? 'rgba(200,150,60,0.24)' : 'var(--nba-border)'}`,
+        border: `1px solid ${borderColor}`,
         borderRadius: 12,
         overflow: 'hidden',
+        boxShadow,
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
       }}
     >
       <button
@@ -2250,6 +2573,38 @@ function SeriesCard({
                 <Layers3 size={12} />
                 {hasOpenGames ? `${group.openGames} aberto${group.openGames !== 1 ? 's' : ''}` : 'Série encerrada'}
               </span>
+              {urgentSeries && hasOpenGames && (
+                <span
+                  className="font-condensed font-bold"
+                  style={{
+                    color: 'var(--nba-danger)',
+                    fontSize: '0.68rem',
+                    letterSpacing: '0.08em',
+                    background: 'rgba(231,76,60,0.12)',
+                    border: '1px solid rgba(231,76,60,0.26)',
+                    borderRadius: 999,
+                    padding: '2px 8px',
+                  }}
+                >
+                  PRIORIDADE
+                </span>
+              )}
+              {isHighlighted && (
+                <span
+                  className="font-condensed font-bold"
+                  style={{
+                    color: 'var(--nba-success)',
+                    fontSize: '0.68rem',
+                    letterSpacing: '0.08em',
+                    background: 'rgba(46,204,113,0.12)',
+                    border: '1px solid rgba(46,204,113,0.26)',
+                    borderRadius: 999,
+                    padding: '2px 8px',
+                  }}
+                >
+                  ATUALIZADA AGORA
+                </span>
+              )}
             </div>
 
             <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1 }}>

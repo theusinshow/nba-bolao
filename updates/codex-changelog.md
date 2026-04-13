@@ -1,5 +1,177 @@
 # Codex Changelog
 
+## 2026-04-13 12:26 - Documento de handoff criado para migracao de contexto entre contas do Codex
+
+### Objetivo
+- Criar um documento de contexto rapido para permitir que outra conta do Codex assuma o projeto ja alinhada com o estado atual do produto e com a proxima fase de integracao de dados reais.
+
+### Arquivos alterados
+- `updates/codex-handoff-dados-reais.md`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criado um handoff dedicado para a proxima conta do Codex.
+- O documento resume:
+  - rotas atuais;
+  - funcao de cada tela principal;
+  - arquitetura relevante do frontend e backend;
+  - pontos sensiveis de scoring e ranking;
+  - prioridades da fase de dados reais;
+  - ordem de investigacao recomendada;
+  - riscos principais da integracao;
+  - prompt sugerido para a nova conta iniciar o trabalho.
+
+### Resultado prático
+- Agora existe um ponto unico de entrada para acelerar a troca de contexto entre contas.
+- A nova conta consegue entrar mais rapido na fase de API e sync sem depender de reler o projeto inteiro.
+
+### Validações
+- Documento criado com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\updates`
+
+### Pendências
+- Se voce quiser, eu ainda posso gerar uma segunda versao mais curta, em formato de checklist operacional, para colar direto na primeira mensagem da outra conta.
+
+## 2026-04-13 12:14 - Compare evolui para duelo analítico com ousadia e potencial de virada
+
+### Objetivo
+- Transformar a tela `Compare` em um diferencial mais forte do bolão, saindo de uma comparação estática e indo para uma leitura de duelo com divergências quentes, ousadia e potencial real de virada.
+
+### Arquivos alterados
+- `frontend/src/pages/Compare.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A comparação principal ganhou um novo bloco analítico no topo com leitura mais visual do confronto.
+- O resumo agora destaca:
+  - quem está na frente;
+  - quantas divergências ainda estão quentes;
+  - quem está mais ousado no recorte restante;
+  - qual é o potencial de virada do duelo.
+- A tela passou a calcular `ousadia` com base na exposição direta dos dois lados nas divergências ainda abertas.
+- A tela passou a calcular `potencial de virada` com base no swing máximo ainda possível nas séries e jogos restantes onde os dois podem se separar em pontos.
+- Essa leitura não usa chute probabilístico; ela usa os pontos ainda disputáveis segundo as regras reais de pontuação do bolão.
+- Foi criado um novo bloco `Divergências em aberto`, que destaca automaticamente os pontos mais importantes do duelo, incluindo:
+  - séries em que os dois divergem;
+  - diferenças de cravada/número de jogos;
+  - jogos em que só um palpitou ou em que os vencedores escolhidos são diferentes.
+- Cada divergência destacada agora mostra:
+  - o confronto;
+  - o contexto da rodada;
+  - a escolha de cada participante;
+  - o swing máximo possível para cada lado.
+- O resumo de séries também ficou mais rico e agora separa:
+  - concordâncias;
+  - divergências de vencedor;
+  - diferenças no número de jogos;
+  - situações em que só um palpitou.
+
+### Resultado prático
+- A aba `Compare` ficou mais parecida com uma central de duelo do que com uma simples tela de conferência.
+- Agora dá para entender mais rápido:
+  - onde os dois realmente se separam;
+  - quem está assumindo mais risco;
+  - se o líder está confortável ou pressionado;
+  - quais séries e jogos ainda podem virar o confronto.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- A tela `Compare` compilou normalmente após a entrada da nova camada analítica, do cálculo de swing e do bloco de divergências automáticas.
+
+### Pendências
+- Se você quiser, a próxima evolução pode ser adicionar ranking de ousadia contra o campo inteiro e um modo de comparação com compartilhamento por link.
+
+## 2026-04-13 11:58 - Home refinada como painel principal do bolão
+
+### Objetivo
+- Transformar a `Home` em um painel principal mais claro e mais orientado à ação, reduzindo a sensação de cards soltos e organizando melhor o que é status, próximo passo e acompanhamento.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O antigo bloco explicativo da `Home` foi substituído por um novo `Pulso do dia`, mais útil para operação diária.
+- O novo `Pulso do dia` resume, logo no início:
+  - quantas séries já estão prontas para palpitar;
+  - quantas ainda pedem ação;
+  - a posição atual do participante.
+- A Home ganhou um novo bloco `Acessos Rápidos`, com atalhos diretos para:
+  - `Jogos`;
+  - `Análise`;
+  - `Comparar brackets`.
+- Esse bloco foi desenhado para funcionar melhor como hub de decisão rápida, em vez de depender só do menu inferior ou de cards espalhados.
+- A ordem de leitura da Home foi reorganizada para ficar mais coerente:
+  - resultados recentes;
+  - hero principal;
+  - pulso do dia;
+  - próximo passo do participante;
+  - acessos rápidos;
+  - acompanhamento da chave oficial.
+- No desktop, a distribuição entre colunas ficou mais limpa:
+  - coluna esquerda para ranking e estatísticas;
+  - centro para o fluxo principal da Home;
+  - coluna direita para meus palpites e séries recentes.
+- No mobile, a pilha principal ficou mais objetiva e o conteúdo lateral foi trazido para a sequência de leitura sem duplicações desnecessárias.
+
+### Resultado prático
+- A `Home` ficou mais parecida com um painel de comando do bolão do que com uma coleção de widgets.
+- O usuário agora entende mais rápido:
+  - como está o dia;
+  - o que ainda precisa resolver;
+  - qual rota abrir em seguida.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- A `Home` compilou normalmente após a troca da hierarquia, a entrada do `Pulso do dia` e a nova reorganização entre desktop e mobile.
+
+### Pendências
+- Se você quiser, a próxima etapa natural é deixar o topo da `Home` ainda mais “portal esportivo”, com estado de jogos ao vivo e uma faixa superior mais rica quando os dados reais entrarem.
+
+## 2026-04-13 11:42 - Aba Jogos ganha filtros, foco de palpites e prioridade operacional
+
+### Objetivo
+- Fortalecer a aba `Jogos` para ela funcionar mais como painel operacional da rodada, facilitando navegação por urgência, palpites pendentes e séries já cobertas.
+
+### Arquivos alterados
+- `frontend/src/pages/Games.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O hero da página `Jogos` passou a destacar também:
+  - quantas séries ainda pedem ação;
+  - quantas séries já estão em estado urgente.
+- Foi criado um card de `Seus palpites em foco`, trazendo os jogos mais relevantes do momento com:
+  - confronto;
+  - pick atual;
+  - status operacional;
+  - ordenação puxando primeiro o que está aberto ou travando em breve.
+- A página ganhou uma barra de filtros rápidos para navegar entre:
+  - todas as séries;
+  - séries sem palpite;
+  - séries urgentes;
+  - séries com pick salvo;
+  - séries encerradas.
+- A lista principal de séries agora respeita o filtro ativo e exibe estado vazio amigável quando não houver resultados no recorte escolhido.
+- Cada card de série passou a sinalizar melhor a prioridade da rodada:
+  - selo de `PRIORIDADE` para séries urgentes;
+  - destaque visual para séries recém-atualizadas após salvar um palpite.
+- O topo de métricas da página e a navegação entre séries ficaram mais orientados à ação diária, sem mexer no fluxo já existente de salvar picks, revelar picks e usar `Vai na fé`.
+
+### Resultado prático
+- A aba `Jogos` ficou mais rápida para quem quer resolver a rodada sem percorrer tudo manualmente.
+- O usuário consegue identificar com mais facilidade:
+  - onde ainda falta palpite;
+  - o que fecha em breve;
+  - o que acabou de ser salvo;
+  - quais séries já podem ser ignoradas.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- O chunk `Games` compilou normalmente após a entrada dos novos filtros, cards de foco e destaques por prioridade.
+
+### Pendências
+- Se você quiser, a próxima rodada pode evoluir essa página com filtros persistidos entre acessos, busca por time/série e um histórico visual mais rico dos palpites já fechados.
+
 ## 2026-04-13 11:16 - Loader do app passa a usar SVG oficial de assets
 
 ### Objetivo

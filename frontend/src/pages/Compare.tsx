@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ArrowLeftRight, AlertTriangle, Sparkles, Swords, ShieldCheck, Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { BracketSVG } from '../components/BracketSVG'
 import { useSeries } from '../hooks/useSeries'
 import { useRanking } from '../hooks/useRanking'
+import { calculateGamePickPoints, calculateSeriesPickPoints } from '../utils/scoring'
 import type { Participant, SeriesPick, Series, Game, GamePick, Team } from '../types'
 
 // ─── Avatar (shared with RankingTable) ───────────────────────────────────────
@@ -290,6 +291,255 @@ function isSeriesComparisonVisible(series: Series, allGames: Game[]): boolean {
   )
 }
 
+const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
+
+interface DivergenceHighlight {
+  id: string
+  type: 'series' | 'game'
+  label: string
+  context: string
+  leftChoice: string
+  rightChoice: string
+  leftEdge: number
+  rightEdge: number
+}
+
+interface CompareInsights {
+  seriesAgree: number
+  seriesDisagree: number
+  seriesMarginDifferences: number
+  seriesOnlyOne: number
+  gameAgree: number
+  gameDisagree: number
+  gameOnlyOne: number
+  leftBoldness: number
+  rightBoldness: number
+  bolderSide: 'left' | 'right' | 'tie'
+  leftSwing: number
+  rightSwing: number
+  totalOpenDivergences: number
+  highlights: DivergenceHighlight[]
+  currentGap: number
+  leadingSide: 'left' | 'right' | 'tie'
+  comebackSide: 'left' | 'right' | 'tie'
+  comebackPotential: number
+  comebackPressure: number
+  comebackLabel: string
+}
+
+function getSeriesPickLabel(pick: SeriesPick | undefined, series: Series): string {
+  if (!pick) return 'Sem pick'
+  const winner =
+    series.home_team?.id === pick.winner_id
+      ? series.home_team
+      : series.away_team?.id === pick.winner_id
+      ? series.away_team
+      : null
+  return `${winner?.abbreviation ?? pick.winner_id} em ${pick.games_count}`
+}
+
+function getSeriesPotentialEdge(series: Series, leftPick?: SeriesPick, rightPick?: SeriesPick) {
+  if (series.is_complete) return { left: 0, right: 0 }
+
+  const teamIds = [series.home_team_id, series.away_team_id].filter(Boolean) as string[]
+  if (teamIds.length < 2) return { left: 0, right: 0 }
+
+  const minGamesPlayed = Math.max(series.games_played, 4)
+  let left = 0
+  let right = 0
+
+  for (const winnerId of teamIds) {
+    for (let gamesPlayed = minGamesPlayed; gamesPlayed <= 7; gamesPlayed += 1) {
+      const leftPoints = leftPick
+        ? calculateSeriesPickPoints(
+            { winnerId: leftPick.winner_id, gamesCount: leftPick.games_count },
+            { winnerId, gamesPlayed, isComplete: true, round: series.round }
+          )
+        : 0
+      const rightPoints = rightPick
+        ? calculateSeriesPickPoints(
+            { winnerId: rightPick.winner_id, gamesCount: rightPick.games_count },
+            { winnerId, gamesPlayed, isComplete: true, round: series.round }
+          )
+        : 0
+
+      left = Math.max(left, leftPoints - rightPoints)
+      right = Math.max(right, rightPoints - leftPoints)
+    }
+  }
+
+  return { left, right }
+}
+
+function getGamePotentialEdge(game: Game, leftPick?: GamePick, rightPick?: GamePick) {
+  if (game.played || !game.round) return { left: 0, right: 0 }
+
+  const outcomes = [game.home_team_id, game.away_team_id]
+  let left = 0
+  let right = 0
+
+  for (const winnerId of outcomes) {
+    const leftPoints = leftPick
+      ? calculateGamePickPoints({ winnerId: leftPick.winner_id }, { winnerId, played: true, round: game.round })
+      : 0
+    const rightPoints = rightPick
+      ? calculateGamePickPoints({ winnerId: rightPick.winner_id }, { winnerId, played: true, round: game.round })
+      : 0
+
+    left = Math.max(left, leftPoints - rightPoints)
+    right = Math.max(right, rightPoints - leftPoints)
+  }
+
+  return { left, right }
+}
+
+function computeCompareInsights({
+  series,
+  games,
+  picks1,
+  picks2,
+  gamePicks1,
+  gamePicks2,
+  pts1,
+  pts2,
+}: {
+  series: Series[]
+  games: Game[]
+  picks1: SeriesPick[]
+  picks2: SeriesPick[]
+  gamePicks1: GamePick[]
+  gamePicks2: GamePick[]
+  pts1: number
+  pts2: number
+}): CompareInsights {
+  const leftSeriesById = new Map(picks1.map((pick) => [pick.series_id, pick]))
+  const rightSeriesById = new Map(picks2.map((pick) => [pick.series_id, pick]))
+  const leftGamesById = new Map(gamePicks1.map((pick) => [pick.game_id, pick]))
+  const rightGamesById = new Map(gamePicks2.map((pick) => [pick.game_id, pick]))
+  const seriesMap = new Map(series.map((item) => [item.id, item]))
+
+  let seriesAgree = 0
+  let seriesDisagree = 0
+  let seriesMarginDifferences = 0
+  let seriesOnlyOne = 0
+  let gameAgree = 0
+  let gameDisagree = 0
+  let gameOnlyOne = 0
+  let leftSwing = 0
+  let rightSwing = 0
+  const highlights: DivergenceHighlight[] = []
+
+  for (const item of series) {
+    const leftPick = leftSeriesById.get(item.id)
+    const rightPick = rightSeriesById.get(item.id)
+    const bothPicked = !!leftPick && !!rightPick
+    const sameWinner = bothPicked && leftPick.winner_id === rightPick.winner_id
+    const sameGamesCount = bothPicked && leftPick.games_count === rightPick.games_count
+
+    if (bothPicked && sameWinner && sameGamesCount) {
+      seriesAgree += 1
+    } else if (bothPicked && sameWinner && !sameGamesCount) {
+      seriesMarginDifferences += 1
+    } else if (bothPicked) {
+      seriesDisagree += 1
+    } else if (leftPick || rightPick) {
+      seriesOnlyOne += 1
+    }
+
+    if (!item.is_complete && ((bothPicked && (!sameWinner || !sameGamesCount)) || !!leftPick !== !!rightPick)) {
+      const edge = getSeriesPotentialEdge(item, leftPick, rightPick)
+      leftSwing += edge.left
+      rightSwing += edge.right
+      highlights.push({
+        id: `series-${item.id}`,
+        type: 'series',
+        label: getSeriesMatchupLabel(item),
+        context: `${item.conference ?? 'Finals'} ${ROUND_LABEL[item.round] ?? ''}`.trim(),
+        leftChoice: getSeriesPickLabel(leftPick, item),
+        rightChoice: getSeriesPickLabel(rightPick, item),
+        leftEdge: edge.left,
+        rightEdge: edge.right,
+      })
+    }
+  }
+
+  for (const game of games) {
+    const leftPick = leftGamesById.get(game.id)
+    const rightPick = rightGamesById.get(game.id)
+    const bothPicked = !!leftPick && !!rightPick
+    const samePick = bothPicked && leftPick.winner_id === rightPick.winner_id
+
+    if (bothPicked && samePick) {
+      gameAgree += 1
+    } else if (bothPicked) {
+      gameDisagree += 1
+    } else if (leftPick || rightPick) {
+      gameOnlyOne += 1
+    }
+
+    if (!game.played && ((bothPicked && !samePick) || !!leftPick !== !!rightPick)) {
+      const edge = getGamePotentialEdge(game, leftPick, rightPick)
+      leftSwing += edge.left
+      rightSwing += edge.right
+      const seriesRef = seriesMap.get(game.series_id)
+      highlights.push({
+        id: `game-${game.id}`,
+        type: 'game',
+        label: `${getGameMatchupLabel(game, seriesRef)} • Jogo ${game.game_number}`,
+        context: `${seriesRef?.conference ?? 'Finals'} ${ROUND_LABEL[game.round ?? seriesRef?.round ?? 1] ?? ''}`.trim(),
+        leftChoice: leftPick ? getPickedTeamLabel(leftPick.winner_id, game, seriesRef) : 'Sem pick',
+        rightChoice: rightPick ? getPickedTeamLabel(rightPick.winner_id, game, seriesRef) : 'Sem pick',
+        leftEdge: edge.left,
+        rightEdge: edge.right,
+      })
+    }
+  }
+
+  const leadingSide: 'left' | 'right' | 'tie' = pts1 === pts2 ? 'tie' : pts1 > pts2 ? 'left' : 'right'
+  const currentGap = Math.abs(pts1 - pts2)
+  const bolderSide: 'left' | 'right' | 'tie' = leftSwing === rightSwing ? 'tie' : leftSwing > rightSwing ? 'left' : 'right'
+  const comebackSide: 'left' | 'right' | 'tie' = leadingSide === 'left' ? 'right' : leadingSide === 'right' ? 'left' : 'tie'
+  const comebackPotential =
+    comebackSide === 'left' ? leftSwing : comebackSide === 'right' ? rightSwing : Math.max(leftSwing, rightSwing)
+  const comebackPressure =
+    currentGap === 0 ? 100 : Math.min(100, Math.round((comebackPotential / currentGap) * 100))
+  const comebackLabel =
+    leadingSide === 'tie'
+      ? 'Duelo totalmente aberto'
+      : comebackPotential > currentGap
+      ? 'Virada bem viva'
+      : comebackPotential === currentGap
+      ? 'Empate ainda possível'
+      : comebackPotential >= Math.max(1, Math.round(currentGap * 0.6))
+      ? 'Pressão real no líder'
+      : 'Vantagem sob controle'
+
+  return {
+    seriesAgree,
+    seriesDisagree,
+    seriesMarginDifferences,
+    seriesOnlyOne,
+    gameAgree,
+    gameDisagree,
+    gameOnlyOne,
+    leftBoldness: leftSwing,
+    rightBoldness: rightSwing,
+    bolderSide,
+    leftSwing,
+    rightSwing,
+    totalOpenDivergences: highlights.length,
+    highlights: highlights
+      .sort((left, right) => Math.max(right.leftEdge, right.rightEdge) - Math.max(left.leftEdge, left.rightEdge))
+      .slice(0, 6),
+    currentGap,
+    leadingSide,
+    comebackSide,
+    comebackPotential,
+    comebackPressure,
+    comebackLabel,
+  }
+}
+
 // ─── Styled select ────────────────────────────────────────────────────────────
 
 function StyledSelect({
@@ -440,53 +690,29 @@ function SelectionArena({
 
 function SummaryCard({
   p1, p2,
-  picks1, picks2,
-  gamePicks1, gamePicks2,
-  games,
-  series,
   pts1, pts2,
+  insights,
 }: {
   p1: Participant; p2: Participant
-  picks1: SeriesPick[]; picks2: SeriesPick[]
-  gamePicks1: GamePick[]; gamePicks2: GamePick[]
-  games: Game[]
-  series: Series[]
   pts1: number; pts2: number
+  insights: CompareInsights
 }) {
-  // Count agreements/disagreements on series with picks from both
-  let agree = 0, disagree = 0, onlyOne = 0
-
-  for (const s of series) {
-    const pick1 = picks1.find((p) => p.series_id === s.id)
-    const pick2 = picks2.find((p) => p.series_id === s.id)
-    if (pick1 && pick2) {
-      if (pick1.winner_id === pick2.winner_id) agree++
-      else disagree++
-    } else if (pick1 || pick2) {
-      onlyOne++
-    }
-  }
-
-  const total = series.length
-  let gameAgree = 0, gameDisagree = 0, gameOnlyOne = 0
-
-  for (const game of games) {
-    const pick1 = gamePicks1.find((p) => p.game_id === game.id)
-    const pick2 = gamePicks2.find((p) => p.game_id === game.id)
-    if (pick1 && pick2) {
-      if (pick1.winner_id === pick2.winner_id) gameAgree++
-      else gameDisagree++
-    } else if (pick1 || pick2) {
-      gameOnlyOne++
-    }
-  }
-
-  const totalGames = games.length
-
   const p1Winning = pts1 > pts2
   const p2Winning = pts2 > pts1
   const tied = pts1 === pts2 && pts1 > 0
   const duelLead = p1Winning ? p1.name.split(' ')[0] : p2Winning ? p2.name.split(' ')[0] : 'Empate'
+  const bolderLabel =
+    insights.bolderSide === 'left'
+      ? p1.name.split(' ')[0]
+      : insights.bolderSide === 'right'
+      ? p2.name.split(' ')[0]
+      : 'Equilibrados'
+  const comebackName =
+    insights.comebackSide === 'left'
+      ? p1.name.split(' ')[0]
+      : insights.comebackSide === 'right'
+      ? p2.name.split(' ')[0]
+      : 'Duelo'
 
   return (
     <div
@@ -508,9 +734,9 @@ function SummaryCard({
       >
         {[
           { label: 'Na frente', value: duelLead, color: tied ? 'var(--nba-text)' : 'var(--nba-gold)' },
-          { label: 'Concordam', value: agree, color: 'var(--nba-success)' },
-          { label: 'Divergem', value: disagree, color: 'var(--nba-danger)' },
-          { label: 'Só um palpitou', value: onlyOne, color: 'var(--nba-text)' },
+          { label: 'Divergências quentes', value: insights.totalOpenDivergences, color: insights.totalOpenDivergences > 0 ? 'var(--nba-danger)' : 'var(--nba-success)' },
+          { label: 'Mais ousado agora', value: bolderLabel, color: insights.bolderSide === 'tie' ? 'var(--nba-text)' : 'var(--nba-east)' },
+          { label: 'Potencial de virada', value: insights.comebackLabel, color: insights.comebackPressure >= 100 ? 'var(--nba-danger)' : 'var(--nba-gold)' },
         ].map((item) => (
           <div
             key={item.label}
@@ -529,7 +755,6 @@ function SummaryCard({
         ))}
       </div>
 
-      {/* Points comparison */}
       <div
         style={{
           display: 'grid',
@@ -598,6 +823,45 @@ function SummaryCard({
       </div>
 
       <div
+        style={{
+          marginBottom: 14,
+          padding: '12px 14px',
+          borderRadius: 10,
+          background: 'rgba(12,12,18,0.34)',
+          border: '1px solid rgba(200,150,60,0.14)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+          <div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.92rem', lineHeight: 1 }}>
+              Pressão de virada
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+              {insights.leadingSide === 'tie'
+                ? 'Os dois lados ainda têm caminhos parecidos para abrir vantagem.'
+                : `${comebackName} ainda tem ${insights.comebackPotential} ponto${insights.comebackPotential === 1 ? '' : 's'} de swing direto contra ${insights.currentGap} de diferença.`}
+            </div>
+          </div>
+          <div style={{ color: insights.comebackPressure >= 100 ? 'var(--nba-danger)' : 'var(--nba-gold)', fontSize: '0.82rem', fontWeight: 700 }}>
+            {insights.comebackPressure}% de pressão
+          </div>
+        </div>
+
+        <div style={{ height: 10, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${Math.max(insights.leadingSide === 'tie' ? 50 : insights.comebackPressure, 8)}%`,
+              height: '100%',
+              borderRadius: 999,
+              background: insights.comebackPressure >= 100
+                ? 'linear-gradient(90deg, #e74c3c, #ff9a7a)'
+                : 'linear-gradient(90deg, var(--nba-gold), var(--nba-gold-light))',
+            }}
+          />
+        </div>
+      </div>
+
+      <div
         className="sm:hidden"
         style={{
           marginBottom: 12,
@@ -613,7 +877,6 @@ function SummaryCard({
         Arraste horizontalmente cada bracket para comparar as escolhas completas.
       </div>
 
-      {/* Agreement stats */}
       <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-2">
         <div
           style={{
@@ -632,19 +895,25 @@ function SummaryCard({
           </div>
         <Stat
           label="Concordam"
-          value={`${agree}/${total}`}
+          value={String(insights.seriesAgree)}
           color="rgba(46,204,113,0.8)"
           note="mesmo vencedor"
         />
         <Stat
           label="Divergem"
-          value={`${disagree}/${total}`}
+          value={String(insights.seriesDisagree)}
           color="rgba(231,76,60,0.8)"
           note="vencedores diferentes"
         />
         <Stat
+          label="Mesmo winner, série diferente"
+          value={String(insights.seriesMarginDifferences)}
+          color="rgba(74,144,217,0.8)"
+          note="mudam no número de jogos"
+        />
+        <Stat
           label="Só um palpitou"
-          value={`${onlyOne}/${total}`}
+          value={String(insights.seriesOnlyOne)}
           color="rgba(241,196,15,0.8)"
           note="série em aberto"
         />
@@ -667,23 +936,138 @@ function SummaryCard({
           </div>
           <Stat
             label="Concordam"
-            value={`${gameAgree}/${totalGames}`}
+            value={String(insights.gameAgree)}
             color="rgba(46,204,113,0.8)"
             note="mesmo vencedor"
           />
           <Stat
             label="Divergem"
-            value={`${gameDisagree}/${totalGames}`}
+            value={String(insights.gameDisagree)}
             color="rgba(231,76,60,0.8)"
             note="vencedores diferentes"
           />
           <Stat
             label="Só um palpitou"
-            value={`${gameOnlyOne}/${totalGames}`}
+            value={String(insights.gameOnlyOne)}
             color="rgba(241,196,15,0.8)"
             note="jogo em aberto"
           />
         </div>
+      </div>
+    </div>
+  )
+}
+
+function DivergenceSpotlightCard({
+  insights,
+  p1,
+  p2,
+}: {
+  insights: CompareInsights
+  p1: Participant
+  p2: Participant
+}) {
+  if (insights.highlights.length === 0) {
+    return (
+      <div
+        style={{
+          background: 'var(--nba-surface)',
+          border: '1px solid var(--nba-border)',
+          borderRadius: 10,
+          padding: '1rem',
+          marginBottom: 20,
+        }}
+      >
+        <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 6 }}>
+          Divergências em aberto
+        </div>
+        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', margin: 0 }}>
+          No recorte atual, os dois estão muito alinhados ou as diferenças já foram resolvidas.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        background: 'var(--nba-surface)',
+        border: '1px solid var(--nba-border)',
+        borderRadius: 10,
+        padding: '1rem',
+        marginBottom: 20,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 4 }}>
+            Divergências em aberto
+          </div>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+            O que ainda pode mexer no duelo direto entre os dois.
+          </p>
+        </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+          Top {insights.highlights.length} pontos de tensão
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 10 }} className="md:grid-cols-2">
+        {insights.highlights.map((item) => {
+          const hotterSide = item.leftEdge === item.rightEdge ? 'tie' : item.leftEdge > item.rightEdge ? 'left' : 'right'
+          return (
+            <div
+              key={item.id}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 10,
+                background: item.type === 'series' ? 'rgba(231,76,60,0.08)' : 'rgba(74,144,217,0.08)',
+                border: `1px solid ${item.type === 'series' ? 'rgba(231,76,60,0.18)' : 'rgba(74,144,217,0.18)'}`,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.94rem', lineHeight: 1 }}>
+                  {item.label}
+                </div>
+                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                  {item.context}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }} className="grid-cols-1 sm:grid-cols-2">
+                <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(74,144,217,0.12)', border: '1px solid rgba(74,144,217,0.2)' }}>
+                  <div style={{ color: 'var(--nba-east)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
+                    {p1.name.split(' ')[0]}
+                  </div>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem', lineHeight: 1.1 }}>
+                    {item.leftChoice}
+                  </div>
+                </div>
+                <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(224,92,58,0.12)', border: '1px solid rgba(224,92,58,0.2)' }}>
+                  <div style={{ color: 'var(--nba-west)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
+                    {p2.name.split(' ')[0]}
+                  </div>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem', lineHeight: 1.1 }}>
+                    {item.rightChoice}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                  Swing máximo: {item.leftEdge} x {item.rightEdge}
+                </span>
+                <span style={{ color: hotterSide === 'left' ? 'var(--nba-east)' : hotterSide === 'right' ? 'var(--nba-west)' : 'var(--nba-gold)', fontSize: '0.72rem', fontWeight: 700 }}>
+                  {hotterSide === 'left'
+                    ? `mais exposto para ${p1.name.split(' ')[0]}`
+                    : hotterSide === 'right'
+                    ? `mais exposto para ${p2.name.split(' ')[0]}`
+                    : 'exposição equilibrada'}
+                </span>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -1414,6 +1798,20 @@ export function Compare() {
   const visibleRightPicks = rightPicks.filter((pick) => visibleSeriesIds.has(pick.series_id))
   const visibleLeftGamePicks = leftGamePicks.filter((pick) => visibleGameIds.has(pick.game_id))
   const visibleRightGamePicks = rightGamePicks.filter((pick) => visibleGameIds.has(pick.game_id))
+  const insights = useMemo(
+    () =>
+      computeCompareInsights({
+        series,
+        games,
+        picks1: leftPicks,
+        picks2: rightPicks,
+        gamePicks1: leftGamePicks,
+        gamePicks2: rightGamePicks,
+        pts1,
+        pts2,
+      }),
+    [series, games, leftPicks, rightPicks, leftGamePicks, rightGamePicks, pts1, pts2]
+  )
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1400 }}>
@@ -1491,12 +1889,11 @@ export function Compare() {
           {/* Summary card */}
           <SummaryCard
             p1={p1} p2={p2}
-            picks1={visibleLeftPicks} picks2={visibleRightPicks}
-            gamePicks1={visibleLeftGamePicks} gamePicks2={visibleRightGamePicks}
-            games={visibleGames}
-            series={visibleSeries}
             pts1={pts1} pts2={pts2}
+            insights={insights}
           />
+
+          <DivergenceSpotlightCard insights={insights} p1={p1} p2={p2} />
 
           {/* Legend */}
           <CompareLegend />

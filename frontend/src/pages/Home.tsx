@@ -266,37 +266,62 @@ function HeroPanel({
   )
 }
 
-function HomeContextBanner() {
+function PanelPulseBar({
+  readySeries,
+  pickedSeries,
+  myRank,
+}: {
+  readySeries: number
+  pickedSeries: number
+  myRank?: number
+}) {
+  const pending = Math.max(readySeries - pickedSeries, 0)
+
   return (
     <section
       style={{
-        ...card,
+        display: 'grid',
+        gap: 10,
+        padding: '0.85rem 1rem',
+        borderRadius: 12,
         background: 'linear-gradient(135deg, rgba(200,150,60,0.10), rgba(74,144,217,0.06) 55%, rgba(19,19,26,1) 100%)',
         border: '1px solid rgba(200,150,60,0.18)',
-        padding: '0.85rem 1rem',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
-          <AlertTriangle size={14} />
-        </span>
-        <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Contexto da Home
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-success)', background: 'rgba(46,204,113,0.10)', border: '1px solid rgba(46,204,113,0.18)' }}>
-          Bolão real ativo
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, color: 'var(--nba-gold)', background: 'rgba(200,150,60,0.10)', border: '1px solid rgba(200,150,60,0.18)' }}>
-          Aba Análise separada
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
+            <Target size={14} />
+          </span>
+          <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Pulso do dia
+          </span>
+        </div>
+        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+          Home focada em ação; radar completo segue em Análise
         </span>
       </div>
 
-      <p style={{ color: 'var(--nba-text)', fontSize: '0.82rem', margin: 0, lineHeight: 1.45 }}>
-        A Home agora ficou dedicada ao que é operacional no bolão. Próximos confrontos, odds, lesões e radar complementar foram movidos para a aba <strong>Análise</strong>.
-      </p>
+      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Prontas para palpitar</div>
+          <div className="font-condensed font-bold" style={{ color: readySeries > 0 ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>
+            {readySeries}
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Pedindo ação</div>
+          <div className="font-condensed font-bold" style={{ color: pending > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '1.25rem', lineHeight: 1 }}>
+            {pending}
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Minha posição agora</div>
+          <div className="font-condensed font-bold" style={{ color: myRank != null ? 'var(--nba-gold)' : 'var(--nba-text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>
+            {myRank != null ? `#${myRank}` : '—'}
+          </div>
+        </div>
+      </div>
     </section>
   )
 }
@@ -629,14 +654,39 @@ function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['
   )
 }
 
-function ShortcutHubCard() {
+function HomeQuickDeck() {
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}>
-      <CardTitle icon={<AlertTriangle size={14} />}>Leitura e Radar</CardTitle>
+      <CardTitle icon={<Sparkles size={14} />}>Acessos Rápidos</CardTitle>
       <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45, margin: '0 0 12px' }}>
-        A Home segue limpa, mas você continua com atalhos rápidos para leitura da rodada e comparação de brackets sem depender do menu inferior.
+        Atalhos para continuar a rodada sem procurar rota no menu. A ideia aqui é sair da Home já sabendo o próximo clique.
       </p>
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
+        <Link
+          to="/games"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '11px 14px',
+            borderRadius: 10,
+            textDecoration: 'none',
+            color: 'var(--nba-text)',
+            border: '1px solid rgba(46,204,113,0.18)',
+            background: 'rgba(46,204,113,0.06)',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <Clock size={15} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Ir para Jogos</span>
+              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>travar picks e acompanhar o dia</span>
+            </span>
+          </span>
+          <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
+        </Link>
+
         <Link
           to="/analysis"
           style={{
@@ -661,7 +711,6 @@ function ShortcutHubCard() {
           </span>
           <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
         </Link>
-
         <Link
           to="/compare"
           style={{
@@ -712,23 +761,23 @@ export function Home({ participantId }: Props) {
       <div className="flex flex-col gap-4 min-w-0">
         <LastNightRecap />
         <HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} />
-        <HomeContextBanner />
+        <PanelPulseBar readySeries={readySeries.length} pickedSeries={pickedSeries} myRank={myEntry?.rank} />
         <MyMomentCard myEntry={myEntry} readySeries={readySeries.length} pickedSeries={pickedSeries} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} />
+        <HomeQuickDeck />
 
         <div className="xl:hidden flex flex-col gap-4">
           <MyPicksCard series={series} picks={picks} />
           <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
           <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} />
-          <ShortcutHubCard />
+          <RecentSeriesCard series={series} />
         </div>
 
         <OfficialBracketCard series={series} />
-        <RecentSeriesCard series={series} />
       </div>
 
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
         <MyPicksCard series={series} picks={picks} />
-        <ShortcutHubCard />
+        <RecentSeriesCard series={series} />
       </div>
     </div>
   )
