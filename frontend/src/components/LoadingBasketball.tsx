@@ -5,20 +5,28 @@ interface Props {
 export function LoadingBasketball({ size = 32 }: Props) {
   return (
     <div
-      className="animate-spin"
+      className="loading-basketball-shell"
       style={{
         width: size,
         height: size,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.22))',
-        transformOrigin: 'center',
+        position: 'relative',
       }}
       aria-label="Carregando"
       role="status"
     >
+      <span
+        className="loading-basketball-shadow"
+        aria-hidden="true"
+        style={{
+          width: size * 0.62,
+          height: Math.max(6, size * 0.14),
+        }}
+      />
       <img
+        className="loading-basketball-icon"
         src="/loading-basketball.svg"
         alt=""
         aria-hidden="true"
@@ -31,6 +39,8 @@ export function LoadingBasketball({ size = 32 }: Props) {
           objectFit: 'contain',
           userSelect: 'none',
           pointerEvents: 'none',
+          position: 'relative',
+          zIndex: 1,
         }}
       />
     </div>

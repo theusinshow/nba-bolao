@@ -2627,3 +2627,50 @@
 - Se você quiser depois, dá para estender o mesmo resumo para `Home` ou `Compare`, mantendo a mesma estratégia econômica.
 - O backlog futuro também ganhou a frente operacional de automatizar a extração diária de dados de participantes, hoje dependente do PC de casa, registrada em `updates/futuras-implementacoes.md`.
 - O backlog futuro também passou a incluir a geração automática de um resumo textual diário dos palpites para conferência no grupo após o último fechamento do dia.
+
+## 2026-04-13 17:26 - Loader troca de SVG e ganha animação mais minimalista
+
+### Objetivo
+- Melhorar o ícone de loading com um SVG mais coerente com a identidade do site e uma animação menos agressiva.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/public/loading-basketball.svg`
+- `frontend/src/components/LoadingBasketball.tsx`
+- `frontend/src/index.css`
+
+### Mudanças feitas
+- O loader público passou a usar o SVG de `assets/loading.svg`, que combina melhor com a paleta atual do produto.
+- Ajustei o tom laranja principal para mais perto do `west` já usado no app e mantive o aro dourado.
+- O componente `LoadingBasketball` deixou de depender do `animate-spin` genérico e passou a usar classes próprias.
+- A animação ficou em duas camadas:
+  - rotação mais suave e contínua;
+  - pulso discreto no SVG, para evitar sensação de ícone “apagado” ou duro demais.
+
+### Validações
+- Pendente de build do frontend
+
+### Pendências
+- Se você ainda trocar esse SVG depois, o componente já ficou pronto para reaproveitar a mesma animação com outra arte.
+
+## 2026-04-13 17:34 - Loader troca rotação por animação de quique
+
+### Objetivo
+- Deixar o loading mais temático de basquete e menos genérico do que um spinner girando.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/components/LoadingBasketball.tsx`
+- `frontend/src/index.css`
+
+### Mudanças feitas
+- O loader deixou de girar continuamente.
+- A animação agora usa um quique curto e suave no SVG, com compressão leve ao tocar o “chão”.
+- Adicionei uma sombra elíptica animada para reforçar a sensação de movimento sem pesar visualmente.
+- Mantive a implementação simples, reaproveitando o mesmo SVG público já ajustado.
+
+### Validações
+- Pendente de build do frontend
+
+### Pendências
+- Se você quiser depois, dá para fazer uma versão ainda mais refinada com duas alturas de quique conforme o tamanho do loader.
