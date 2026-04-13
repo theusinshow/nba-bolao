@@ -79,6 +79,19 @@ function formatAmericanOdds(value: number | null) {
   return value > 0 ? `+${value}` : `${value}`
 }
 
+function convertAmericanToDecimal(value: number | null) {
+  if (value == null) return null
+  if (value > 0) return 1 + value / 100
+  if (value < 0) return 1 + 100 / Math.abs(value)
+  return null
+}
+
+function formatDecimalOdds(value: number | null) {
+  const decimal = convertAmericanToDecimal(value)
+  if (decimal == null) return '—'
+  return decimal.toFixed(2)
+}
+
 function formatInjuryStatus(value: string) {
   const lower = value.toLowerCase()
   if (lower === 'out') return 'Fora'
@@ -95,6 +108,11 @@ function getInjuryColor(value: string) {
   if (lower === 'probable') return '#27ae60'
   if (lower === 'doubtful') return '#d35400'
   return '#4a90d9'
+}
+
+function looksScrambledInjury(item: AnalysisInjuryItem) {
+  const combined = [item.player_name, item.detail, item.status].filter(Boolean).join(' ').toLowerCase()
+  return combined.includes('scrambled')
 }
 
 function AnalysisHero({
@@ -374,15 +392,24 @@ function OddsCard({
                 <div style={{ display: 'grid', gap: 6 }} className="sm:grid-cols-3">
                   <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
                     <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 4 }}>Moneyline</div>
-                    <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{formatAmericanOdds(item.moneyline.home)} / {formatAmericanOdds(item.moneyline.away)}</div>
+                    <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{formatDecimalOdds(item.moneyline.home)} / {formatDecimalOdds(item.moneyline.away)}</div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.64rem', marginTop: 3 }}>
+                      US: {formatAmericanOdds(item.moneyline.home)} / {formatAmericanOdds(item.moneyline.away)}
+                    </div>
                   </div>
                   <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
                     <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 4 }}>Spread</div>
                     <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{item.spread.home_line ?? '—'} / {item.spread.away_line ?? '—'}</div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.64rem', marginTop: 3 }}>
+                      Preco: {formatDecimalOdds(item.spread.home_odds)} / {formatDecimalOdds(item.spread.away_odds)}
+                    </div>
                   </div>
                   <div style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
                     <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 4 }}>Total</div>
                     <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem' }}>{item.total.points ?? '—'}</div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.64rem', marginTop: 3 }}>
+                      Over/Under: {formatDecimalOdds(item.total.over_odds)} / {formatDecimalOdds(item.total.under_odds)}
+                    </div>
                   </div>
                 </div>
 
@@ -421,24 +448,51 @@ function InjuriesCard({
           <LoadingBasketball size={20} />
         </div>
       ) : injuries.length > 0 ? (
-        <div>
-          {injuries.map((item, index) => (
-            <div key={item.id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.83rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.player_name}
+        (() => {
+          const scrambledCount = injuries.filter(looksScrambledInjury).length
+          const isScrambledFeed = scrambledCount > 0
+
+          return (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {isScrambledFeed && (
+                <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(243,156,18,0.10)', border: '1px solid rgba(243,156,18,0.20)' }}>
+                  <div style={{ color: '#f39c12', fontWeight: 700, fontSize: '0.78rem', marginBottom: 4 }}>
+                    Feed de lesões em modo trial embaralhado
                   </div>
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                    {[item.team, item.position, item.detail].filter(Boolean).join(' • ')}
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.45 }}>
+                    A SportsDataIO está respondendo, mas parte dos registros veio marcada como `scrambled`. Isso normalmente significa que o trial está mascarando os dados, então esta seção serve só para validar a integração técnica, não como fonte oficial.
                   </div>
                 </div>
-                <Badge label={formatInjuryStatus(item.status)} color={getInjuryColor(item.status)} small />
+              )}
+
+              <div>
+                {injuries.map((item, index) => (
+                  <div key={item.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: looksScrambledInjury(item) ? '#f39c12' : 'var(--nba-text)', fontWeight: 600, fontSize: '0.83rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.player_name}
+                        </div>
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                          {[item.team, item.position, item.detail].filter(Boolean).join(' • ')}
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', justifyItems: 'end', gap: 4 }}>
+                        <Badge label={formatInjuryStatus(item.status)} color={getInjuryColor(item.status)} small />
+                        {looksScrambledInjury(item) && (
+                          <span style={{ color: '#f39c12', fontSize: '0.64rem', fontWeight: 700 }}>
+                            trial
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {index < injuries.length - 1 && <Divider />}
+                  </div>
+                ))}
               </div>
-              {index < injuries.length - 1 && <Divider />}
             </div>
-          ))}
-        </div>
+          )
+        })()
       ) : (
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
           {reason ?? 'Nenhuma lesão relevante foi encontrada para os confrontos atuais.'}

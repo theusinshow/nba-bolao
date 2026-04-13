@@ -2493,3 +2493,99 @@
 ### Pendências
 - Ainda falta inserir as chaves reais no `.env` local e no Render para ativar as duas integrações em produção.
 - Dependendo do plano contratado na SportsDataIO, o endpoint `/Players` pode exigir ajuste de feed/permissão.
+
+## 2026-04-13 16:21 - Scheduler inteligente substitui cron fixo do sync NBA
+
+### Objetivo
+- Preparar o backend para o plano `Starter` da Render com um sync mais inteligente, agressivo em dia de jogo e leve fora da janela.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `backend/.env.example`
+- `backend/src/index.ts`
+- `backend/src/scheduler/nbaSyncScheduler.ts`
+
+### Mudanças feitas
+- O cron fixo de `15 em 15 minutos` em horário fechado saiu de `backend/src/index.ts`.
+- Entrou um scheduler dedicado em `backend/src/scheduler/nbaSyncScheduler.ts`, rodando uma checagem por minuto com quatro modos:
+  - `live`: quando existe jogo iniciado e ainda não finalizado no banco
+  - `pregame`: quando existe jogo próximo dentro da janela configurada
+  - `daily`: quando existe jogo nas próximas 24 horas
+  - `idle`: quando não há jogo próximo
+- Cadência padrão configurada:
+  - `live`: 2 minutos
+  - `pregame`: 5 minutos
+  - `daily`: 15 minutos
+  - `idle`: 60 minutos
+- O scheduler ganhou trava contra execução concorrente, evitando dois `syncNBA()` ao mesmo tempo.
+- O endpoint `GET /health` agora devolve também o snapshot do scheduler:
+  - modo atual
+  - intervalo vigente
+  - motivo da decisão
+  - último sync
+  - último erro
+  - estado `isRunning`
+- `backend/.env.example` passou a documentar as variáveis de ajuste fino:
+  - `NBA_SYNC_INTERVAL_LIVE_MINUTES`
+  - `NBA_SYNC_INTERVAL_PREGAME_MINUTES`
+  - `NBA_SYNC_INTERVAL_DAILY_MINUTES`
+  - `NBA_SYNC_INTERVAL_IDLE_MINUTES`
+  - `NBA_SYNC_LIVE_LOOKBACK_MINUTES`
+  - `NBA_SYNC_PREGAME_LOOKAHEAD_MINUTES`
+  - `NBA_SYNC_DAILY_LOOKAHEAD_MINUTES`
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\backend`
+- Confirmado no `dist/index.js` que o backend compilado passou a iniciar `startNBASyncScheduler()` e expor `scheduler` no `/health`
+
+### Pendências
+- Para o comportamento novo valer em produção, o backend precisa ser redeployado no Render com esse patch.
+- O ganho real deste scheduler depende do backend não dormir; por isso esta mudança combina melhor com o plano `Starter`.
+
+## 2026-04-13 16:33 - Odds passam a exibir formato decimal na aba Analise
+
+### Objetivo
+- Melhorar a leitura das odds para um formato mais familiar, como `1.50` / `2.50`, sem perder a referência original americana.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Analysis.tsx`
+
+### Mudanças feitas
+- A exibição principal de `moneyline` na aba `Análise` deixou de priorizar o formato americano puro e passou a mostrar odds decimais.
+- Mantive o formato americano como linha auxiliar `US`, para não perder rastreabilidade com o dado original vindo da API.
+- Também passei a mostrar:
+  - preço decimal do `spread`
+  - preço decimal de `over/under`
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+
+### Pendências
+- Se você quiser, numa próxima rodada dá para escolher um padrão único:
+  - só decimal
+  - só americano
+  - ou um toggle entre os dois formatos
+
+## 2026-04-13 16:41 - Aba Analise avisa quando o feed de lesões está embaralhado no trial
+
+### Objetivo
+- Evitar que o usuário interprete os dados de lesões da SportsDataIO trial como confiáveis quando o retorno vier marcado como `scrambled`.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/pages/Analysis.tsx`
+
+### Mudanças feitas
+- A área de `Lesões e Notícias` agora detecta registros com indicação de `scrambled`.
+- Quando isso acontece, a aba mostra um aviso claro de que:
+  - a integração técnica está funcionando;
+  - mas o feed está em modo trial embaralhado;
+  - portanto não deve ser tratado como fonte oficial de produção.
+- Os itens embaralhados passaram a receber indicação visual própria com badge `trial`.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+
+### Pendências
+- Quando a SportsDataIO sair do modo trial embaralhado, esse aviso continuará útil como proteção, mas deve aparecer com menos frequência ou deixar de aparecer por completo.

@@ -1,10 +1,9 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import cron from 'node-cron'
 import adminRouter from './routes/admin'
 import analysisRouter from './routes/analysis'
-import { syncNBA } from './jobs/syncNBA'
+import { getNBASyncSchedulerSnapshot, startNBASyncScheduler } from './scheduler/nbaSyncScheduler'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3001)
@@ -18,15 +17,14 @@ app.use('/admin', adminRouter)
 app.use('/analysis', analysisRouter)
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, uptime: process.uptime() })
+  res.json({
+    ok: true,
+    uptime: process.uptime(),
+    scheduler: getNBASyncSchedulerSnapshot(),
+  })
 })
 
-// Sync every 15 minutes between 21:00–04:00 UTC (covers NBA game times)
-// Cron: at minute 0, 15, 30, 45 during hours 21-23 and 0-4
-cron.schedule('*/15 21-23,0-4 * * *', () => {
-  console.log('[cron] Triggered NBA sync')
-  syncNBA().catch(console.error)
-})
+startNBASyncScheduler()
 
 app.listen(PORT, () => {
   console.log(`[server] Bolão NBA backend running on port ${PORT}`)
