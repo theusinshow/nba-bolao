@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useUIStore } from '../store/useUIStore'
+import { type OddsSummaryItem, useOddsSummary } from '../hooks/useOddsSummary'
 import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
@@ -66,6 +67,14 @@ interface PickFocusEntry {
   team: Team | null
   statusLabel: string
   statusColor: string
+}
+
+interface MatchedGameOdds {
+  bookmaker: string
+  updatedAt: string | null
+  homeDecimal: string
+  awayDecimal: string
+  favoriteTeamId: string | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -375,6 +384,58 @@ function isGameRevealed(game: GameWithTeams): boolean {
   if (game.played) return true
   if (!game.tip_off_at) return false
   return new Date(game.tip_off_at) <= new Date()
+}
+
+function normalizeName(value: string | null | undefined) {
+  return value
+    ?.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim() ?? ''
+}
+
+function convertAmericanToDecimal(value: number | null) {
+  if (value == null) return null
+  if (value > 0) return 1 + value / 100
+  if (value < 0) return 1 + 100 / Math.abs(value)
+  return null
+}
+
+function formatDecimalOdds(value: number | null) {
+  const decimal = convertAmericanToDecimal(value)
+  if (decimal == null) return '—'
+  return decimal.toFixed(2)
+}
+
+function buildGameOddsMatch(game: GameWithTeams, odds: OddsSummaryItem[]): MatchedGameOdds | null {
+  const homeName = normalizeName(game.team_a?.name)
+  const awayName = normalizeName(game.team_b?.name)
+  if (!homeName || !awayName) return null
+
+  const matched = odds.find((item) => (
+    normalizeName(item.home_team_name) === homeName &&
+    normalizeName(item.away_team_name) === awayName
+  ))
+
+  if (!matched) return null
+
+  const favoriteTeamId =
+    matched.moneyline.home != null && matched.moneyline.away != null
+      ? matched.moneyline.home < matched.moneyline.away
+        ? game.team_a?.id ?? null
+        : matched.moneyline.away < matched.moneyline.home
+        ? game.team_b?.id ?? null
+        : null
+      : null
+
+  return {
+    bookmaker: matched.bookmaker,
+    updatedAt: matched.updated_at,
+    homeDecimal: formatDecimalOdds(matched.moneyline.home),
+    awayDecimal: formatDecimalOdds(matched.moneyline.away),
+    favoriteTeamId,
+  }
 }
 
 // ─── Empty state (no games) ───────────────────────────────────────────────────
@@ -1202,9 +1263,10 @@ interface GameCardProps {
   wasAutoPicked: boolean
   revealedPicks: RevealedGamePick[]
   onOpenRevealedPicks: (game: GameWithTeams) => void
+  odds: MatchedGameOdds | null
 }
 
-function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenRevealedPicks }: GameCardProps) {
+function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenRevealedPicks, odds }: GameCardProps) {
   const [pending, setPending] = useState<string | null>(null)
   const [saving,  setSaving]  = useState(false)
   const seriesClosedBeforeGame =
@@ -1336,6 +1398,34 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
           </span>
         )}
       </div>
+
+      {odds && !game.played && !seriesClosedBeforeGame && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '8px 12px',
+            background: 'rgba(74,144,217,0.08)',
+            borderBottom: '1px solid rgba(74,144,217,0.16)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+            Odds rápidas • {odds.bookmaker}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ color: odds.favoriteTeamId === tA?.id ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '0.74rem', fontWeight: odds.favoriteTeamId === tA?.id ? 700 : 600 }}>
+              {tA?.abbreviation ?? game.home_team_id} {odds.homeDecimal}
+            </span>
+            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>vs</span>
+            <span style={{ color: odds.favoriteTeamId === tB?.id ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '0.74rem', fontWeight: odds.favoriteTeamId === tB?.id ? 700 : 600 }}>
+              {tB?.abbreviation ?? game.away_team_id} {odds.awayDecimal}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Teams row ── */}
       {urgency.label && !game.played && !seriesClosedBeforeGame && (
@@ -1923,6 +2013,7 @@ export function Games({ participantId }: Props) {
   const [activeFilter, setActiveFilter] = useState<GamesFilter>('pending')
   const [recentlySavedGameId, setRecentlySavedGameId] = useState<string | null>(null)
   const { addToast } = useUIStore()
+  const { odds: oddsSummary } = useOddsSummary()
 
   useEffect(() => {
     fetchAll()
@@ -1953,6 +2044,12 @@ export function Games({ participantId }: Props) {
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
   const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
   const pickFocusEntries = useMemo(() => buildPickFocusEntries(games, picks).slice(0, 4), [games, picks])
+  const oddsByGameId = useMemo<Record<string, MatchedGameOdds | null>>(
+    () => Object.fromEntries(
+      games.map((game) => [game.id, buildGameOddsMatch(game, oddsSummary)])
+    ),
+    [games, oddsSummary]
+  )
   const filterCounts = useMemo<Record<GamesFilter, number>>(() => ({
     all: seriesGroups.length,
     pending: seriesGroups.filter((group) => matchesSeriesFilter(group, 'pending')).length,
@@ -2290,6 +2387,7 @@ export function Games({ participantId }: Props) {
             onSave={savePick}
             autoPickGameIds={autoPickGameIds}
             revealedPicksByGameId={revealedPicksByGameId}
+            oddsByGameId={oddsByGameId}
             onOpenRevealedPicks={setRevealedGame}
           />
         ))}
@@ -2332,6 +2430,7 @@ function SeriesCard({
   onSave,
   autoPickGameIds,
   revealedPicksByGameId,
+  oddsByGameId,
   onOpenRevealedPicks,
 }: {
   group: SeriesGroup
@@ -2342,6 +2441,7 @@ function SeriesCard({
   onSave: (gameId: string, winnerId: string, source?: SavePickSource) => Promise<boolean>
   autoPickGameIds: string[]
   revealedPicksByGameId: Record<string, RevealedGamePick[]>
+  oddsByGameId: Record<string, MatchedGameOdds | null>
   onOpenRevealedPicks: (game: GameWithTeams) => void
 }) {
   const completionPct = group.effectiveGamesCount > 0 ? Math.round((group.pickedGames / group.effectiveGamesCount) * 100) : 0
@@ -2549,6 +2649,7 @@ function SeriesCard({
                 onSave={onSave}
                 wasAutoPicked={autoPickGameIds.includes(game.id)}
                 revealedPicks={revealedPicksByGameId[game.id] ?? []}
+                odds={oddsByGameId[game.id] ?? null}
                 onOpenRevealedPicks={onOpenRevealedPicks}
               />
             ))}

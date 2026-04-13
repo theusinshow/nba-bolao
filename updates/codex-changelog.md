@@ -2589,3 +2589,39 @@
 
 ### Pendências
 - Quando a SportsDataIO sair do modo trial embaralhado, esse aviso continuará útil como proteção, mas deve aparecer com menos frequência ou deixar de aparecer por completo.
+
+## 2026-04-13 17:05 - Cards de jogos recebem odds resumidas com cache econômico
+
+### Objetivo
+- Levar um resumo de odds para os cards da aba `Jogos` sem que cada card passe a consumir créditos da API separadamente.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `backend/src/lib/odds.ts`
+- `backend/src/routes/analysis.ts`
+- `frontend/src/hooks/useOddsSummary.ts`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+- O backend ganhou um modo de consulta resumida de odds em `backend/src/lib/odds.ts`:
+  - usa apenas o mercado `h2h`
+  - compartilha cache em memória por padrão de 10 minutos
+  - evita puxar `spreads` e `totals` quando a necessidade é só um número rápido no card
+- A rota `GET /analysis/odds-summary` passou a expor esse resumo enxuto para o frontend.
+- A nova hook `frontend/src/hooks/useOddsSummary.ts` centraliza esse fetch e reaproveita a mesma resposta para toda a tela.
+- A aba `Jogos` passou a cruzar os jogos reais do Supabase com as odds resumidas da NBA e mostrar nos cards:
+  - bookmaker de referência
+  - odd decimal resumida de cada lado
+  - destaque visual para o favorito
+
+### Impacto em créditos
+- O fluxo anterior completo de odds usa `h2h,spreads,totals`, o que consome mais crédito por chamada.
+- O resumo dos cards usa só `h2h`, reduzindo bastante o custo operacional.
+- Como a resposta fica em cache no backend por 10 minutos, vários acessos ao app reaproveitam a mesma chamada externa.
+- Esse desenho foi feito especificamente para proteger uma cota enxuta como `500 créditos/mês`.
+
+### Validações
+- Pendente de validação por build após o fechamento do encadeamento na tela `Jogos`
+
+### Pendências
+- Se você quiser depois, dá para estender o mesmo resumo para `Home` ou `Compare`, mantendo a mesma estratégia econômica.

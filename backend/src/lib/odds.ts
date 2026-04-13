@@ -31,6 +31,19 @@ export interface AnalysisOddsItem {
   }
 }
 
+export interface GameOddsSummaryItem {
+  id: string
+  home_team_name: string
+  away_team_name: string
+  commence_time: string
+  bookmaker: string
+  updated_at: string | null
+  moneyline: {
+    home: number | null
+    away: number | null
+  }
+}
+
 interface OddsOutcome {
   name: string
   price: number
@@ -63,6 +76,13 @@ const oddsApi = axios.create({
 })
 
 const BOOKMAKER_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'bet365']
+const DEFAULT_CACHE_TTL_MS = Number(process.env.ODDS_API_CACHE_TTL_MS ?? 10 * 60 * 1000)
+
+const oddsCache = new Map<string, {
+  expiresAt: number
+  status: OddsProviderStatus
+  payload: OddsEvent[]
+}>()
 
 function getConfiguredOddsApiKey(): string | null {
   const apiKey = process.env.ODDS_API_KEY?.trim()
@@ -87,6 +107,71 @@ function getMarket(bookmaker: OddsBookmaker | null, key: string): OddsMarket | n
 
 function getOutcome(market: OddsMarket | null, name: string): OddsOutcome | null {
   return market?.outcomes.find((outcome) => outcome.name === name) ?? null
+}
+
+async function fetchOddsEvents(markets: string, cacheKey: string): Promise<{ status: OddsProviderStatus; events: OddsEvent[] }> {
+  const apiKey = getConfiguredOddsApiKey()
+  if (!apiKey) {
+    return {
+      status: {
+        provider: 'the-odds-api',
+        configured: false,
+        available: false,
+        reason: 'ODDS_API_KEY não configurada.',
+      },
+      events: [],
+    }
+  }
+
+  const cached = oddsCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return {
+      status: cached.status,
+      events: cached.payload,
+    }
+  }
+
+  try {
+    const response = await oddsApi.get<OddsEvent[]>('/sports/basketball_nba/odds', {
+      params: {
+        apiKey,
+        regions: process.env.ODDS_API_REGIONS ?? 'us',
+        markets,
+        oddsFormat: 'american',
+      },
+    })
+
+    const status: OddsProviderStatus = {
+      provider: 'the-odds-api',
+      configured: true,
+      available: true,
+    }
+
+    oddsCache.set(cacheKey, {
+      expiresAt: Date.now() + DEFAULT_CACHE_TTL_MS,
+      status,
+      payload: response.data,
+    })
+
+    return { status, events: response.data }
+  } catch (error: unknown) {
+    const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined
+    const reason = statusCode === 401
+      ? 'The Odds API rejeitou a chave atual.'
+      : statusCode === 429
+      ? 'The Odds API atingiu limite de requisições.'
+      : 'Falha ao carregar odds na The Odds API.'
+
+    return {
+      status: {
+        provider: 'the-odds-api',
+        configured: true,
+        available: false,
+        reason,
+      },
+      events: [],
+    }
+  }
 }
 
 function mapOddsEvent(event: OddsEvent): AnalysisOddsItem | null {
@@ -130,53 +215,39 @@ function mapOddsEvent(event: OddsEvent): AnalysisOddsItem | null {
 }
 
 export async function fetchNBAGameOdds(): Promise<{ status: OddsProviderStatus; odds: AnalysisOddsItem[] }> {
-  const apiKey = getConfiguredOddsApiKey()
-  if (!apiKey) {
-    return {
-      status: {
-        provider: 'the-odds-api',
-        configured: false,
-        available: false,
-        reason: 'ODDS_API_KEY não configurada.',
-      },
-      odds: [],
-    }
+  const markets = process.env.ODDS_API_MARKETS ?? 'h2h,spreads,totals'
+  const result = await fetchOddsEvents(markets, `analysis:${markets}`)
+
+  return {
+    status: result.status,
+    odds: result.events.map(mapOddsEvent).filter((item): item is AnalysisOddsItem => item != null),
   }
+}
 
-  try {
-    const response = await oddsApi.get<OddsEvent[]>('/sports/basketball_nba/odds', {
-      params: {
-        apiKey,
-        regions: process.env.ODDS_API_REGIONS ?? 'us',
-        markets: process.env.ODDS_API_MARKETS ?? 'h2h,spreads,totals',
-        oddsFormat: 'american',
-      },
-    })
+export async function fetchNBAGameOddsSummary(): Promise<{ status: OddsProviderStatus; odds: GameOddsSummaryItem[] }> {
+  const result = await fetchOddsEvents('h2h', 'summary:h2h')
 
-    return {
-      status: {
-        provider: 'the-odds-api',
-        configured: true,
-        available: true,
-      },
-      odds: response.data.map(mapOddsEvent).filter((item): item is AnalysisOddsItem => item != null),
-    }
-  } catch (error: unknown) {
-    const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined
-    const reason = statusCode === 401
-      ? 'The Odds API rejeitou a chave atual.'
-      : statusCode === 429
-      ? 'The Odds API atingiu limite de requisições.'
-      : 'Falha ao carregar odds na The Odds API.'
+  return {
+    status: result.status,
+    odds: result.events.map((event) => {
+      const bookmaker = pickPreferredBookmaker(event.bookmakers)
+      if (!bookmaker) return null
+      const h2h = getMarket(bookmaker, 'h2h')
+      const homeMoneyline = getOutcome(h2h, event.home_team)
+      const awayMoneyline = getOutcome(h2h, event.away_team)
 
-    return {
-      status: {
-        provider: 'the-odds-api',
-        configured: true,
-        available: false,
-        reason,
-      },
-      odds: [],
-    }
+      return {
+        id: event.id,
+        home_team_name: event.home_team,
+        away_team_name: event.away_team,
+        commence_time: event.commence_time,
+        bookmaker: bookmaker.title,
+        updated_at: h2h?.last_update ?? bookmaker.last_update ?? null,
+        moneyline: {
+          home: homeMoneyline?.price ?? null,
+          away: awayMoneyline?.price ?? null,
+        },
+      }
+    }).filter((item): item is GameOddsSummaryItem => item != null),
   }
 }
