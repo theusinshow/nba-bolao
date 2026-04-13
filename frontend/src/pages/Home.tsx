@@ -370,12 +370,12 @@ function HomeContextBanner() {
     <section
       style={{
         ...card,
-        background: 'linear-gradient(135deg, rgba(200,150,60,0.12), rgba(74,144,217,0.08) 55%, rgba(19,19,26,1) 100%)',
+        background: 'linear-gradient(135deg, rgba(200,150,60,0.10), rgba(74,144,217,0.06) 55%, rgba(19,19,26,1) 100%)',
         border: '1px solid rgba(200,150,60,0.18)',
-        padding: '0.95rem 1rem',
+        padding: '0.85rem 1rem',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
           <AlertTriangle size={14} />
         </span>
@@ -387,9 +387,44 @@ function HomeContextBanner() {
         </span>
       </div>
 
-      <p style={{ color: 'var(--nba-text)', fontSize: '0.84rem', margin: 0 }}>
-        Ranking, bracket oficial e seus palpites já refletem o estado real do bolão. Próximos jogos, resultados recentes, odds e lesões continuam
-        em modo simulado enquanto vocês testam com confrontos fictícios.
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 8px',
+            borderRadius: 999,
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            color: 'var(--nba-success)',
+            background: 'rgba(46,204,113,0.10)',
+            border: '1px solid rgba(46,204,113,0.18)',
+          }}
+        >
+          Bolão real ativo
+        </span>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 8px',
+            borderRadius: 999,
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            color: 'var(--nba-gold)',
+            background: 'rgba(200,150,60,0.10)',
+            border: '1px solid rgba(200,150,60,0.18)',
+          }}
+        >
+          Radar NBA ainda simulado
+        </span>
+      </div>
+
+      <p style={{ color: 'var(--nba-text)', fontSize: '0.82rem', margin: 0, lineHeight: 1.45 }}>
+        Use esta tela principalmente para acompanhar sua situação real no bolão. Blocos como próximos jogos, odds, lesões e resultados recentes
+        seguem como apoio visual enquanto a integração definitiva desses dados não entra.
       </p>
     </section>
   )
@@ -1432,6 +1467,72 @@ function MyPicksCard({
   )
 }
 
+function SimulatedContextDisclosure() {
+  return (
+    <details
+      style={{
+        ...card,
+        padding: '0.9rem 1rem',
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.05) 55%, rgba(200,150,60,0.06) 100%)',
+      }}
+    >
+      <summary
+        className="title"
+        style={{
+          color: 'var(--nba-gold)',
+          fontSize: '0.95rem',
+          letterSpacing: '0.08em',
+          cursor: 'pointer',
+          listStyle: 'none',
+        }}
+      >
+        Radar NBA Simulado
+      </summary>
+      <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.45, margin: '10px 0 0' }}>
+        Abra esta seção quando quiser ver contexto extra da rodada. Ela fica fora da área principal para a Home continuar mais objetiva no uso diário.
+      </p>
+      <div style={{ display: 'grid', gap: 16, marginTop: 14 }}>
+        <LastNightResultsTicker />
+        <OddsCard />
+        <InjuriesCard />
+      </div>
+    </details>
+  )
+}
+
+function DesktopRadarColumn() {
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div
+        style={{
+          ...card,
+          padding: '0.9rem 1rem',
+          background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.05) 55%, rgba(200,150,60,0.06) 100%)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
+            <AlertTriangle size={14} />
+          </span>
+          <span
+            className="font-condensed"
+            style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+          >
+            Radar Simulado
+          </span>
+        </div>
+        <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.45, margin: 0 }}>
+          Esta coluna concentra o contexto complementar da NBA. O foco principal da Home fica no centro, com ações e status reais do bolão.
+        </p>
+      </div>
+
+      <LastNightResultsTicker />
+      <OddsCard />
+      <InjuriesCard />
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Home({ participantId }: Props) {
@@ -1447,32 +1548,31 @@ export function Home({ participantId }: Props) {
 
   return (
     <>
-      {/* Responsive grid via inline style + media query workaround using Tailwind arbitrary values */}
       <div
         className={[
           'pb-24 pt-4 px-4 mx-auto',
-          'grid gap-4',
+          'grid gap-4 xl:gap-5',
           'grid-cols-1',
-          'md:grid-cols-[1fr_280px]',
-          'min-[1200px]:grid-cols-[280px_1fr_280px]',
+          'xl:grid-cols-[280px_minmax(0,1fr)_300px]',
         ].join(' ')}
-        style={{ maxWidth: 1400 }}
+        style={{ maxWidth: 1420 }}
       >
-        {/* ── Left column — desktop only (≥1200px) ─────────────────────── */}
         <div
           className={[
             'hidden',
-            'min-[1200px]:flex min-[1200px]:flex-col min-[1200px]:gap-4',
+            'xl:flex xl:flex-col xl:gap-4',
           ].join(' ')}
         >
           <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-          <InjuriesCard />
+          <StatsGrid
+            participantCount={ranking.length}
+            completedSeries={completedSeries}
+            totalSeries={series.length}
+            myEntry={myEntry}
+          />
         </div>
 
-        {/* ── Center column ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-4 min-w-0">
-
-          {/* Header */}
           <HeroPanel
             myEntry={myEntry}
             pickedSeries={pickedSeries}
@@ -1489,43 +1589,33 @@ export function Home({ participantId }: Props) {
             leaderPoints={leader?.total_points ?? 0}
           />
 
-          <LastNightResultsTicker />
-
-          <div className="md:hidden">
+          <div className="xl:hidden flex flex-col gap-4">
             <NextGamesCard />
+            <MyPicksCard series={series} picks={picks} />
+            <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+            <StatsGrid
+              participantCount={ranking.length}
+              completedSeries={completedSeries}
+              totalSeries={series.length}
+              myEntry={myEntry}
+            />
           </div>
 
-          {/* Stats 2×2 */}
-          <StatsGrid
-            participantCount={ranking.length}
-            completedSeries={completedSeries}
-            totalSeries={series.length}
-            myEntry={myEntry}
-          />
+          <div className="hidden xl:grid xl:grid-cols-2 xl:gap-4">
+            <NextGamesCard />
+            <MyPicksCard series={series} picks={picks} />
+          </div>
 
           <OfficialBracketCard series={series} />
-
-          {/* On tablet: ranking card appears here (left col hidden) */}
-          <div className="md:hidden">
-            <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-          </div>
-
-          {/* Recent series */}
           <RecentSeriesCard series={series} />
+
+          <div className="xl:hidden">
+            <SimulatedContextDisclosure />
+          </div>
         </div>
 
-        {/* ── Right column ──────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 min-w-0">
-          <div className="hidden md:block">
-            <NextGamesCard />
-          </div>
-          <OddsCard />
-          <MyPicksCard series={series} picks={picks} />
-
-          {/* On mobile: injuries card moves to bottom */}
-          <div className="md:hidden">
-            <InjuriesCard />
-          </div>
+        <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
+          <DesktopRadarColumn />
         </div>
       </div>
     </>

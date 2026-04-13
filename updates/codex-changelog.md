@@ -1,5 +1,46 @@
 # Codex Changelog
 
+## 2026-04-13 10:05 - Home reorganizada para foco real do bolão
+
+### Objetivo
+- Reduzir a poluição visual da Home, melhorar a ordem de leitura em mobile e desktop e deixar o conteúdo real do bolão mais importante do que o contexto simulado.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- A `Home` foi reorganizada para priorizar o que o participante realmente usa no dia a dia:
+  - hero principal;
+  - status/contexto do painel;
+  - bloco de ação imediata;
+  - próximos jogos e meus palpites;
+  - ranking e estatísticas;
+  - bracket oficial e séries recentes.
+- O banner `HomeContextBanner` foi reescrito para comunicar com mais clareza a diferença entre:
+  - dados reais do bolão;
+  - radar de NBA ainda simulado.
+- Em telas menores, os blocos simulados deixaram de competir com o conteúdo principal e passaram para uma seção recolhível `Radar NBA Simulado`.
+- Em desktop largo, a Home passou a ter uma distribuição mais funcional:
+  - coluna esquerda com ranking e estatísticas;
+  - coluna central com foco de ação e acompanhamento real do bolão;
+  - coluna direita dedicada ao radar simulado.
+- `NextGamesCard` e `MyPicksCard` ganharam mais prioridade prática no fluxo principal.
+- O antigo ticker e o conteúdo de contexto simulado saíram do miolo principal da página e foram reposicionados como camada secundária.
+
+### Resultado prático
+- Mobile mais direto e menos cansativo para rolagem.
+- Desktop com separação mais clara entre informação operacional e conteúdo complementar.
+- Home menos “landing page cheia” e mais “painel de uso diário”.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- A nova composição da `Home` compilou sem regressão estrutural e preservou o chunk separado da rota após o code splitting já aplicado.
+
+### Pendências
+- A `Home.tsx` continua grande e ainda merece uma rodada futura de extração de componentes menores.
+- Quando os dados reais de jogos/odds/lesões entrarem, vale revisar novamente a hierarquia para possivelmente remover a seção de radar simulado.
+
 ## 2026-04-12 - Loader do app vira bola de basquete dourada
 
 ### Objetivo
@@ -1684,6 +1725,41 @@
 ### Pendências
 - Se você quiser reduzir ainda mais o tamanho vertical, dá para fazer uma segunda rodada compactando o próprio `GameCard`.
 - A tela ainda usa muitos blocos ricos visualmente; a principal melhora desta rodada foi estrutural, não de densidade extrema.
+
+## 2026-04-13 09:58 - Divisão de bundle nas rotas principais
+
+### Objetivo
+- Reduzir o peso do carregamento inicial do frontend carregando páginas mais pesadas sob demanda, sem mudar o comportamento do app.
+
+### Arquivos alterados
+- `updates/codex-changelog.md`
+- `frontend/src/App.tsx`
+
+### Mudanças feitas
+- `frontend/src/App.tsx` passou a usar `lazy()` para carregar sob demanda as páginas:
+  - `Home`
+  - `BracketEditor`
+  - `OfficialBracket`
+  - `Ranking`
+  - `Compare`
+  - `Games`
+  - `SimulationLab`
+  - `Admin`
+- Foi adicionado um fallback central com `Suspense` usando o `LoadingBasketball`, mantendo a experiência visual consistente durante o carregamento assíncrono das rotas.
+- As regras de autenticação e autorização permaneceram iguais:
+  - login continua separado;
+  - usuários não autenticados continuam indo para `/login`;
+  - usuários sem permissão continuam bloqueados;
+  - a rota de admin continua protegida por `requireAdmin`.
+- A mudança foi concentrada no ponto de entrada das rotas, evitando espalhar lógica de carregamento por múltiplos arquivos.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- O build passou a gerar chunks separados por rota, incluindo arquivos específicos para `Admin`, `Games`, `Home`, `Compare`, `SimulationLab`, `BracketEditor` e `Ranking`.
+- O chunk principal caiu para cerca de `390 kB`, mas a rota `Ranking` ainda gera um chunk alto por causa da área de gráfico/relatórios.
+
+### Pendências
+- Se quiser aprofundar essa otimização depois, faz sentido avaliar divisão adicional por bibliotecas pesadas, especialmente gráficos e telas administrativas.
 
 ## 2026-04-10 00:05 - Relatório de pontuação com jogos agrupados por série
 
