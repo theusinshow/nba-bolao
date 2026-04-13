@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X, Shield } from 'lucide-react'
+import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X, Shield, Activity } from 'lucide-react'
 import type { AuthState } from '../hooks/useAuth'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 
 const primaryLinks = [
   { to: '/', icon: Home, label: 'Home' },
+  { to: '/analysis', icon: Activity, label: 'Análise' },
   { to: '/bracket', icon: GitBranch, label: 'Bracket' },
   { to: '/games', icon: Calendar, label: 'Jogos' },
   { to: '/ranking', icon: BarChart2, label: 'Ranking' },

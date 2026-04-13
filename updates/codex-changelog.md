@@ -1,5 +1,114 @@
 # Codex Changelog
 
+## 2026-04-13 10:48 - Home ganha atalho direto para comparar brackets
+
+### Objetivo
+- Dar acesso mais rápido à tela de comparação sem transformar a navbar inferior em uma barra poluída no mobile.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- O antigo card de atalho isolado para `Análise` foi evoluído para um pequeno hub de atalhos na `Home`.
+- O card agora oferece dois acessos diretos:
+  - `Análise`
+  - `Comparar brackets`
+- O texto do card foi ajustado para explicar que esses fluxos continuam acessíveis sem sobrecarregar a navegação principal inferior.
+- O atalho de `Compare` ganhou tratamento visual próprio para diferenciar leitura/contexto de comparação entre participantes.
+
+### Resultado prático
+- `Compare` ficou mais acessível a partir da `Home`.
+- A navbar inferior continua enxuta, preservando área de toque e legibilidade no mobile.
+- A navegação passa a ter uma camada principal mais limpa e uma camada secundária de atalhos úteis dentro da própria Home.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- A `Home` compilou normalmente com o novo hub de atalhos para `Análise` e `Comparar brackets`.
+
+### Pendências
+- Se o uso de `Compare` crescer muito no futuro, aí sim pode fazer sentido reavaliar a presença dele como item fixo da navegação principal.
+
+## 2026-04-13 10:35 - Home ganha faixa de placar rápido no topo
+
+### Objetivo
+- Trazer para a Home uma base visual semelhante à navegação de portais esportivos, mostrando jogos recentes, jogos em andamento e próximos confrontos logo no topo da página.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criado um componente `GamesPulseStrip` no topo da `Home`.
+- A nova faixa busca os jogos reais em `games` e cruza com `teams` para montar os confrontos com abreviações corretas.
+- O strip prioriza a ordem visual:
+  - jogos em andamento;
+  - jogos futuros;
+  - jogos recentes/finalizados.
+- Cada card da faixa mostra:
+  - status (`AO VIVO`, `FIM` ou horário);
+  - times;
+  - placar, quando disponível.
+- Jogos que já passaram do `tip_off_at` e ainda não estão marcados como `played` aparecem como “ao vivo”, funcionando como uma aproximação útil até existir um status mais refinado no backend.
+- O componente também escuta mudanças em `games` via realtime para reagir a atualizações da rodada.
+
+### Resultado prático
+- A Home ganhou uma base de acompanhamento rápido logo no topo, antes do hero principal.
+- O usuário consegue bater o olho em resultados e andamento da rodada sem sair do painel principal.
+- A navegação fica mais próxima do padrão de sites esportivos sem reintroduzir toda a densidade antiga no corpo da Home.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- A `Home` compilou normalmente com a nova faixa de placar rápido no topo e preservou a separação em chunk da rota.
+
+### Pendências
+- Quando o backend tiver um status explícito de jogo ao vivo, vale trocar a heurística baseada em horário por um sinal real de “live”.
+- Se você quiser evoluir essa faixa depois, dá para incluir logos, período do jogo e link para a tela de jogos.
+
+## 2026-04-13 10:28 - Aba Análise separa radar da Home
+
+### Objetivo
+- Tirar da Home os blocos de leitura contextual que estavam competindo com o fluxo principal do bolão e mover esse conteúdo para uma aba dedicada de análise.
+
+### Arquivos alterados
+- `frontend/src/App.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Analysis.tsx`
+- `updates/codex-changelog.md`
+
+### Mudanças feitas
+- Foi criada a nova página `Analysis` com foco em leitura e radar da rodada.
+- A nova rota `/analysis` foi adicionada ao app.
+- O navbar principal ganhou a aba `Análise`.
+- A `Home` foi simplificada e passou a priorizar:
+  - hero e status do participante;
+  - progresso e ação principal;
+  - ranking;
+  - estatísticas;
+  - meus palpites;
+  - bracket oficial;
+  - séries recentes.
+- Os blocos de contexto foram movidos para `Análise`, incluindo:
+  - próximos confrontos;
+  - resultados recentes;
+  - odds;
+  - lesões e notícias.
+- A `Home` ganhou um card de atalho para a nova aba `Análise`, mantendo a navegação clara sem reintroduzir densidade no miolo principal.
+- O banner de contexto da `Home` foi ajustado para explicar explicitamente que esse conteúdo agora vive em uma aba própria.
+
+### Resultado prático
+- A Home ficou mais coerente como painel operacional do bolão.
+- A navegação ganhou uma separação mais clara entre “agir” e “acompanhar/ler”.
+- A nova aba `Análise` cria espaço para evoluir conteúdo editorial ou radar da rodada sem voltar a poluir a Home.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso em `C:\Dev\pessoal\projetos\nba-bolao\frontend`
+- O build gerou um chunk dedicado para `Analysis` e reduziu ainda mais o peso da `Home`.
+
+### Pendências
+- Quando os dados reais de radar entrarem, a aba `Análise` deve ser o lugar natural para conectar API e enriquecer esses cards.
+
 ## 2026-04-13 10:05 - Home reorganizada para foco real do bolão
 
 ### Objetivo

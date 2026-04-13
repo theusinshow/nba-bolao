@@ -9,6 +9,7 @@ import { Unauthorized } from './pages/Unauthorized'
 import { LoadingBasketball } from './components/LoadingBasketball'
 
 const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })))
+const Analysis = lazy(() => import('./pages/Analysis').then((module) => ({ default: module.Analysis })))
 const BracketEditor = lazy(() => import('./pages/BracketEditor').then((module) => ({ default: module.BracketEditor })))
 const OfficialBracket = lazy(() => import('./pages/OfficialBracket').then((module) => ({ default: module.OfficialBracket })))
 const Ranking = lazy(() => import('./pages/Ranking').then((module) => ({ default: module.Ranking })))
@@ -63,6 +64,14 @@ export default function App() {
             element={
               <ProtectedRoute auth={auth}>
                 <Home participantId={participantId} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analysis"
+            element={
+              <ProtectedRoute auth={auth}>
+                <Analysis />
               </ProtectedRoute>
             }
           />
