@@ -520,64 +520,139 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
   )
 }
 
+const ROUND_FULL_LABEL: Record<number, string> = { 1: 'Primeira Rodada', 2: 'Segunda Rodada', 3: 'Conf. Finals', 4: 'Finals' }
+const ROUND_COLOR: Record<number, string> = { 1: '#4a90d9', 2: '#9b59b6', 3: '#e05c3a', 4: '#c8963c' }
+
 function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>['series'] }) {
   const completedSeries = series.filter((item) => item.is_complete).length
   const openSeries = Math.max(series.length - completedSeries, 0)
   const finals = series.find((item) => item.id === 'FIN')
-  const championLabel = finals?.is_complete ? finals.winner?.abbreviation ?? finals.winner_id ?? 'Definido' : 'Em disputa'
+  const champion = finals?.is_complete ? finals.winner : null
+  const championLabel = champion?.abbreviation ?? (finals?.is_complete ? finals.winner_id ?? 'Definido' : 'Em disputa')
 
-  const spotlightSeries = [...series]
-    .filter((item) => item.round >= 3)
-    .sort((left, right) => {
-      if (left.round !== right.round) return right.round - left.round
-      return left.id.localeCompare(right.id)
-    })
-    .slice(0, 2)
+  const roundGroups = ([4, 3, 2, 1] as const)
+    .map((round) => ({
+      round,
+      items: series
+        .filter((s) => s.round === round && (s.home_team_id != null || s.away_team_id != null))
+        .sort((a, b) => (a.conference ?? '').localeCompare(b.conference ?? '')),
+    }))
+    .filter((g) => g.items.length > 0)
 
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(224,92,58,0.12), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
       <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
 
-      <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', marginBottom: 14 }}>
-        Acompanhe a chave oficial dos playoffs e veja como os confrontos estão avançando na vida real.
-      </p>
-
-      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Séries concluídas</div>
-          <div className="font-condensed font-bold" style={{ color: 'var(--nba-success)', fontSize: '1.45rem', lineHeight: 1.1 }}>
-            {completedSeries}
+      {/* 3 chips */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+        {[
+          { label: 'Concluídas', value: `${completedSeries}/${series.length}`, color: completedSeries > 0 ? 'var(--nba-success)' : 'var(--nba-text-muted)' },
+          { label: 'Em aberto', value: String(openSeries), color: openSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)' },
+          { label: 'Campeão', value: championLabel, color: champion ? (champion.primary_color ?? 'var(--nba-gold)') : 'var(--nba-text-muted)' },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+            <div className="font-condensed font-bold" style={{ color, fontSize: '1.1rem', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
           </div>
-        </div>
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Em aberto</div>
-          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.45rem', lineHeight: 1.1 }}>
-            {openSeries}
-          </div>
-        </div>
-        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Campeão atual</div>
-          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.45rem', lineHeight: 1.1 }}>
-            {championLabel}
-          </div>
-        </div>
+        ))}
       </div>
 
-      {spotlightSeries.length > 0 && (
-        <div style={{ display: 'grid', gap: 10, marginTop: 12 }} className="sm:grid-cols-2">
-          {spotlightSeries.map((item) => (
-            <div key={item.id} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>
-                {item.conference ?? 'NBA'} {ROUND_LABEL[item.round] ?? ''}
+      {/* Series grouped by round */}
+      {roundGroups.length === 0 ? (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', padding: '8px 0' }}>
+          Bracket ainda não foi definido para esta temporada.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {roundGroups.map(({ round, items }) => {
+            const color = ROUND_COLOR[round]
+            return (
+              <div key={round}>
+                {/* Round header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ height: 1, width: 10, background: `${color}55`, flexShrink: 0 }} />
+                  <span style={{ color, fontSize: '0.64rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {ROUND_FULL_LABEL[round]}
+                  </span>
+                  <div style={{ height: 1, flex: 1, background: `${color}28` }} />
+                </div>
+
+                {/* Series rows */}
+                <div style={{ display: 'grid', gap: 5 }}>
+                  {items.map((s) => {
+                    const homeAbbr = s.home_team?.abbreviation ?? s.home_team_id ?? '—'
+                    const awayAbbr = s.away_team?.abbreviation ?? s.away_team_id ?? '—'
+                    const homeColor = s.home_team?.primary_color ?? 'var(--nba-text)'
+                    const awayColor = s.away_team?.primary_color ?? 'var(--nba-text)'
+                    const homeWon = s.is_complete && s.winner_id === s.home_team_id
+                    const awayWon = s.is_complete && s.winner_id === s.away_team_id
+                    const losses = s.games_played - 4
+
+                    return (
+                      <div
+                        key={s.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: s.is_complete ? 'rgba(12,12,18,0.28)' : 'rgba(12,12,18,0.42)',
+                          border: `1px solid ${s.is_complete ? 'rgba(46,204,113,0.12)' : 'rgba(200,150,60,0.10)'}`,
+                        }}
+                      >
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            color: homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : 'var(--nba-text)',
+                            fontSize: '0.92rem',
+                            minWidth: 32,
+                            opacity: awayWon ? 0.5 : 1,
+                          }}
+                        >
+                          {homeAbbr}
+                        </span>
+
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            flex: 1,
+                            textAlign: 'center',
+                            fontSize: s.is_complete ? '0.88rem' : '0.72rem',
+                            color: s.is_complete ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {s.is_complete
+                            ? `4 – ${losses}`
+                            : s.games_played > 0
+                            ? `${s.games_played}j`
+                            : 'vs'}
+                        </span>
+
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            color: awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : 'var(--nba-text)',
+                            fontSize: '0.92rem',
+                            minWidth: 32,
+                            textAlign: 'right',
+                            opacity: homeWon ? 0.5 : 1,
+                          }}
+                        >
+                          {awayAbbr}
+                        </span>
+
+                        {s.is_complete && (
+                          <span style={{ fontSize: '0.68rem', color: 'var(--nba-success)', flexShrink: 0 }}>✓</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem', lineHeight: 1 }}>
-                {item.home_team?.abbreviation ?? item.home_team_id ?? '—'} vs {item.away_team?.abbreviation ?? item.away_team_id ?? '—'}
-              </div>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 6 }}>
-                {item.is_complete ? `Vencedor: ${item.winner?.abbreviation ?? item.winner_id ?? '—'}` : 'Confronto em andamento'}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

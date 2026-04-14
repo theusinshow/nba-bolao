@@ -211,7 +211,7 @@ async function ensureTeamsExist(games: BDLGame[]) {
     .map((team) => ({
       ...team,
       seed: team.seed ?? 99,
-      primary_color: team.primary_color ?? '#000000',
+      primary_color: team.primary_color ?? '#888899',
     }))
 
   if (!missingTeams.length) return

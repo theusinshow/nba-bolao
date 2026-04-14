@@ -49,7 +49,14 @@ export const TEAMS_2025: Team[] = [
     primary_color: '#F9A01B', secondary_color: '#98002E' },   // Heat Gold / Red
 
   { id: 'ORL', name: 'Orlando Magic',         abbreviation: 'ORL', conference: 'East', seed: 8,
-    primary_color: '#0077C0', secondary_color: '#000000' },   // Magic Blue / Black
+    primary_color: '#0077C0', secondary_color: '#C4CED4' },   // Magic Blue / Silver
+
+  // ── Times extras (play-in / sync) ─────────────────────────────────────────
+  { id: 'TOR', name: 'Toronto Raptors',       abbreviation: 'TOR', conference: 'East', seed: 99,
+    primary_color: '#CE1141', secondary_color: '#A1A1A4' },   // Raptors Red / Silver
+
+  { id: 'ATL', name: 'Atlanta Hawks',         abbreviation: 'ATL', conference: 'East', seed: 99,
+    primary_color: '#C1D32F', secondary_color: '#E03A3E' },   // Hawks Volt / Red
 ]
 
 export const TEAM_MAP: Record<string, Team> = Object.fromEntries(

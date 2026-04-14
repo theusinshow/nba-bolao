@@ -1,5 +1,30 @@
 # Codex Changelog
 
+## 2026-04-14 - OfficialBracketCard redesenhado com lista por rodada (Claude Code)
+
+### Objetivo
+- Eliminar os "spotlight boxes" que exibiam `— vs —` quando os times das finais ainda não estavam definidos.
+- Substituir por lista agrupada por rodada, limpa e sem caixas incompletas.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+
+#### `Home.tsx` — `OfficialBracketCard`
+- Removidos os 2 spotlight boxes fixos (filtravam apenas `round >= 3` e exibiam "Confronto em andamento" com times `—`).
+- Adicionadas constantes `ROUND_FULL_LABEL` e `ROUND_COLOR` para labels e cores por rodada.
+- Novo layout: séries agrupadas por rodada (Finals → CF → R2 → R1), mostrando **apenas rodadas que têm pelo menos uma série com times definidos** (`home_team_id != null`).
+- Cada série exibe uma linha compacta: `HOME abbr · score · AWAY abbr`, onde:
+  - Série concluída: placar `4 – X` com vencedor em cor do time e perdedor com `opacity: 0.5`; ícone `✓` verde
+  - Série em andamento com jogos: mostra `Xj` (número de jogos disputados)
+  - Série não iniciada: mostra `vs`
+- Separador de rodada com linha decorativa e label colorido por rodada.
+- Chips de estatística (Concluídas / Em aberto / Campeão) mantidos, com ajuste: "Concluídas" agora mostra `X/15` para dar contexto de progresso; campeão usa a cor primária do time quando definido.
+- Corrigido bug do label duplicado "Finals Finals" — a lógica de label agora usa `ROUND_FULL_LABEL` por round, sem concatenar `conference`.
+
+---
+
 ## 2026-04-14 - Tradução automática das notícias ESPN para português (Claude Code)
 
 ### Objetivo
