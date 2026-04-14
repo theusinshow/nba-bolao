@@ -1,5 +1,148 @@
 # Codex Changelog
 
+## 2026-04-14 - Reset administrativo de palpites pré-largada com backup automático (Codex)
+
+### Objetivo
+- Evitar que palpites de teste contaminem o bolão oficial antes da abertura
+- Dar ao admin uma forma segura e auditável de limpar palpites antigos
+- Garantir backup prévio e confirmação forte antes de qualquer limpeza destrutiva
+
+### Arquivos alterados
+- `backend/src/routes/admin.ts` — nova rota `POST /admin/reset-picks` com confirmação obrigatória, backup automático e limpeza das tabelas de palpites
+- `frontend/src/pages/Admin.tsx` — novo botão `Zerar palpites pré-largada`, confirmação forte via prompt e modal com resumo da limpeza
+
+### Mudanças feitas
+- Criada a rota administrativa `POST /admin/reset-picks`.
+- A rota exige a frase exata `ZERAR PALPITES` para executar a operação.
+- Antes de apagar qualquer dado, o sistema gera um backup operacional completo.
+- A limpeza remove registros de:
+  - `series_picks`
+  - `game_picks`
+  - `simulation_series_picks`
+  - `simulation_game_picks`
+- Após a exclusão, o backend roda `recalculateAllScores()` para deixar o estado consistente.
+- No painel admin, entrou um botão dedicado para reset pré-largada com visual de ação sensível.
+- Após a limpeza, o frontend abre um modal mostrando quantos registros foram removidos em cada categoria.
+- O fluxo também reaproveita o modal de backup para expor onde o snapshot preventivo foi salvo.
+
+### Resultado prático
+- O admin consegue “zerar a largada” do bolão com transparência e rastreabilidade.
+- Palpites antigos de teste deixam de aparecer em relatórios diários e resumos do grupo.
+- O processo fica mais profissional: backup antes, confirmação explícita e evidência visual do que foi apagado.
+
+### Validações
+- `backend`: `npm run build` — ✓
+- `frontend`: `npm run build` — ✓
+
+---
+
+## 2026-04-14 - Modal do backup operacional com caminhos reais dos arquivos (Codex)
+
+### Objetivo
+- Deixar claro para o admin onde o backup operacional foi salvo
+- Eliminar a ambiguidade de “cliquei no botão e não apareceu arquivo no navegador”
+- Expor a pasta e os arquivos gerados de forma legível na própria interface
+
+### Arquivos alterados
+- `frontend/src/pages/Admin.tsx`
+
+### Mudanças feitas
+- O fluxo de `Gerar backup operacional` passou a guardar a resposta completa da rota admin.
+- Após a geração, o painel abre um modal dedicado ao backup.
+- O modal mostra:
+  - a pasta de saída (`outputDir`)
+  - o CSV de palpites de séries
+  - o CSV de palpites jogo a jogo
+  - o CSV do ranking congelado
+  - o resumo `.md` da rodada
+- Também foi adicionado texto explicando que o backup é salvo no disco do backend, e não baixado automaticamente pelo navegador.
+
+### Resultado prático
+- O admin sabe exatamente onde procurar o backup gerado.
+- Fica mais fácil diferenciar um arquivo real do sistema de qualquer arquivo estranho aberto por engano no desktop.
+
+### Validações
+- `frontend`: `npm run build` — ✓
+
+---
+
+## 2026-04-14 - Modal com mensagem completa e botão de copiar para WhatsApp (Codex)
+
+### Objetivo
+- Facilitar o uso diário do resumo do grupo sem depender de abrir arquivos manualmente
+- Dar ao admin acesso imediato ao texto pronto após a geração do digest
+
+### Arquivos alterados
+- `backend/src/digest/exportDailyPicksDigest.ts` — retorno passou a incluir `whatsappText`
+- `frontend/src/pages/Admin.tsx` — modal de visualização do resumo e botão `Copiar mensagem`
+
+### Mudanças feitas
+- O exportador diário passou a retornar o texto completo do WhatsApp além dos caminhos dos arquivos.
+- O botão `Gerar resumo do grupo` no admin agora abre um modal após a geração.
+- O modal mostra:
+  - data-alvo do resumo
+  - pasta onde os arquivos foram salvos
+  - caminho do `.txt`
+  - mensagem completa pronta para copiar
+- Adicionado botão `Copiar mensagem` usando `navigator.clipboard`.
+- Em caso de sucesso, o admin recebe feedback visual por toast.
+
+### Resultado prático
+- O resumo diário pode ser gerado, conferido e copiado em um único fluxo.
+- O admin não precisa mais abrir a pasta de backup só para pegar o texto do grupo.
+
+### Validações
+- `backend`: `npm run build` — ✓
+- `frontend`: `npm run build` — ✓
+
+---
+
+## 2026-04-14 - Automação diária de resumo dos palpites para o grupo (Codex)
+
+### Objetivo
+- Automatizar a extração diária dos palpites dos participantes
+- Gerar um texto bonito e pronto para compartilhamento no grupo do WhatsApp
+- Permitir tanto agendamento automático quanto disparo manual pelo admin
+
+### Arquivos alterados
+- `backend/src/digest/exportDailyPicksDigest.ts` — novo exportador diário
+- `backend/src/scheduler/dailyDigestScheduler.ts` — novo scheduler com cron configurável
+- `backend/src/scripts/exportDailyPicksDigest.ts` — script manual de geração
+- `backend/src/routes/admin.ts` — nova rota `POST /admin/daily-digest`
+- `backend/src/index.ts` — scheduler diário ligado ao boot do servidor
+- `backend/package.json` — novo script `digest:daily`
+- `frontend/src/pages/Admin.tsx` — botão `Gerar resumo do grupo`
+
+### Mudanças feitas
+- Criado exportador diário que lê:
+  - participantes
+  - teams
+  - séries
+  - palpites de séries
+  - jogos
+  - palpites de jogos
+- O resumo gerado separa:
+  - `Palpites jogo a jogo do dia`
+  - `Palpites de séries em aberto`
+- Os arquivos são salvos em `backups/daily-digests/...` com `.txt`, `.md` e `.json`.
+- Adicionado scheduler diário configurável por:
+  - `DAILY_DIGEST_CRON`
+  - `DAILY_DIGEST_TIMEZONE`
+- O health do backend passou a incluir o snapshot do scheduler diário.
+- Adicionado endpoint manual `POST /admin/daily-digest`.
+- No admin, entrou o botão para disparar a geração sob demanda.
+
+### Resultado prático
+- O sistema já consegue produzir automaticamente a mensagem-base do grupo.
+- O admin também pode regenerar o resumo manualmente quando quiser revisar ou reenviar.
+- O app passa a ter uma camada operacional mais madura para comunicação diária do bolão.
+
+### Validações
+- `backend`: `npm run build` — ✓
+- `frontend`: `npm run build` — ✓
+
+---
+
 ## 2026-04-14 - Cores por time: primary na letra, secondary na borda (Claude Code)
 
 ### Objetivo

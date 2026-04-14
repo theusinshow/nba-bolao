@@ -17,6 +17,7 @@ import {
   HeartPulse,
   Clock3,
   MessageSquareShare,
+  RotateCcw,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { adminGet, adminPost } from '../lib/adminApi'
@@ -59,6 +60,18 @@ interface BackupResponse {
       rankingCsv: string
       summaryMd: string
     }
+  }
+}
+
+interface ResetPicksResponse {
+  ok: boolean
+  message: string
+  backup: BackupResponse['result']
+  deleted: {
+    series_picks: number
+    game_picks: number
+    simulation_series_picks: number
+    simulation_game_picks: number
   }
 }
 
@@ -210,6 +223,8 @@ export function Admin({ participantId }: Props) {
   const [latestDigest, setLatestDigest] = useState<DailyDigestResponse['result'] | null>(null)
   const [backupModalOpen, setBackupModalOpen] = useState(false)
   const [latestBackup, setLatestBackup] = useState<BackupResponse['result'] | null>(null)
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [latestReset, setLatestReset] = useState<ResetPicksResponse['deleted'] | null>(null)
 
   function pushActivity(label: string, tone: ActivityItem['tone']) {
     const next = [
@@ -367,6 +382,35 @@ export function Admin({ participantId }: Props) {
     } catch (error) {
       addToast((error as Error).message, 'error')
       pushActivity('Falha ao gerar resumo diário do grupo', 'danger')
+    }
+  }
+
+  async function handleResetPicks() {
+    const totalOfficial = (overview?.stats.series_picks ?? 0) + (overview?.stats.game_picks ?? 0)
+    const totalSimulation = (overview?.stats.simulation_series_picks ?? 0) + (overview?.stats.simulation_game_picks ?? 0)
+    const confirmation = window.prompt(
+      `Essa ação vai zerar todos os palpites salvos antes da largada.\n\nOficiais: ${totalOfficial}\nSimulação: ${totalSimulation}\n\nUm backup operacional será gerado antes.\n\nDigite exatamente ZERAR PALPITES para continuar.`
+    )
+
+    if (confirmation == null) return
+
+    try {
+      const payload = await runAdminAction('reset-picks', () =>
+        adminPost<ResetPicksResponse>('/admin/reset-picks', {
+          confirmation,
+        })
+      )
+
+      setLatestBackup(payload.backup)
+      setLatestReset(payload.deleted)
+      setBackupModalOpen(true)
+      setResetModalOpen(true)
+      addToast('Palpites zerados com sucesso.', 'success')
+      pushActivity('Reset pré-largada dos palpites executado', 'danger')
+      await loadOverview()
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      pushActivity('Falha ao zerar palpites antes da largada', 'danger')
     }
   }
 
@@ -608,6 +652,119 @@ export function Admin({ participantId }: Props) {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetModalOpen && latestReset && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 16, 0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            zIndex: 82,
+          }}
+          onClick={() => setResetModalOpen(false)}
+        >
+          <div
+            style={{
+              width: 'min(700px, 100%)',
+              maxHeight: '88vh',
+              overflow: 'hidden',
+              borderRadius: 16,
+              border: '1px solid rgba(231,76,60,0.22)',
+              background: 'linear-gradient(180deg, rgba(28,18,18,0.98), rgba(12,10,12,0.98))',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 16,
+                padding: '18px 20px 14px',
+                borderBottom: '1px solid rgba(231,76,60,0.12)',
+              }}
+            >
+              <div>
+                <div
+                  className="font-condensed"
+                  style={{ color: 'var(--nba-danger)', fontSize: '0.82rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                >
+                  Reset pré-largada
+                </div>
+                <div style={{ color: 'var(--nba-text)', fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>
+                  Palpites antigos apagados com backup prévio
+                </div>
+              </div>
+
+              <button
+                onClick={() => setResetModalOpen(false)}
+                style={{
+                  border: '1px solid rgba(231,76,60,0.18)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: 'var(--nba-text)',
+                  borderRadius: 10,
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)' }}>
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'rgba(231,76,60,0.10)',
+                  border: '1px solid rgba(231,76,60,0.14)',
+                  color: 'var(--nba-text)',
+                  fontSize: '0.82rem',
+                  marginBottom: 14,
+                  lineHeight: 1.55,
+                }}
+              >
+                Use esse reset só antes da abertura oficial do bolão. Como proteção, o sistema gerou backup antes da limpeza e recalculou o estado após a exclusão.
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }} className="md:grid-cols-2">
+                {[
+                  { label: 'Séries oficiais removidas', value: String(latestReset.series_picks) },
+                  { label: 'Jogos oficiais removidos', value: String(latestReset.game_picks) },
+                  { label: 'Séries de simulação removidas', value: String(latestReset.simulation_series_picks) },
+                  { label: 'Jogos de simulação removidos', value: String(latestReset.simulation_game_picks) },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(231,76,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginBottom: 6 }}>{item.label}</div>
+                    <div className="font-condensed font-bold" style={{ color: 'var(--nba-danger)', fontSize: '1.3rem' }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 14 }}>
+                O caminho do backup gerado foi aberto no modal de backup logo após o reset.
               </div>
             </div>
           </div>
@@ -1136,6 +1293,31 @@ export function Admin({ participantId }: Props) {
                 </span>
                 <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
                   {busyAction === 'backup' ? 'Gerando...' : 'Backup'}
+                </span>
+              </button>
+
+              <button
+                onClick={handleResetPicks}
+                disabled={busyAction === 'reset-picks'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(231,76,60,0.18)',
+                  background: 'rgba(231,76,60,0.08)',
+                  color: 'var(--nba-text)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <RotateCcw size={15} />
+                  Zerar palpites pré-largada
+                </span>
+                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                  {busyAction === 'reset-picks' ? 'Limpando...' : 'Reset'}
                 </span>
               </button>
             </div>

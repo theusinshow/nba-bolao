@@ -161,6 +161,20 @@ async function buildAdminOverview() {
   }
 }
 
+async function deleteAllRows(table: string): Promise<number> {
+  const { data, error } = await supabase
+    .from(table)
+    .delete()
+    .not('id', 'is', null)
+    .select('id')
+
+  if (error) {
+    throw new Error(`Failed deleting ${table}: ${error.message}`)
+  }
+
+  return (data ?? []).length
+}
+
 router.use(requireAdmin)
 
 // POST /admin/sync — trigger manual NBA sync
@@ -252,6 +266,39 @@ router.post('/daily-digest', async (req, res) => {
     })
   } catch (err: unknown) {
     console.error('[admin/daily-digest] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/reset-picks — reset all saved picks before opening the bolao
+router.post('/reset-picks', async (req, res) => {
+  try {
+    const confirmation = typeof req.body?.confirmation === 'string' ? req.body.confirmation.trim() : ''
+    if (confirmation !== 'ZERAR PALPITES') {
+      return res.status(400).json({
+        ok: false,
+        error: 'Confirmação inválida. Digite exatamente: ZERAR PALPITES',
+      })
+    }
+
+    const backup = await exportOperationalSnapshot()
+    const deleted = {
+      series_picks: await deleteAllRows('series_picks'),
+      game_picks: await deleteAllRows('game_picks'),
+      simulation_series_picks: await deleteAllRows('simulation_series_picks'),
+      simulation_game_picks: await deleteAllRows('simulation_game_picks'),
+    }
+
+    await recalculateAllScores()
+
+    res.json({
+      ok: true,
+      message: 'Todos os palpites foram zerados com backup prévio gerado.',
+      backup,
+      deleted,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/reset-picks] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })
