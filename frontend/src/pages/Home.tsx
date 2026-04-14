@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
+import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
@@ -77,6 +79,26 @@ function formatShortDateTime(dateValue: string | null | undefined) {
   }).format(new Date(dateValue))
 }
 
+function useCountdown(targetDate: string | null | undefined) {
+  const [label, setLabel] = useState('')
+  useEffect(() => {
+    if (!targetDate) { setLabel(''); return }
+    function tick() {
+      const diff = new Date(targetDate!).getTime() - Date.now()
+      if (diff <= 0) { setLabel('Agora'); return }
+      const h = Math.floor(diff / 3_600_000)
+      const m = Math.floor((diff % 3_600_000) / 60_000)
+      if (h > 23) setLabel(formatShortDateTime(targetDate))
+      else if (h > 0) setLabel(`em ${h}h ${m}min`)
+      else setLabel(`em ${m}min`)
+    }
+    tick()
+    const id = setInterval(tick, 30_000)
+    return () => clearInterval(id)
+  }, [targetDate])
+  return label
+}
+
 function LastNightRecap({
   games,
   upcomingGames,
@@ -93,8 +115,10 @@ function LastNightRecap({
     awayScore: game.away_score ?? 0,
     round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
     note: formatShortDateTime(game.tip_off_at),
+    gameNumber: game.game_number,
   }))
   const nextRealGame = upcomingGames[0]
+  const countdown = useCountdown(nextRealGame?.tip_off_at)
 
   return (
     <section style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
@@ -107,9 +131,16 @@ function LastNightRecap({
             Jogos da última noite
           </h2>
         </div>
-        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-          {isRealData ? 'placares reais sincronizados' : 'aguardando primeiros resultados reais'}
-        </span>
+        {countdown && nextRealGame ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(200,150,60,0.12)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 6, padding: '3px 8px', fontSize: '0.72rem', color: 'var(--nba-gold)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <Clock size={11} />
+            Próximo {countdown}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+            {isRealData ? 'placares reais' : 'aguardando dados'}
+          </span>
+        )}
       </div>
 
       {sourceGames.length > 0 ? (
@@ -141,7 +172,10 @@ function LastNightRecap({
                   <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
                     {game.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {game.away}
                   </span>
-                  <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.65rem', fontWeight: 600 }}>J{game.gameNumber}</span>
+                    <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -323,6 +357,12 @@ function RankingCard({
 }) {
   const top5 = ranking.slice(0, 5)
 
+  const podium = [
+    { medal: '🥇', color: '#ffd166', bg: 'rgba(255,209,102,0.08)', border: 'rgba(255,209,102,0.22)' },
+    { medal: '🥈', color: '#c9d1d9', bg: 'rgba(201,209,217,0.07)', border: 'rgba(201,209,217,0.18)' },
+    { medal: '🥉', color: '#d68c45', bg: 'rgba(214,140,69,0.08)', border: 'rgba(214,140,69,0.20)' },
+  ]
+
   return (
     <div style={card}>
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
@@ -332,27 +372,59 @@ function RankingCard({
           <LoadingBasketball size={20} />
         </div>
       ) : (
-        <div>
+        <div style={{ display: 'grid', gap: 6 }}>
           {top5.map((e, i) => {
             const isMe = e.participant_id === highlightId
             const diff = e.prev_rank != null ? e.prev_rank - e.rank : null
+            const p = i < 3 ? podium[i] : null
+
             return (
-              <div key={e.participant_id}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 6px', borderRadius: 6, background: isMe ? 'var(--nba-surface-2)' : 'transparent', fontSize: '0.85rem' }}>
-                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', width: 20, textAlign: 'center', flexShrink: 0 }}>
+              <div
+                key={e.participant_id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: p ? '10px 10px' : '7px 6px',
+                  borderRadius: 8,
+                  background: p ? p.bg : isMe ? 'var(--nba-surface-2)' : 'transparent',
+                  border: p ? `1px solid ${p.border}` : isMe ? '1px solid rgba(200,150,60,0.18)' : '1px solid transparent',
+                  transition: 'background 0.2s',
+                }}
+              >
+                {/* Posição */}
+                {p ? (
+                  <span style={{ fontSize: '1.1rem', flexShrink: 0, width: 24, textAlign: 'center' }}>{p.medal}</span>
+                ) : (
+                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-text-muted)', width: 24, textAlign: 'center', flexShrink: 0, fontSize: '0.82rem' }}>
                     {e.rank}
                   </span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)', fontWeight: isMe ? 600 : 400 }}>
-                    {e.participant_name}
+                )}
+
+                {/* Nome */}
+                <span style={{
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  color: p ? p.color : isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
+                  fontWeight: p || isMe ? 700 : 400,
+                  fontSize: p ? '0.9rem' : '0.85rem',
+                }}>
+                  {e.participant_name}
+                </span>
+
+                {/* Seta + pontos */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                  {diff !== null && <RankArrow diff={diff} />}
+                  <span className="font-condensed font-bold" style={{
+                    color: p ? p.color : 'var(--nba-text-muted)',
+                    fontSize: p ? '1rem' : '0.88rem',
+                  }}>
+                    {e.total_points}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {diff !== null && <RankArrow diff={diff} />}
-                    <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.9rem' }}>
-                      {e.total_points}
-                    </span>
-                  </div>
+                  {p && <span style={{ color: p.color, fontSize: '0.68rem', opacity: 0.7 }}>pts</span>}
                 </div>
-                {i < top5.length - 1 && <Divider />}
               </div>
             )
           })}
@@ -573,13 +645,27 @@ function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['
   )
 }
 
+function InjuryAlertPill() {
+  const { injuries, loading } = useAnalysisInsights()
+  if (loading || injuries.length === 0) return null
+  return (
+    <Link
+      to="/analysis"
+      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, textDecoration: 'none', background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.22)', color: 'var(--nba-danger)' }}
+    >
+      <Zap size={14} style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600 }}>
+        {injuries.length} lesão{injuries.length !== 1 ? 'ões' : ''} relevante{injuries.length !== 1 ? 's' : ''} hoje
+      </span>
+      <span style={{ fontSize: '0.72rem', color: 'var(--nba-text-muted)' }}>ver análise →</span>
+    </Link>
+  )
+}
+
 function HomeQuickDeck() {
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}>
       <CardTitle icon={<Sparkles size={14} />}>Acessos Rápidos</CardTitle>
-      <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45, margin: '0 0 12px' }}>
-        Atalhos para continuar a rodada sem procurar rota no menu. A ideia aqui é sair da Home já sabendo o próximo clique.
-      </p>
       <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
         <Link
           to="/games"
@@ -681,7 +767,8 @@ export function Home({ participantId }: Props) {
       <div className="flex flex-col gap-4 min-w-0">
         <div className="animate-in-1"><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} /></div>
         <div className="animate-in-2"><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></div>
-        <div className="animate-in-3"><HomeQuickDeck /></div>
+        <div className="animate-in-3"><InjuryAlertPill /></div>
+        <div className="animate-in-4"><HomeQuickDeck /></div>
 
         <div className="xl:hidden flex flex-col gap-4">
           <MyPicksCard series={series} picks={picks} />

@@ -1,5 +1,146 @@
 # Codex Changelog
 
+## 2026-04-13 - Melhorias e correções completas na aba Análise (Claude Code)
+
+### Objetivo
+- Corrigir bugs visuais e de dados na aba Análise, melhorar hierarquia de informação e aproveitar melhor as três APIs integradas (balldontlie, The Odds API, SportsDataIO).
+
+### Arquivos alterados
+- `frontend/src/pages/Analysis.tsx`
+
+### Mudanças feitas
+
+#### Novo hero (`AnalysisHero`)
+- Substituiu o hero anterior por um bloco com gradiente diagonal azul→dourado→escuro.
+- Exibe 4 chips de status: Próximos jogos (contagem), Resultados (contagem), Odds (Pronto/Indisponível), Lesões (Pronto/Indisponível).
+- Footer com pills coloridos das 3 fontes de dados + contador `X/3 frentes ativas` + data/hora da última atualização.
+- Corrigido bug que mostrava `/4` — agora mostra corretamente `/3`.
+- Componentes auxiliares extraídos: `AnalysisHeroFooter`, constante `SOURCE_PILLS`.
+
+#### `AnalysisContextCard` removido
+- Componente removido por redundância com o novo hero.
+- Removida da renderização no return principal.
+
+#### `NextGamesCard` — jogo em destaque sem duplicata
+- Lista agora usa `sourceGames.slice(1)` para evitar repetir o primeiro jogo já exibido no card de destaque.
+
+#### `RecentResultsCard` — vencedor destacado em cor
+- `sourceGames` agora inclui `homeWon`, `awayWon`, `homeColor`, `awayColor`, `gameNumber`.
+- Time vencedor exibido em negrito na cor do time; time perdedor em muted.
+- Badge `J1`, `J2` etc. adicionado ao lado do badge de rodada.
+
+#### `OddsCard` — fallback + correções
+- Adicionado prop `unfiltered?: boolean`; quando verdadeiro exibe banner de aviso amarelo.
+- Corrigido typo `"Preco"` → `"Preço"` na coluna da tabela.
+- Time favorito (menor odd) exibido em negrito; time azarão em muted.
+- `oddsToShow` e `injuriesToShow`: quando o filtro por time não encontra resultados, exibe todos os dados sem filtro (fallback).
+
+#### `InjuriesCard` — sidebar e mobile
+- Aviso de dados embaralhados comprimido para uma única linha.
+- No layout desktop (`xl`): exibido na sidebar direita via `hidden xl:block`.
+- No layout mobile: bloco adicional `xl:hidden` antes dos cards principais.
+
+#### Correção de build — smart quotes
+- Todo o bloco `AnalysisHero` havia sido escrito com aspas curvas (U+2018/U+2019) em vez de aspas ASCII, corrompendo o parser do TypeScript.
+- Aplicado replace global de `'` / `'` / `"` / `"` → `'` / `"` em todo o arquivo.
+
+#### `AlertTriangle` removido dos imports
+- Ícone não estava mais em uso após simplificações; removido para evitar warning de lint.
+
+### Resultado prático
+- Aba Análise carrega sem erros de TypeScript.
+- Odds filtradas por time com fallback funcional.
+- Lesões visíveis em sidebar no desktop sem poluir o feed principal.
+- Vencedor de cada jogo recente destacado na cor do time.
+
+### Validações
+- `frontend`: `npm run build` — ✓ built in 2.64s, zero erros.
+
+---
+
+## 2026-04-13 - Countdown, número do jogo, alerta de lesões e limpeza da Home (Claude Code)
+
+### Objetivo
+- Aproveitar dados já disponíveis nas APIs existentes para enriquecer a Home com informações úteis sem adicionar dependências novas.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+
+#### Countdown pro próximo jogo (`useCountdown` + `LastNightRecap`)
+- Adicionado hook `useCountdown(targetDate)` que calcula a diferença entre agora e o `tip_off_at` do próximo jogo, atualizando a cada 30 segundos.
+- Exibe: `"em Xh Ymin"` se nas próximas 24h, `"em Ymin"` se menos de 1h, data formatada se mais distante, `"Agora"` se já começou.
+- No header do `LastNightRecap`, o texto estático foi substituído por um pill dourado `"Próximo em Xh Ymin"` quando há jogo confirmado.
+
+#### Número do jogo nos cards de placar (`LastNightRecap`)
+- Adicionado `gameNumber: game.game_number` no mapeamento de `sourceGames`.
+- Cada card exibe `"J1"`, `"J2"` etc. ao lado do badge de rodada.
+
+#### Alerta discreto de lesões (`InjuryAlertPill`)
+- Novo componente `InjuryAlertPill` que chama `useAnalysisInsights` internamente.
+- Exibe banner vermelho com total de lesões e link para Análise se `injuries.length > 0`.
+- Retorna `null` silenciosamente se loading ou sem lesões — não afeta o layout.
+- Renderizado entre `HeroPanel` e `HomeQuickDeck` com stagger `animate-in-3`.
+
+#### Limpeza do `HomeQuickDeck`
+- Removido parágrafo descritivo desnecessário.
+
+#### Imports adicionados
+- `useEffect`, `useState` (React), `Zap` (lucide), `useAnalysisInsights`.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso — zero erros ou warnings.
+
+---
+
+## 2026-04-13 - Estilização do top 3 no Ranking Geral da Home (Claude Code)
+
+### Objetivo
+- Destacar visualmente o 1º, 2º e 3º colocados no card "Ranking Geral" da Home, que antes tratava todos os participantes de forma idêntica.
+
+### Arquivos alterados
+- `frontend/src/pages/Home.tsx`
+
+### Mudanças feitas
+- Adicionado array `podium` local no `RankingCard` com cor, background e border específicos para cada posição (ouro `#ffd166`, prata `#c9d1d9`, bronze `#d68c45`).
+- Os 3 primeiros colocados passaram a ter: medalha emoji (🥇🥈🥉) no lugar do número, fundo colorido sutil, borda colorida, nome e pontos na cor da medalha, fonte maior e negrito.
+- Os demais colocados (4º e 5º) mantêm o estilo anterior compacto, com número de posição e cor muted.
+- O layout da lista trocou de `<Divider />` entre itens para `gap: 6` no grid, deixando o espaçamento mais consistente com os cards do pódio.
+- Participante logado continua destacado em dourado quando fora do top 3.
+
+### Resultado prático
+- O pódio fica imediatamente legível e com hierarquia visual clara.
+- O 1º lugar chama atenção sem precisar abrir a página de Ranking completo.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso — zero erros ou warnings.
+
+---
+
+## 2026-04-13 - Aumento do tamanho base de fonte (Claude Code)
+
+### Objetivo
+- Corrigir tipografia pequena demais em toda a interface, especialmente no mobile.
+
+### Arquivos alterados
+- `frontend/src/index.css`
+
+### Mudanças feitas
+- Adicionado `font-size: 17px` ao seletor `html, body, #root`.
+- Como todos os componentes usam `rem`, o ajuste escala toda a tipografia proporcionalmente sem tocar nenhum componente individualmente.
+
+### Resultado prático
+- Labels de 0.68rem: 10.9px → 11.6px
+- Texto secundário de 0.8rem: 12.8px → 13.6px
+- Corpo de 0.85rem: 13.6px → 14.5px
+- Títulos e números em rem escalam junto
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso — zero erros ou warnings.
+
+---
+
 ## 2026-04-13 - Fusão do hero da Home em bloco único (Claude Code)
 
 ### Objetivo

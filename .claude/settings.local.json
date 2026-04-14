@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(xxd)",
+      "Bash(python3 -c ':*)",
+      "Bash(node:*)"
     ]
   }
 }
