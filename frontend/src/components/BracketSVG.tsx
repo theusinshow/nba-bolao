@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Trophy } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
 import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
-import { getTeamTextColor } from '../utils/teamColors'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const BOX_W    = 148   // width of each series box
@@ -160,8 +159,18 @@ function MobileSeriesCard({
   }
 
   const pickedTeamId = pick?.winner_id
-  const colorA = tA?.primary_color ?? 'rgba(200,150,60,0.4)'
-  const colorB = tB?.primary_color ?? 'rgba(200,150,60,0.4)'
+  const colorA = tA?.primary_color   ?? '#c8963c'
+  const colorB = tB?.primary_color   ?? '#c8963c'
+  const secA   = tA?.secondary_color ?? 'rgba(200,150,60,0.4)'
+  const secB   = tB?.secondary_color ?? 'rgba(200,150,60,0.4)'
+
+  // Gradient border: secondary colors when no pick status, solid when picked/correct/wrong
+  const hasPick = status !== 'none'
+  const cardBackground = hasPick
+    ? `linear-gradient(to right, ${colorA}10 0%, var(--nba-surface) 32%, var(--nba-surface) 68%, ${colorB}10 100%) padding-box,
+       linear-gradient(${borderColor}, ${borderColor}) border-box`
+    : `linear-gradient(to right, ${colorA}10 0%, var(--nba-surface) 32%, var(--nba-surface) 68%, ${colorB}10 100%) padding-box,
+       linear-gradient(to right, ${secA} 50%, ${secB} 50%) border-box`
 
   return (
     <button
@@ -169,21 +178,21 @@ function MobileSeriesCard({
       disabled={!onClick}
       style={{
         width: '100%',
-        background: `linear-gradient(to right, ${colorA}12 0%, var(--nba-surface) 32%, var(--nba-surface) 68%, ${colorB}12 100%)`,
-        border: `1px solid ${borderColor}`,
+        background: cardBackground,
+        border: '1.5px solid transparent',
         borderRadius: 10,
         padding: 0,
         cursor: onClick ? 'pointer' : 'default',
         textAlign: 'left',
         overflow: 'hidden',
-        transition: 'border-color 0.2s, box-shadow 0.2s',
+        transition: 'background 0.2s, box-shadow 0.2s',
       }}
     >
-      {/* Team color accent bar */}
+      {/* Accent bar: secondary colors */}
       <div style={{
         height: 3,
-        background: `linear-gradient(to right, ${colorA} 50%, ${colorB} 50%)`,
-        opacity: 0.7,
+        background: `linear-gradient(to right, ${secA} 50%, ${secB} 50%)`,
+        opacity: 0.85,
       }} />
 
       {/* Teams row */}
@@ -206,7 +215,7 @@ function MobileSeriesCard({
           <span
             className="font-condensed font-bold"
             style={{
-              color: getTeamTextColor(tA?.primary_color),
+              color: homeDisplay.isPlaceholder ? 'var(--nba-text-muted)' : colorA,
               fontSize: '1.9rem',
               lineHeight: 1,
               letterSpacing: '-0.01em',
@@ -277,7 +286,7 @@ function MobileSeriesCard({
           <span
             className="font-condensed font-bold"
             style={{
-              color: getTeamTextColor(tB?.primary_color),
+              color: awayDisplay.isPlaceholder ? 'var(--nba-text-muted)' : colorB,
               fontSize: '1.9rem',
               lineHeight: 1,
               letterSpacing: '-0.01em',
@@ -591,7 +600,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
           height={BOX_H}
           rx={7}
           fill="#13131a"
-          stroke={borderColor}
+          stroke={status === 'none' && !compareById ? `url(#sec-${def.id})` : borderColor}
           strokeWidth={1.5}
         />
 
@@ -610,7 +619,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         <text
           x={10} y={yA}
           dominantBaseline="middle"
-          fill={homeDisplay.isPlaceholder ? '#6f88aa' : getTeamTextColor(tA?.primary_color)}
+          fill={homeDisplay.isPlaceholder ? '#6f88aa' : (tA?.primary_color ?? '#c8963c')}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"
@@ -682,7 +691,7 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         <text
           x={10} y={yB}
           dominantBaseline="middle"
-          fill={awayDisplay.isPlaceholder ? '#6f88aa' : getTeamTextColor(tB?.primary_color)}
+          fill={awayDisplay.isPlaceholder ? '#6f88aa' : (tB?.primary_color ?? '#c8963c')}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"
@@ -825,6 +834,21 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
           .bracket-slot.clickable { cursor: pointer; }
           .bracket-slot.clickable:hover { filter: brightness(1.18) drop-shadow(0 0 4px rgba(200,150,60,0.25)); }
         `}</style>
+
+        {/* Secondary color gradients for slot borders */}
+        <defs>
+          {SLOT_DEFS.map((def) => {
+            const s  = seriesById[def.id]
+            const sA = s?.home_team?.secondary_color ?? 'rgba(200,150,60,0.4)'
+            const sB = s?.away_team?.secondary_color ?? 'rgba(200,150,60,0.4)'
+            return (
+              <linearGradient key={def.id} id={`sec-${def.id}`} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="50%" stopColor={sA} />
+                <stop offset="50%" stopColor={sB} />
+              </linearGradient>
+            )
+          })}
+        </defs>
 
         {/* Translate everything down to make room for labels */}
         <g transform={`translate(${SVG_PAD}, ${SVG_PAD + LABEL_H})`}>

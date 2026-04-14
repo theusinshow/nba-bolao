@@ -8,6 +8,7 @@ export interface Team {
   conference: Conference
   seed: number
   primary_color: string
+  secondary_color: string
 }
 
 export interface Series {

@@ -8,7 +8,6 @@ import { type OddsSummaryItem, useOddsSummary } from '../hooks/useOddsSummary'
 import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
-import { getTeamTextColor } from '../utils/teamColors'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -884,7 +883,7 @@ function RevealedPicksModal({
             }}
           >
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_a?.name ?? game.home_team_id}</div>
-            <div className="font-condensed font-bold" style={{ color: getTeamTextColor(game.team_a?.primary_color) ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
+            <div className="font-condensed font-bold" style={{ color: game.team_a?.primary_color ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
               {homeVotes.length}
               <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 6 }}>{homePct}%</span>
             </div>
@@ -903,7 +902,7 @@ function RevealedPicksModal({
             }}
           >
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_b?.name ?? game.away_team_id}</div>
-            <div className="font-condensed font-bold" style={{ color: getTeamTextColor(game.team_b?.primary_color) ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
+            <div className="font-condensed font-bold" style={{ color: game.team_b?.primary_color ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
               {awayVotes.length}
               <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 6 }}>{awayPct}%</span>
             </div>
@@ -973,7 +972,7 @@ function RevealedPicksModal({
                     <span
                       className="font-condensed font-bold"
                       style={{
-                        color: getTeamTextColor(pickedTeam?.primary_color) ?? 'var(--nba-gold)',
+                        color: pickedTeam?.primary_color ?? 'var(--nba-gold)',
                         background: pickedTeam?.primary_color ? `${pickedTeam.primary_color}22` : 'rgba(200,150,60,0.12)',
                         border: `1px solid ${pickedTeam?.primary_color ?? 'rgba(200,150,60,0.22)'}`,
                         borderRadius: 999,
@@ -1088,17 +1087,17 @@ function TeamSide({
   locked: boolean
   onClick: () => void
 }) {
-  const color = getTeamTextColor(team?.primary_color)
+  const color = team?.primary_color ?? 'var(--nba-gold)'
   const abbr  = team?.abbreviation ?? '?'
   const name  = team?.name ?? '—'
 
-  const teamTint = !team?.primary_color ? 'rgba(200,150,60,0.18)' : `${team.primary_color}22`
-  const teamOutline = color === 'var(--nba-text-muted)' ? 'rgba(200,150,60,0.5)' : `${color}88`
+  const teamTint    = !team?.primary_color ? 'rgba(200,150,60,0.32)' : `${team.primary_color}50`
+  const teamOutline = !team?.primary_color ? 'rgba(200,150,60,0.8)'  : `${color}cc`
 
   const resultBg =
     isWinner ? 'rgba(46,204,113,0.10)' :
     isLoser  ? 'rgba(231,76,60,0.08)'  :
-    isSelected ? `linear-gradient(180deg, ${teamTint}, rgba(12,12,18,0.72))` :
+    isSelected ? `linear-gradient(180deg, ${team?.primary_color ?? '#c8963c'}38 0%, rgba(12,12,18,0.55) 100%)` :
     'transparent'
 
   const borderColor =
@@ -1127,7 +1126,7 @@ function TeamSide({
         outline: 'none',
         opacity: isLoser ? 0.45 : 1,
         borderRadius: side === 'left' ? '7px 0 0 0' : '0 7px 0 0',
-        boxShadow: isSelected ? `inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 0 2px ${teamTint}, 0 10px 24px ${teamTint}` : 'none',
+        boxShadow: isSelected ? `inset 0 0 18px ${team?.primary_color ?? '#c8963c'}28, 0 0 0 2px ${teamOutline}` : 'none',
         transform: isSelected ? 'translateY(-1px)' : 'translateY(0)',
       }}
       onMouseEnter={(e) => {
@@ -1148,7 +1147,7 @@ function TeamSide({
           fontSize: 'clamp(1.6rem, 4vw, 2.2rem)',
           lineHeight: 1,
           letterSpacing: '-0.01em',
-          textShadow: isSelected ? `0 0 18px ${teamTint}` : 'none',
+          textShadow: isSelected ? `0 0 12px ${team?.primary_color ?? '#c8963c'}aa` : 'none',
         }}
       >
         {abbr}
@@ -1674,7 +1673,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
                 Você está escolhendo{' '}
                 <span
                   className="font-condensed font-bold"
-                  style={{ color: getTeamTextColor(selectedTeam?.primary_color) ?? 'var(--nba-gold)', fontSize: '0.9rem' }}
+                  style={{ color: selectedTeam?.primary_color ?? 'var(--nba-gold)', fontSize: '0.9rem' }}
                 >
                   {selectedTeam?.abbreviation ?? (displayId === tA?.id ? tA?.abbreviation : tB?.abbreviation)}
                 </span>
@@ -1688,7 +1687,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
             <div
               className="font-condensed font-bold"
               style={{
-                color: getTeamTextColor(selectedTeam?.primary_color) ?? 'var(--nba-gold)',
+                color: selectedTeam?.primary_color ?? 'var(--nba-gold)',
                 fontSize: '0.82rem',
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
@@ -1982,7 +1981,7 @@ function PicksFocusCard({ entries }: { entries: PickFocusEntry[] }) {
                   {statusLabel}
                 </span>
               </div>
-              <div style={{ color: getTeamTextColor(team?.primary_color) ?? 'var(--nba-gold)', fontWeight: 700, fontSize: '0.82rem' }}>
+              <div style={{ color: team?.primary_color ?? 'var(--nba-gold)', fontWeight: 700, fontSize: '0.82rem' }}>
                 Seu pick: {team?.abbreviation ?? '?'}
               </div>
               <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>

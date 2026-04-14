@@ -1,5 +1,40 @@
 # Codex Changelog
 
+## 2026-04-14 - Cores por time: primary na letra, secondary na borda (Claude Code)
+
+### Objetivo
+- Usar `primary_color` do time diretamente como cor da letra (sem auto-clareamento)
+- Adicionar `secondary_color` para cada time, exibida como borda do card
+- Remover dependência de `getTeamTextColor` em BracketSVG e Games
+
+### Arquivos alterados
+- `frontend/src/types/index.ts` — adicionado campo `secondary_color: string` em `Team`
+- `frontend/src/data/teams2025.ts` — adicionado `secondary_color` para todos os 16 times; `primary_color` revisado com cores curadas e legíveis
+- `frontend/src/components/BracketSVG.tsx` — texto usa `primary_color` direto; borda mobile usa CSS gradient border (`padding-box`/`border-box`) com secondary_color split 50/50; SVG usa `<linearGradient>` em `<defs>` para stroke dos slots; barra de acento usa secondary_color; `getTeamTextColor` removido
+- `frontend/src/pages/Games.tsx` — substituído `getTeamTextColor(x.primary_color)` por `x.primary_color` direto em todos os pontos
+
+### Cores secundárias adicionadas (referência)
+| Time | Primary (letra) | Secondary (borda) |
+|------|----------------|-------------------|
+| OKC  | #007AC1        | #EF3B24 (laranja) |
+| HOU  | #CE1141        | #000000 (preto)   |
+| GSW  | #FFC72C        | #1D428A (azul)    |
+| DEN  | #236AB9        | #FEC524 (dourado) |
+| LAC  | #C8102E        | #1D428A (azul)    |
+| LAL  | #FDB927        | #552583 (roxo)    |
+| MIN  | #236192        | #78BE20 (verde)   |
+| MEM  | #5D76A9        | #F5B112 (dourado) |
+| CLE  | #FDBB30        | #860038 (vinho)   |
+| BOS  | #007A33        | #BA9653 (dourado) |
+| NYK  | #F58426        | #006BB6 (azul)    |
+| IND  | #FDBB30        | #002D62 (navy)    |
+| MIL  | #00B04F        | #EEE1C6 (creme)   |
+| DET  | #C8102E        | #1D42BA (azul)    |
+| MIA  | #F9A01B        | #98002E (vermelho)|
+| ORL  | #0077C0        | #000000 (preto)   |
+
+---
+
 ## 2026-04-13 - Contraste de cores de times no Bracket e Jogos (Claude Code)
 
 ### Objetivo

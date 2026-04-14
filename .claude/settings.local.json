@@ -6,7 +6,10 @@
       "Bash(npm run:*)",
       "Bash(xxd)",
       "Bash(python3 -c ':*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:teamcolorcodes.com)",
+      "WebFetch(domain:nbacolors.com)"
     ]
   }
 }
