@@ -1,5 +1,54 @@
 # Codex Changelog
 
+## 2026-04-13 - Contraste de cores de times no Bracket e Jogos (Claude Code)
+
+### Objetivo
+- Corrigir cores de times com contraste insuficiente contra o fundo escuro (#13131a), especialmente MIN/DEN (cores quase idênticas e invisíveis) e demais times com navy/verde escuro.
+
+### Arquivos alterados
+- `frontend/src/data/teams2025.ts`
+- `frontend/src/utils/teamColors.ts` (novo)
+- `frontend/src/components/BracketSVG.tsx`
+- `frontend/src/pages/Games.tsx`
+
+### Mudanças feitas
+
+#### `teams2025.ts` — cores substituídas para times com primárias problemáticas
+- `MIN #0C2340` (navy quase-preto) → `#78BE20` (verde lima icônico dos Timberwolves)
+- `DEN #0E2240` (navy quase-preto, idêntico ao MIN) → `#FFC627` (dourado dos Nuggets)
+- `IND #002D62` (navy escuro) → `#FDBB30` (dourado dos Pacers)
+- `MIL #00471B` (verde escuro) → `#00B04F` (verde mais vibrante, ainda identifica os Bucks)
+- Essas cores são usadas tanto para texto quanto para barras de acento e gradientes nos cards — a troca melhora a identidade visual em todos os contextos.
+
+#### `utils/teamColors.ts` — utilitário novo
+- Função `getTeamTextColor(primaryColor)`: calcula luminosidade percebida (ITU-R BT.601) e, se abaixo de 112, mistura linearmente a cor com branco para atingir legibilidade mínima.
+- Cores já legíveis são retornadas sem modificação.
+- Cores muito escuras (brightness < ~60) recebem maior boost via fator 1.35x.
+- Documentado: usar apenas em contextos de texto — backgrounds/borders com opacidade não precisam da função.
+
+#### `BracketSVG.tsx` — texto dos times usa `getTeamTextColor`
+- SVG desktop: `fill` das abreviações substituído (`tA?.primary_color` → `getTeamTextColor(tA?.primary_color)`) em ambas as linhas de texto (team A e B).
+- Mobile card (`MobileSeriesCard`): `color` das abreviações substituído em ambos os lados.
+- Barras de acento e gradientes de background mantêm `primary_color` direto (sem `getTeamTextColor`).
+
+#### `Games.tsx` — texto dos times usa `getTeamTextColor`
+- Linha de votação (home/away vote count): `color: game.team_a/b?.primary_color` → `getTeamTextColor(...)`.
+- Pick badge (abreviação do time escolhido): texto usa `getTeamTextColor`.
+- Componente de seleção de time: `color: selectedTeam?.primary_color` → `getTeamTextColor(...)` em dois lugares.
+- Card de histórico ("Seu pick"): `color: team?.primary_color` → `getTeamTextColor(...)`.
+- `teamTint` (background tint) mantém `primary_color` original para preservar a identidade visual com opacidade.
+
+### Resultado prático
+- MIN e DEN agora têm cores totalmente distintas (verde lima vs dourado) — não se confundem mais.
+- IND e MIL passam de invisível para dourado/verde vivo.
+- Times como GSW, LAL, BOS, CLE, HOU recebem boost automático da função sem precisar alterar teams2025.ts.
+- Backgrounds e bordas coloridas mantêm a cor original com opacidade — não foram afetados.
+
+### Validações
+- `frontend`: `npm run build` — ✓ built in 2.65s, zero erros.
+
+---
+
 ## 2026-04-13 - Melhorias visuais na página Bracket (desktop + mobile) (Claude Code)
 
 ### Objetivo
@@ -39,8 +88,11 @@
 - Desktop: bracket preenche o ecrã e é imediatamente legível sem scroll em monitores comuns.
 - Mobile: cada card é visualmente identificável pelo time pelo gradiente e barra colorida; layout 2-col em telas maiores reduz scroll; hierarquia entre fases mais clara.
 
+#### Ajuste de padding do wrapper SVG
+- Wrapper do SVG alterado de `px-2` para `px-2 md:px-6 lg:px-10` para adicionar respiro nas laterais em desktop e evitar que o bracket encoste nas bordas do monitor.
+
 ### Validações
-- `frontend`: `npm run build` — ✓ built in 2.55s, zero erros.
+- `frontend`: `npm run build` — ✓ built in 2.61s, zero erros.
 
 ---
 
