@@ -285,24 +285,16 @@ function HeroPanel({
 
         {/* 3 stat chips */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '10px 12px' }}>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Minha posição</div>
-            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.7rem', lineHeight: 1 }}>
-              {myEntry ? `#${myEntry.rank}` : '—'}
+          {[
+            { label: 'Minha posição', value: myEntry ? `#${myEntry.rank}` : '—', color: 'var(--nba-gold)' },
+            { label: 'Meus pontos', value: myEntry?.total_points ?? 0, color: 'var(--nba-text)' },
+            { label: 'Dist. do líder', value: myEntry ? (gapToLeader === 0 ? 'LÍDER' : `${gapToLeader}`) : '—', color: 'var(--nba-east)' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 12, padding: '10px 12px' }}>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 5, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+              <div className="font-condensed font-bold" style={{ color, fontSize: '1.7rem', lineHeight: 1 }}>{value}</div>
             </div>
-          </div>
-          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '10px 12px' }}>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Meus pontos</div>
-            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.7rem', lineHeight: 1 }}>
-              {myEntry?.total_points ?? 0}
-            </div>
-          </div>
-          <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '10px 12px' }}>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4 }}>Dist. do líder</div>
-            <div className="font-condensed font-bold" style={{ color: 'var(--nba-east)', fontSize: '1.7rem', lineHeight: 1 }}>
-              {myEntry ? (gapToLeader === 0 ? 'LÍDER' : `${gapToLeader}`) : '—'}
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Progress bar */}
@@ -325,8 +317,8 @@ function HeroPanel({
         </div>
 
         {/* Smart CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.42)', border: `1px solid color-mix(in srgb, ${primaryAction.tone} 20%, transparent)`, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0 }}>
+        <div style={{ borderRadius: 10, background: 'rgba(12,12,18,0.42)', border: `1px solid color-mix(in srgb, ${primaryAction.tone} 22%, transparent)`, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 14px 10px' }}>
             <div className="font-condensed font-bold" style={{ color: primaryAction.tone, fontSize: '1rem', lineHeight: 1 }}>
               {primaryAction.label}
             </div>
@@ -336,9 +328,23 @@ function HeroPanel({
           </div>
           <Link
             to={primaryAction.to}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 10, textDecoration: 'none', background: primaryAction.tone, color: '#0a0a0f', fontWeight: 700, fontSize: '0.82rem', flexShrink: 0, whiteSpace: 'nowrap' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '11px 16px',
+              textDecoration: 'none',
+              background: primaryAction.tone,
+              color: '#0a0a0f',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.04em',
+              borderTop: `1px solid color-mix(in srgb, ${primaryAction.tone} 35%, transparent)`,
+            }}
           >
-            Ir agora <ChevronRight size={14} />
+            Ir agora <ChevronRight size={15} />
           </Link>
         </div>
       </div>

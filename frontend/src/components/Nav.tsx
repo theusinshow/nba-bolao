@@ -268,16 +268,17 @@ export function Nav({ auth, onSignOut }: Props) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              paddingLeft: 8,
+              gap: 6,
+              paddingLeft: 10,
               marginLeft: 4,
               borderLeft: '1px solid rgba(200,150,60,0.1)',
               flexShrink: 0,
-              background: 'transparent',
-              borderTop: 'none',
-              borderRight: 'none',
-              borderBottom: 'none',
+              background: menuOpen ? 'rgba(200,150,60,0.08)' : 'transparent',
+              border: menuOpen ? '1px solid rgba(200,150,60,0.22)' : '1px solid transparent',
+              borderRadius: 12,
+              padding: '6px 8px 6px 10px',
               cursor: 'pointer',
+              transition: 'background 0.18s ease, border-color 0.18s ease',
             }}
             title="Abrir menu"
           >
@@ -286,48 +287,41 @@ export function Nav({ auth, onSignOut }: Props) {
                 src={avatar}
                 alt={name}
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 28,
+                  height: 28,
                   borderRadius: '999px',
-                  border: '1px solid rgba(200,150,60,0.22)',
+                  border: menuOpen ? '1.5px solid var(--nba-gold)' : '1.5px solid rgba(200,150,60,0.28)',
                   objectFit: 'cover',
+                  transition: 'border-color 0.18s ease',
                 }}
               />
             ) : (
               <div
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 28,
+                  height: 28,
                   borderRadius: '999px',
-                  background: 'rgba(200,150,60,0.12)',
-                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: 'rgba(200,150,60,0.14)',
+                  border: menuOpen ? '1.5px solid var(--nba-gold)' : '1.5px solid rgba(200,150,60,0.22)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '0.72rem',
+                  fontSize: '0.68rem',
                   color: 'var(--nba-gold)',
                   fontWeight: 700,
+                  fontFamily: "'Barlow Condensed', sans-serif",
                 }}
               >
                 {initials || '?'}
               </div>
             )}
-            <span
+            <Menu
+              size={15}
               style={{
-                border: '1px solid rgba(200,150,60,0.12)',
-                background: 'rgba(28,28,38,0.9)',
                 color: menuOpen ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                width: 32,
-                height: 32,
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.18s ease',
+                transition: 'color 0.18s ease',
               }}
-            >
-              <Menu size={15} />
-            </span>
+            />
           </button>
         </div>
       </nav>

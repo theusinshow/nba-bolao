@@ -1,5 +1,78 @@
 # Codex Changelog
 
+## 2026-04-14 - Polimento visual II: cravada, hero, gráfico, ScoringGuide (Claude Code)
+
+### Objetivo
+- Segunda passagem de refinamento visual sem alterações de lógica ou arquitetura.
+- Foco em hierarquia visual, feedback de interação e limpeza de elementos repetitivos.
+
+### Arquivos alterados
+- `frontend/src/components/ParticipantScoreReport.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `frontend/src/components/SeriesModal.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/components/RankingChart.tsx`
+
+### Mudanças feitas
+
+#### `ParticipantScoreReport.tsx` — destaque visual da cravada
+- Item de série com `status === 'cravada'` agora tem: border dourada 1.5px (`rgba(255,209,102,0.38)`), gradiente de fundo amarelo-dourado tênue, badge maior (`padding: 4px 10px`, `font-size: 0.76rem`) com borda sutil, e pontuação em `font-size: 1rem` (vs 0.78 padrão).
+- Cor da cravada ajustada de `var(--nba-gold)` para `#ffd166` (dourado mais claro e vibrante).
+
+#### `Ranking.tsx` — TopThreeCards + ScoringGuide
+- `TopThreeCards`: cada card tem agora `minHeight: 180` e `display: flex; flexDirection: column` para altura uniforme nos 3 cards do pódio.
+- `ScoringGuide`: tabela de pontuação convertida de blocos textuais para grid visual com cabeçalhos Jogo / Série / Cravada. Coluna Cravada tem fundo `rgba(255,209,102,0.09)` e cor `#ffd166` para diferenciação imediata.
+
+#### `SeriesModal.tsx` — feedback inline
+- Quando a série está aberta para palpite mas o usuário ainda não selecionou vencedor ou número de jogos, aparece uma dica inline discreta acima do botão explicando o que falta ("Falta escolher quem vai vencer.", etc.).
+
+#### `Home.tsx` — HeroPanel
+- CTA block (ação principal) refatorado: botão "Ir agora" agora é full-width com layout `display: flex; justify-content: center`, separado do label por `borderTop`. Mais clicável no mobile.
+- Stat chips (Minha posição / Meus pontos / Dist. do líder): `borderRadius: 10 → 12`, label em `Barlow Condensed uppercase` com `letter-spacing`, refatorado para map para reduzir repetição.
+
+#### `RankingChart.tsx` — hierarquia de linhas
+- Linha do líder: `strokeWidth: 3 → 3.5`, `dot.r: 3`, `activeDot.r: 5`, `fontWeight: 800` no label.
+- Demais linhas: `strokeWidth: 2 → 1.5`, `opacity: 0.62`, `dot.r` reduzido.
+- `CustomLegend`: marcador de linha (retângulo `10×3.5` vs `7×2.5`), líder em `var(--nba-text) fontWeight 700`, demais em `opacity: 0.72`.
+
+---
+
+## 2026-04-14 - Polimento visual global: CSS, SeriesModal, RankingTable, Nav (Claude Code)
+
+### Objetivo
+- Refinar UI/UX em pontos específicos sem alterar lógica de negócio.
+- Melhorar consistência visual entre componentes.
+
+### Arquivos alterados
+- `frontend/src/index.css`
+- `frontend/src/components/SeriesModal.tsx`
+- `frontend/src/components/RankingTable.tsx`
+- `frontend/src/components/Nav.tsx`
+
+### Mudanças feitas
+
+#### `index.css` — melhorias globais
+- Adicionado `scroll-behavior: smooth` no `html`.
+- `.btn-primary`: radius 6→8px, fonte `Barlow Condensed` com `letter-spacing`, `transform: translateY(-1px)` no hover, `:active` zera o transform, `focus-visible` com outline dourado.
+- Novo `.btn-ghost`: botão fantasma com borda dourada sutil, hover com cor e background leves, `focus-visible`.
+- Adicionada classe `.font-condensed` no CSS global (era usada extensivamente nos JSX mas não estava definida em CSS — agora declarada explicitamente para consistência).
+
+#### `SeriesModal.tsx` — games picker e team picker refinados
+- **Games picker (4/5/6/7)**: botões agora têm altura uniforme com `flexDirection: column`; opções extremas ("Sweep" sob 4 e "Máximo" sob 7) ganham hint label em tamanho pequeno; estado selecionado usa `border: 2px solid var(--nba-gold)` em vez de apenas classe Tailwind; bordas e backgrounds com transição suave.
+- **Team picker**: buttons agora com `padding: 14px 8px` (mais altura para área de toque); adicionada barra colorida de 3px no topo do botão com a cor secundária do time (`opacity: 0.35` padrão, `1` quando selecionado); background levemente tintado pela cor do time quando selecionado; abreviação com `font-size: 1.5rem`.
+
+#### `RankingTable.tsx` — cursor e último row
+- `cursor: default` → `cursor: onParticipantClick ? 'pointer' : 'default'` — agora o cursor muda corretamente quando a linha é clicável.
+- Último row da tabela não exibe `border-bottom` (antes havia uma linha órfã na última linha do componente).
+
+#### `Nav.tsx` — botão de menu unificado
+- O avatar e o ícone hamburger antes eram dois elementos separados dentro de um único botão, com estilos conflitantes (borda left aplicada ao wrapper e borda nos dois elementos). Reescrito como um único botão compacto com avatar + Menu ícone, sem o span intermediário extra. Estado aberto tem background e borda dourada suaves para feedback visual. Avatar ganha borda dourada quando menu está aberto.
+
+### Validações
+- `frontend`: `npm run build` — ✓ built in 2.65s, zero erros.
+
+---
+
 ## 2026-04-14 - Fundo do login com quadra de basquete em vez de campo (Codex)
 
 ### Objetivo

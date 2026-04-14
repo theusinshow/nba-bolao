@@ -191,9 +191,9 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                 style={{
                   background: rowBg,
                   boxShadow: rowShadow,
-                  borderBottom: '1px solid var(--nba-border)',
+                  borderBottom: idx < ranking.length - 1 ? '1px solid var(--nba-border)' : 'none',
                   transition: 'background 0.2s ease, filter 0.2s ease',
-                  cursor: 'default',
+                  cursor: onParticipantClick ? 'pointer' : 'default',
                 }}
                 onMouseEnter={(ev) => {
                   ev.currentTarget.style.filter = 'brightness(1.12)'

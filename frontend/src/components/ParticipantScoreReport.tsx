@@ -22,7 +22,7 @@ const CONFERENCE_LABEL = {
 } as const
 
 const STATUS_META = {
-  cravada: { label: 'Cravada', color: 'var(--nba-gold)', bg: 'rgba(200,150,60,0.1)', icon: <Flame size={13} /> },
+  cravada: { label: 'Cravada!', color: '#ffd166', bg: 'rgba(255,209,102,0.14)', icon: <Flame size={14} /> },
   winner: { label: 'Vencedor', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <CheckCircle2 size={13} /> },
   wrong: { label: 'Errou', color: 'var(--nba-danger)', bg: 'rgba(231,76,60,0.1)', icon: <XCircle size={13} /> },
   pending: { label: 'Pendente', color: 'var(--nba-text-muted)', bg: 'rgba(255,255,255,0.05)', icon: <CircleOff size={13} /> },
@@ -349,18 +349,20 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
             <div style={{ display: 'grid', gap: 10 }}>
               {filteredSeriesBreakdown.map((item) => {
                 const status = STATUS_META[item.status]
+                const isCravada = item.status === 'cravada'
                 return (
                   <div
                     key={item.id}
                     style={{
                       padding: '12px',
                       borderRadius: 10,
-                      border: '1px solid rgba(200,150,60,0.12)',
-                      background: 'rgba(12,12,18,0.32)',
+                      border: isCravada ? '1.5px solid rgba(255,209,102,0.38)' : '1px solid rgba(200,150,60,0.12)',
+                      background: isCravada ? 'linear-gradient(135deg, rgba(255,209,102,0.1), rgba(200,150,60,0.06) 60%, rgba(12,12,18,0.32) 100%)' : 'rgba(12,12,18,0.32)',
+                      boxShadow: isCravada ? '0 0 0 1px rgba(255,209,102,0.08) inset' : 'none',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                      <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
+                      <span className="font-condensed" style={{ color: isCravada ? '#ffd166' : 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
                         {ROUND_LABEL[item.round]} · {item.matchup_label}
                       </span>
                       <span
@@ -371,9 +373,10 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
                           color: status.color,
                           background: status.bg,
                           borderRadius: 999,
-                          padding: '3px 8px',
-                          fontSize: '0.72rem',
+                          padding: isCravada ? '4px 10px' : '3px 8px',
+                          fontSize: isCravada ? '0.76rem' : '0.72rem',
                           fontWeight: 700,
+                          border: isCravada ? '1px solid rgba(255,209,102,0.28)' : 'none',
                         }}
                       >
                         {status.icon}
@@ -394,9 +397,13 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
                           {item.actual_winner_label ?? 'Pendente'}{item.actual_winner_label ? ` em ${item.actual_games_played}` : ''}
                         </strong>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
                         <span>Pontos</span>
-                        <strong style={{ color: item.points > 0 ? status.color : 'var(--nba-text-muted)' }}>
+                        <strong style={{
+                          color: item.points > 0 ? status.color : 'var(--nba-text-muted)',
+                          fontSize: isCravada ? '1rem' : '0.78rem',
+                          letterSpacing: isCravada ? '0.02em' : undefined,
+                        }}>
                           +{item.points}
                         </strong>
                       </div>

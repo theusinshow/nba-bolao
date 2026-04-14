@@ -49,6 +49,9 @@ function TopThreeCards({
               border: `1px solid ${style.color}33`,
               borderRadius: 12,
               padding: '1rem',
+              minHeight: 180,
+              display: 'flex',
+              flexDirection: 'column',
               boxShadow: isMe ? '0 0 0 1px rgba(200,150,60,0.28) inset' : 'none',
               transition: 'transform 0.22s ease',
             }}
@@ -286,30 +289,53 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
         )}
       </div>
 
-      <div style={{ display: 'grid', gap: 10 }}>
+      {/* Column headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 44px 44px 54px', gap: 4, marginBottom: 4 }}>
+        <div />
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.06em', textAlign: 'center', textTransform: 'uppercase' }}>Jogo</div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.06em', textAlign: 'center', textTransform: 'uppercase' }}>Série</div>
+        <div style={{ color: '#ffd166', fontSize: '0.62rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.06em', textAlign: 'center', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          <Flame size={9} />Cravada
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 6 }}>
         {([1, 2, 3, 4] as const).map((round) => (
           <div
             key={round}
             style={{
-              padding: '10px 12px',
+              display: 'grid',
+              gridTemplateColumns: '1fr 44px 44px 54px',
+              alignItems: 'center',
+              gap: 4,
+              padding: '9px 10px',
               borderRadius: 8,
               background: 'var(--nba-surface-2)',
               border: '1px solid var(--nba-border)',
             }}
           >
-            <div style={{ color: 'var(--nba-text)', fontWeight: 600, fontSize: '0.82rem', marginBottom: 6 }}>
+            <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {ROUND_LABELS[round]}
             </div>
-            <div style={{ display: 'grid', gap: 4, fontSize: '0.78rem' }}>
-              <span style={{ color: 'var(--nba-text-muted)' }}>
-                Jogo: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerGame[round]} pt</strong>
-              </span>
-              <span style={{ color: 'var(--nba-text-muted)' }}>
-                Série: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerSeries[round]} pts</strong>
-              </span>
-              <span style={{ color: 'var(--nba-text-muted)' }}>
-                Cravada: <strong style={{ color: 'var(--nba-gold)' }}>{SCORING_CONFIG.pointsPerCravada[round]} pts</strong>
-              </span>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', textAlign: 'center', lineHeight: 1 }}>
+              {SCORING_CONFIG.pointsPerGame[round]}
+            </div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', textAlign: 'center', lineHeight: 1 }}>
+              {SCORING_CONFIG.pointsPerSeries[round]}
+            </div>
+            <div
+              className="font-condensed font-bold"
+              style={{
+                color: '#ffd166',
+                fontSize: '0.95rem',
+                textAlign: 'center',
+                lineHeight: 1,
+                background: 'rgba(255,209,102,0.09)',
+                borderRadius: 6,
+                padding: '4px 0',
+              }}
+            >
+              {SCORING_CONFIG.pointsPerCravada[round]}
             </div>
           </div>
         ))}

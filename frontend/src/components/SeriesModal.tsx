@@ -15,6 +15,7 @@ interface Props {
 }
 
 const GAMES_OPTIONS = [4, 5, 6, 7] as const
+const GAMES_HINTS: Record<number, string> = { 4: 'Sweep', 5: '5 jogos', 6: '6 jogos', 7: 'Máximo' }
 
 export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }: Props) {
   const [selectedWinner, setSelectedWinner] = useState<string>(existingPick?.winner_id ?? '')
@@ -84,27 +85,69 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
 
         {/* Team picker */}
         <p className="text-nba-muted text-xs mb-2">Quem vai vencer?</p>
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-5">
           {[teamA, teamB].map((team) => {
             if (!team) return null
             const isSelected = selectedWinner === team.id
             const isWinner = series.is_complete && series.winner_id === team.id
+            const accentColor = team.secondary_color ?? team.primary_color
             return (
               <button
                 key={team.id}
                 disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
                 onClick={() => setSelectedWinner(team.id)}
-                className={`flex-1 py-3 px-2 rounded-lg border text-center transition-all ${
-                  isSelected
-                    ? 'border-nba-gold bg-nba-surface-2'
-                    : 'border-nba-border hover:border-nba-gold/40'
-                } ${series.is_complete && isWinner ? 'border-nba-success' : ''}`}
-                style={{ borderLeft: `4px solid ${team.secondary_color ?? team.primary_color}` }}
+                style={{
+                  flex: 1,
+                  padding: '14px 8px',
+                  borderRadius: 10,
+                  border: isWinner
+                    ? '2px solid var(--nba-success)'
+                    : isSelected
+                    ? `2px solid ${accentColor}`
+                    : '1px solid var(--nba-border)',
+                  background: isSelected
+                    ? `${accentColor}14`
+                    : 'rgba(12,12,18,0.3)',
+                  textAlign: 'center',
+                  cursor: (readOnly || series.is_complete || !matchupReady || seriesLocked) ? 'default' : 'pointer',
+                  transition: 'border-color 0.18s ease, background 0.18s ease',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
               >
-                <div className="font-bebas text-xl" style={teamAbbrStyle(team.primary_color)}>{team.abbreviation}</div>
-                <div className="text-xs text-nba-muted truncate">{team.name.split(' ').slice(-1)[0]}</div>
-                {isSelected && !series.is_complete && <Check size={12} className="mx-auto mt-1 text-nba-gold" />}
-                {series.is_complete && isWinner && <Check size={12} className="mx-auto mt-1 text-nba-success" />}
+                {/* Barra topo com cor do time */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0,
+                  height: 3,
+                  background: accentColor,
+                  opacity: isSelected ? 1 : 0.35,
+                  transition: 'opacity 0.18s ease',
+                }} />
+                <div
+                  className="font-condensed font-bold"
+                  style={{
+                    ...teamAbbrStyle(team.primary_color),
+                    fontSize: '1.5rem',
+                    lineHeight: 1,
+                    marginBottom: 3,
+                  }}
+                >
+                  {team.abbreviation}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {team.name.split(' ').slice(-1)[0]}
+                </div>
+                {isSelected && !series.is_complete && (
+                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center' }}>
+                    <Check size={13} style={{ color: 'var(--nba-gold)' }} />
+                  </div>
+                )}
+                {series.is_complete && isWinner && (
+                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center' }}>
+                    <Check size={13} style={{ color: 'var(--nba-success)' }} />
+                  </div>
+                )}
               </button>
             )
           })}
@@ -113,20 +156,61 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
         {/* Games picker */}
         <p className="text-nba-muted text-xs mb-2">Em quantos jogos?</p>
         <div className="flex gap-2 mb-6">
-          {GAMES_OPTIONS.map((n) => (
-            <button
-              key={n}
-              disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
-              onClick={() => setSelectedGames(n)}
-              className={`flex-1 py-2 rounded-lg border font-condensed text-lg transition-all ${
-                selectedGames === n
-                  ? 'border-nba-gold bg-nba-surface-2 text-nba-gold'
-                  : 'border-nba-border text-nba-muted hover:border-nba-gold/40'
-              }`}
-            >
-              {n}
-            </button>
-          ))}
+          {GAMES_OPTIONS.map((n) => {
+            const isSelected = selectedGames === n
+            const isEdge = n === 4 || n === 7
+            return (
+              <button
+                key={n}
+                disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
+                onClick={() => setSelectedGames(n)}
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  borderRadius: 10,
+                  border: isSelected
+                    ? '2px solid var(--nba-gold)'
+                    : '1px solid var(--nba-border)',
+                  background: isSelected
+                    ? 'rgba(200,150,60,0.14)'
+                    : 'rgba(12,12,18,0.3)',
+                  cursor: (readOnly || series.is_complete || !matchupReady || seriesLocked) ? 'default' : 'pointer',
+                  transition: 'border-color 0.18s ease, background 0.18s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                <span
+                  className="font-condensed font-bold"
+                  style={{
+                    fontSize: '1.5rem',
+                    lineHeight: 1,
+                    color: isSelected ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                    transition: 'color 0.18s ease',
+                  }}
+                >
+                  {n}
+                </span>
+                {isEdge && (
+                  <span
+                    style={{
+                      fontSize: '0.58rem',
+                      color: isSelected ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                      fontFamily: "'Barlow Condensed', sans-serif",
+                      letterSpacing: '0.04em',
+                      lineHeight: 1,
+                      opacity: isEdge ? 1 : 0,
+                    }}
+                  >
+                    {GAMES_HINTS[n]}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* Result display */}
@@ -137,6 +221,25 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
               {(series.winner ?? getTeam(series.winner_id))?.abbreviation ?? series.winner_id} 4x{series.games_played - 4}
             </span>
           </div>
+        )}
+
+        {!readOnly && !series.is_complete && !seriesLocked && matchupReady && (
+          (() => {
+            const missingWinner = selectedWinner === ''
+            const missingGames = selectedGames === 0
+            if (missingWinner || missingGames) {
+              return (
+                <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(200,150,60,0.07)', border: '1px solid rgba(200,150,60,0.16)', color: 'var(--nba-text-muted)', fontSize: '0.76rem', lineHeight: 1.45 }}>
+                  {missingWinner && missingGames
+                    ? 'Escolha o vencedor e o número de jogos para salvar.'
+                    : missingWinner
+                    ? 'Falta escolher quem vai vencer.'
+                    : 'Falta escolher em quantos jogos.'}
+                </div>
+              )
+            }
+            return null
+          })()
         )}
 
         {!readOnly && !series.is_complete && (

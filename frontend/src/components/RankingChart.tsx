@@ -182,13 +182,26 @@ function CustomLegend({ payload }: { payload?: Array<{ value: string; color: str
   if (!payload?.length) return null
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', marginBottom: 12, fontSize: '0.75rem', color: 'var(--nba-text-muted)' }}>
-      {payload.map((item) => (
-        <span key={item.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '999px', background: item.color, flexShrink: 0 }} />
-          {item.value}
-        </span>
-      ))}
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', marginBottom: 14, fontSize: '0.75rem' }}>
+      {payload.map((item, index) => {
+        const isLeader = index === 0
+        return (
+          <span
+            key={item.value}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              color: isLeader ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+              fontWeight: isLeader ? 700 : 400,
+              opacity: isLeader ? 1 : 0.72,
+            }}
+          >
+            <span style={{ width: isLeader ? 10 : 7, height: isLeader ? 3.5 : 2.5, borderRadius: 2, background: item.color, flexShrink: 0 }} />
+            {item.value}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -319,6 +332,7 @@ export function RankingChart({ ranking, breakdowns }: Props) {
               {participantEvents.map((participant, index) => {
                 const color = PLAYER_COLORS[index % PLAYER_COLORS.length]
                 const isLeader = index === 0
+                const opacity = isLeader ? 1 : 0.62
 
                 return (
                   <Line
@@ -326,9 +340,10 @@ export function RankingChart({ ranking, breakdowns }: Props) {
                     type="linear"
                     dataKey={participant.name}
                     stroke={color}
-                    strokeWidth={isLeader ? 3 : 2}
-                    dot={{ r: isMobile ? 2 : 2.5, strokeWidth: 0, fill: color }}
-                    activeDot={{ r: 4 }}
+                    strokeWidth={isLeader ? 3.5 : 1.5}
+                    strokeOpacity={opacity}
+                    dot={{ r: isLeader ? 3 : (isMobile ? 1.5 : 2), strokeWidth: 0, fill: color, fillOpacity: opacity }}
+                    activeDot={{ r: isLeader ? 5 : 3.5, strokeWidth: 0 }}
                     connectNulls
                     isAnimationActive
                   >
@@ -336,7 +351,7 @@ export function RankingChart({ ranking, breakdowns }: Props) {
                       dataKey={participant.name}
                       position="top"
                       offset={6}
-                      style={{ fill: color, fontSize: isMobile ? 9 : 10, fontWeight: 700 }}
+                      style={{ fill: color, fontSize: isMobile ? 9 : 10, fontWeight: isLeader ? 800 : 600, opacity }}
                       formatter={(value: number, _entry: unknown, labelIndex: number) => (labelIndex === data.length - 1 ? value : '')}
                     />
                   </Line>
