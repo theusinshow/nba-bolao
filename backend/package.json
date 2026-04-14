@@ -7,6 +7,7 @@
     "start": "node dist/index.js",
     "test:scoring": "npm run build && node dist/scoring/selftest.js",
     "backup:operational": "npm run build && node dist/scripts/backupOperationalSnapshot.js",
+    "digest:daily": "npm run build && node dist/scripts/exportDailyPicksDigest.js",
     "remove:participant": "npm run build && node dist/scripts/removeParticipant.js"
   },
   "dependencies": {

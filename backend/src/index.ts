@@ -4,6 +4,7 @@ import cors from 'cors'
 import adminRouter from './routes/admin'
 import analysisRouter from './routes/analysis'
 import { getNBASyncSchedulerSnapshot, startNBASyncScheduler } from './scheduler/nbaSyncScheduler'
+import { getDailyDigestSchedulerSnapshot, startDailyDigestScheduler } from './scheduler/dailyDigestScheduler'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3001)
@@ -20,11 +21,15 @@ app.get('/health', (_req, res) => {
   res.json({
     ok: true,
     uptime: process.uptime(),
-    scheduler: getNBASyncSchedulerSnapshot(),
+    scheduler: {
+      nbaSync: getNBASyncSchedulerSnapshot(),
+      dailyDigest: getDailyDigestSchedulerSnapshot(),
+    },
   })
 })
 
 startNBASyncScheduler()
+startDailyDigestScheduler()
 
 app.listen(PORT, () => {
   console.log(`[server] Bolão NBA backend running on port ${PORT}`)

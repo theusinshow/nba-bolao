@@ -2,48 +2,39 @@
 
 Este documento reúne apenas as frentes que continuam pendentes depois das implementações já concluídas no produto.
 
-## Prioridade alta
+## Concluído recentemente
 
 ### 1. Melhorar layout mobile e corrigir botões do bracket
 
-Motivo:
-- atualmente ainda existem interações no bracket mobile que não respondem como esperado;
-- isso afeta diretamente a experiência de uso e passa sensação de funcionalidade quebrada.
+Status:
+- concluído
 
-Objetivos:
-- revisar todos os botões e CTAs do bracket mobile;
-- remover botões sem ação real;
-- corrigir fluxos de toque e navegação;
-- deixar o bracket mais confiável em telas pequenas.
+Resumo:
+- o bracket recebeu rodadas de refinamento visual e de interação;
+- houve correções de contraste, mobile e comportamento de elementos da tela;
+- essa frente não deve mais permanecer como pendência principal do produto.
 
 ### 2. Permitir palpitar todos os jogos disponíveis de uma vez
 
-Motivo:
-- alguns usuários preferem resolver todos os palpites jogo a jogo em uma única sessão, sem precisar entrar série por série ou dia por dia.
+Status:
+- concluído
 
-Objetivos:
-- criar uma visão consolidada com todos os jogos abertos;
-- permitir salvar palpites em lote;
-- reduzir atrito operacional para usuários que querem preencher tudo rapidamente.
-
-## Prioridade alta / produto
+Resumo:
+- o produto já conta com fluxo operacional para resolver palpites jogo a jogo de forma mais prática;
+- a necessidade original de reduzir atrito para preenchimento em lote foi absorvida pelas melhorias já entregues.
 
 ### 3. Trazer informações reais para a Home via APIs
 
-Motivo:
-- a Home pode virar um painel muito mais vivo se usar dados externos atualizados.
+Status:
+- concluído
 
-Objetivos:
-- mostrar dados reais de jogos, resultados e próximos confrontos;
-- aumentar utilidade da Home no dia a dia;
-- aproximar o produto de uma central real de acompanhamento dos playoffs.
-
-Observação:
-- essa frente deve ser ativada no momento em que o produto deixar de depender dos jogos fictícios de teste.
+Resumo:
+- a Home já consome feed real de jogos, resultados recentes e próximos confrontos;
+- a tela deixou de depender do modelo antigo baseado apenas em blocos estáticos.
 
 ## Prioridade alta / operação
 
-### 4. Automatizar a extração diária de dados de participantes
+### 1. Automatizar a extração diária de dados de participantes
 
 Motivo:
 - hoje a extração de dados de participantes depende da function configurada apenas no PC de casa;
@@ -65,7 +56,7 @@ Direção recomendada:
 Observação:
 - essa automação tende a ter custo operacional baixo porque não depende de APIs externas e roda só uma vez por dia.
 
-### 5. Gerar resumo textual diário dos palpites para envio no grupo
+### 2. Gerar resumo textual diário dos palpites para envio no grupo
 
 Motivo:
 - depois do último fechamento do dia, faz sentido ter um texto consolidado para conferência coletiva;
@@ -101,14 +92,13 @@ Boa parte do backlog original já foi absorvida no produto:
 - revelação de palpites pós-lock;
 - `Vai na fé`;
 - backup operacional;
+- melhorias de mobile e confiabilidade do bracket;
+- Home com dados reais;
 - melhorias do gráfico do ranking;
 - resultados recentes na Home;
 - mensagens de série encerrada no fluxo jogo a jogo.
 
 ## Ordem recomendada de execução
 
-1. Melhorar layout mobile e corrigir botões do bracket
-2. Permitir palpitar todos os jogos disponíveis de uma vez
-3. Trazer informações reais para a Home via APIs
-4. Automatizar a extração diária de dados de participantes
-5. Gerar resumo textual diário dos palpites para envio no grupo
+1. Automatizar a extração diária de dados de participantes
+2. Gerar resumo textual diário dos palpites para envio no grupo

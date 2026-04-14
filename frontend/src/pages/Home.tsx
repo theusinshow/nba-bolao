@@ -645,9 +645,9 @@ function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['
   )
 }
 
-function InjuryAlertPill() {
-  const { injuries, loading } = useAnalysisInsights()
-  if (loading || injuries.length === 0) return null
+function NewsAlertPill() {
+  const { news, loading } = useAnalysisInsights()
+  if (loading || news.length === 0) return null
   return (
     <Link
       to="/analysis"
@@ -655,7 +655,7 @@ function InjuryAlertPill() {
     >
       <Zap size={14} style={{ flexShrink: 0 }} />
       <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600 }}>
-        {injuries.length} lesão{injuries.length !== 1 ? 'ões' : ''} relevante{injuries.length !== 1 ? 's' : ''} hoje
+        {news.length} notícia{news.length !== 1 ? 's' : ''} nova{news.length !== 1 ? 's' : ''} na análise
       </span>
       <span style={{ fontSize: '0.72rem', color: 'var(--nba-text-muted)' }}>ver análise →</span>
     </Link>
@@ -711,7 +711,7 @@ function HomeQuickDeck() {
             <AlertTriangle size={15} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
             <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Abrir Análise</span>
-              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>odds, lesões e radar da rodada</span>
+              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>odds, notícias e radar da rodada</span>
             </span>
           </span>
           <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
@@ -767,7 +767,7 @@ export function Home({ participantId }: Props) {
       <div className="flex flex-col gap-4 min-w-0">
         <div className="animate-in-1"><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} /></div>
         <div className="animate-in-2"><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></div>
-        <div className="animate-in-3"><InjuryAlertPill /></div>
+        <div className="animate-in-3"><NewsAlertPill /></div>
         <div className="animate-in-4"><HomeQuickDeck /></div>
 
         <div className="xl:hidden flex flex-col gap-4">

@@ -16,6 +16,7 @@ import {
   Trash2,
   HeartPulse,
   Clock3,
+  MessageSquareShare,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { adminGet, adminPost } from '../lib/adminApi'
@@ -30,6 +31,21 @@ interface Props {
 interface HealthResponse {
   ok: boolean
   timestamp: string
+}
+
+interface DailyDigestResponse {
+  ok: boolean
+  message: string
+  result: {
+    outputDir: string
+    targetDate: string
+    whatsappText: string
+    files: {
+      whatsappTxt: string
+      summaryMd: string
+      payloadJson: string
+    }
+  }
 }
 
 interface RemoveParticipantResponse {
@@ -176,6 +192,8 @@ export function Admin({ participantId }: Props) {
   const [loadingOverview, setLoadingOverview] = useState(true)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>(() => loadActivity())
+  const [digestModalOpen, setDigestModalOpen] = useState(false)
+  const [latestDigest, setLatestDigest] = useState<DailyDigestResponse['result'] | null>(null)
 
   function pushActivity(label: string, tone: ActivityItem['tone']) {
     const next = [
@@ -318,6 +336,33 @@ export function Admin({ participantId }: Props) {
     }
   }
 
+  async function handleDailyDigest() {
+    try {
+      const payload = await runAdminAction('daily-digest', () =>
+        adminPost<DailyDigestResponse>('/admin/daily-digest')
+      )
+
+      setLatestDigest(payload.result)
+      setDigestModalOpen(true)
+      addToast('Resumo do grupo gerado com sucesso.', 'success')
+      pushActivity(`Resumo diário gerado para ${payload.result.targetDate}`, 'success')
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      pushActivity('Falha ao gerar resumo diário do grupo', 'danger')
+    }
+  }
+
+  async function handleCopyDigest() {
+    if (!latestDigest?.whatsappText) return
+
+    try {
+      await navigator.clipboard.writeText(latestDigest.whatsappText)
+      addToast('Mensagem copiada para a área de transferência.', 'success')
+    } catch {
+      addToast('Não foi possível copiar automaticamente a mensagem.', 'error')
+    }
+  }
+
   async function handleSync() {
     try {
       await runAdminAction('sync', () => adminPost('/admin/sync'))
@@ -428,8 +473,129 @@ export function Admin({ participantId }: Props) {
   const inconsistencies = overview?.inconsistencies
 
   return (
-    <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1460 }}>
-      <section
+    <>
+      {digestModalOpen && latestDigest && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 16, 0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            zIndex: 80,
+          }}
+          onClick={() => setDigestModalOpen(false)}
+        >
+          <div
+            style={{
+              width: 'min(820px, 100%)',
+              maxHeight: '88vh',
+              overflow: 'hidden',
+              borderRadius: 16,
+              border: '1px solid rgba(200,150,60,0.22)',
+              background: 'linear-gradient(180deg, rgba(18,23,34,0.98), rgba(10,13,20,0.98))',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 16,
+                padding: '18px 20px 14px',
+                borderBottom: '1px solid rgba(200,150,60,0.12)',
+              }}
+            >
+              <div>
+                <div
+                  className="font-condensed"
+                  style={{ color: 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                >
+                  Resumo do grupo
+                </div>
+                <div style={{ color: 'var(--nba-text)', fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>
+                  Mensagem pronta para WhatsApp
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+                  Data alvo: {latestDigest.targetDate}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4 }}>
+                  Pasta gerada: {latestDigest.outputDir}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setDigestModalOpen(false)}
+                style={{
+                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: 'var(--nba-text)',
+                  borderRadius: 10,
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleCopyDigest}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(200,150,60,0.18)',
+                    background: 'rgba(200,150,60,0.10)',
+                    color: 'var(--nba-gold)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  <MessageSquareShare size={15} />
+                  Copiar mensagem
+                </button>
+
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', alignSelf: 'center' }}>
+                  Arquivo `.txt`: {latestDigest.files.whatsappTxt}
+                </div>
+              </div>
+
+              <pre
+                style={{
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontSize: '0.84rem',
+                  lineHeight: 1.55,
+                  color: 'var(--nba-text)',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(200,150,60,0.10)',
+                  borderRadius: 12,
+                  padding: '16px 16px 18px',
+                }}
+              >
+                {latestDigest.whatsappText}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1460 }}>
+        <section
         style={{
           background: 'linear-gradient(135deg, rgba(74,144,217,0.14), rgba(200,150,60,0.12) 50%, rgba(19,19,26,1) 100%)',
           border: '1px solid rgba(200,150,60,0.2)',
@@ -784,6 +950,31 @@ export function Admin({ participantId }: Props) {
               </button>
 
               <button
+                onClick={handleDailyDigest}
+                disabled={busyAction === 'daily-digest'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(200,150,60,0.14)',
+                  background: 'rgba(12,12,18,0.34)',
+                  color: 'var(--nba-text)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MessageSquareShare size={15} />
+                  Gerar resumo do grupo
+                </span>
+                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                  {busyAction === 'daily-digest' ? 'Gerando...' : 'WhatsApp'}
+                </span>
+              </button>
+
+              <button
                 onClick={handleBackup}
                 disabled={busyAction === 'backup'}
                 style={{
@@ -954,7 +1145,8 @@ export function Admin({ participantId }: Props) {
             </div>
           </div>
         </section>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

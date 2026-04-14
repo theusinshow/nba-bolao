@@ -5,6 +5,7 @@ import { recalculateAllScores } from '../scoring/engine'
 import { supabase } from '../lib/supabase'
 import { removeParticipantCompletely } from '../admin/removeParticipant'
 import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
+import { exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
 
 const router = Router()
 
@@ -234,6 +235,23 @@ router.post('/backup', async (_req, res) => {
     })
   } catch (err: unknown) {
     console.error('[admin/backup] Backup failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/daily-digest — generate WhatsApp-ready daily picks summary
+router.post('/daily-digest', async (req, res) => {
+  try {
+    const targetDate = typeof req.body?.targetDate === 'string' ? req.body.targetDate.trim() : ''
+    const result = await exportDailyPicksDigest(targetDate || undefined)
+
+    res.json({
+      ok: true,
+      message: 'Resumo diário gerado com sucesso',
+      result,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/daily-digest] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })

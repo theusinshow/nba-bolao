@@ -10,8 +10,8 @@ export interface OddsProviderState {
   reason?: string
 }
 
-export interface InjuriesProviderState {
-  provider: 'sportsdataio'
+export interface NewsProviderState {
+  provider: 'espn-rss'
   configured: boolean
   available: boolean
   reason?: string
@@ -41,13 +41,13 @@ export interface AnalysisOddsItem {
   }
 }
 
-export interface AnalysisInjuryItem {
+export interface AnalysisNewsItem {
   id: string
-  player_name: string
-  team: string | null
-  status: string
-  detail: string | null
-  position: string | null
+  title: string
+  summary: string | null
+  link: string
+  published_at: string | null
+  source: string
 }
 
 interface AnalysisInsightsResponse {
@@ -55,10 +55,10 @@ interface AnalysisInsightsResponse {
   generatedAt: string
   providers: {
     odds: OddsProviderState
-    injuries: InjuriesProviderState
+    news: NewsProviderState
   }
   odds: AnalysisOddsItem[]
-  injuries: AnalysisInjuryItem[]
+  news: AnalysisNewsItem[]
 }
 
 export function useAnalysisInsights() {
@@ -66,10 +66,10 @@ export function useAnalysisInsights() {
   const [error, setError] = useState<string | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
   const [odds, setOdds] = useState<AnalysisOddsItem[]>([])
-  const [injuries, setInjuries] = useState<AnalysisInjuryItem[]>([])
+  const [news, setNews] = useState<AnalysisNewsItem[]>([])
   const [providers, setProviders] = useState<AnalysisInsightsResponse['providers']>({
     odds: { provider: 'the-odds-api', configured: false, available: false, reason: 'Ainda não carregado.' },
-    injuries: { provider: 'sportsdataio', configured: false, available: false, reason: 'Ainda não carregado.' },
+    news: { provider: 'espn-rss', configured: false, available: false, reason: 'Ainda não carregado.' },
   })
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export function useAnalysisInsights() {
         setGeneratedAt(payload.generatedAt)
         setProviders(payload.providers)
         setOdds(payload.odds)
-        setInjuries(payload.injuries)
+        setNews(payload.news)
       } catch (loadError: unknown) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar análise.')
@@ -120,7 +120,7 @@ export function useAnalysisInsights() {
     error,
     generatedAt,
     odds,
-    injuries,
+    news,
     providers,
-  }), [loading, error, generatedAt, odds, injuries, providers])
+  }), [loading, error, generatedAt, odds, news, providers])
 }

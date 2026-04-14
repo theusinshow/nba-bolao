@@ -1,14 +1,14 @@
 import { Router } from 'express'
 import { fetchNBAGameOdds, fetchNBAGameOddsSummary } from '../lib/odds'
-import { fetchNBAInjuries } from '../lib/injuries'
+import { fetchNBANews } from '../lib/news'
 
 const router = Router()
 
 router.get('/insights', async (_req, res) => {
   try {
-    const [oddsResult, injuriesResult] = await Promise.all([
+    const [oddsResult, newsResult] = await Promise.all([
       fetchNBAGameOdds(),
-      fetchNBAInjuries(),
+      fetchNBANews(),
     ])
 
     res.json({
@@ -16,10 +16,10 @@ router.get('/insights', async (_req, res) => {
       generatedAt: new Date().toISOString(),
       providers: {
         odds: oddsResult.status,
-        injuries: injuriesResult.status,
+        news: newsResult.status,
       },
       odds: oddsResult.odds,
-      injuries: injuriesResult.injuries,
+      news: newsResult.news,
     })
   } catch (error: unknown) {
     console.error('[analysis/insights] Failed:', error)
