@@ -48,6 +48,20 @@ interface DailyDigestResponse {
   }
 }
 
+interface BackupResponse {
+  ok: boolean
+  message: string
+  result: {
+    outputDir: string
+    files: {
+      seriesPicksCsv: string
+      gamePicksCsv: string
+      rankingCsv: string
+      summaryMd: string
+    }
+  }
+}
+
 interface RemoveParticipantResponse {
   ok: boolean
   message: string
@@ -194,6 +208,8 @@ export function Admin({ participantId }: Props) {
   const [activity, setActivity] = useState<ActivityItem[]>(() => loadActivity())
   const [digestModalOpen, setDigestModalOpen] = useState(false)
   const [latestDigest, setLatestDigest] = useState<DailyDigestResponse['result'] | null>(null)
+  const [backupModalOpen, setBackupModalOpen] = useState(false)
+  const [latestBackup, setLatestBackup] = useState<BackupResponse['result'] | null>(null)
 
   function pushActivity(label: string, tone: ActivityItem['tone']) {
     const next = [
@@ -327,7 +343,9 @@ export function Admin({ participantId }: Props) {
 
   async function handleBackup() {
     try {
-      await runAdminAction('backup', () => adminPost('/admin/backup'))
+      const payload = await runAdminAction('backup', () => adminPost<BackupResponse>('/admin/backup'))
+      setLatestBackup(payload.result)
+      setBackupModalOpen(true)
       addToast('Backup operacional gerado com sucesso.', 'success')
       pushActivity('Backup operacional gerado', 'success')
     } catch (error) {
@@ -474,6 +492,128 @@ export function Admin({ participantId }: Props) {
 
   return (
     <>
+      {backupModalOpen && latestBackup && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 16, 0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            zIndex: 81,
+          }}
+          onClick={() => setBackupModalOpen(false)}
+        >
+          <div
+            style={{
+              width: 'min(760px, 100%)',
+              maxHeight: '88vh',
+              overflow: 'hidden',
+              borderRadius: 16,
+              border: '1px solid rgba(200,150,60,0.22)',
+              background: 'linear-gradient(180deg, rgba(18,23,34,0.98), rgba(10,13,20,0.98))',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 16,
+                padding: '18px 20px 14px',
+                borderBottom: '1px solid rgba(200,150,60,0.12)',
+              }}
+            >
+              <div>
+                <div
+                  className="font-condensed"
+                  style={{ color: 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                >
+                  Backup operacional
+                </div>
+                <div style={{ color: 'var(--nba-text)', fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>
+                  Arquivos gerados com sucesso
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+                  Pasta de saída: {latestBackup.outputDir}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setBackupModalOpen(false)}
+                style={{
+                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: 'var(--nba-text)',
+                  borderRadius: 10,
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)' }}>
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'rgba(200,150,60,0.08)',
+                  border: '1px solid rgba(200,150,60,0.12)',
+                  color: 'var(--nba-text)',
+                  fontSize: '0.82rem',
+                  marginBottom: 14,
+                  lineHeight: 1.55,
+                }}
+              >
+                O backup não baixa automaticamente no navegador. Esses arquivos foram salvos no disco do backend e você pode abrir a pasta acima para acessar os CSVs e o resumo em Markdown.
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                {[
+                  { label: 'Palpites de séries (.csv)', value: latestBackup.files.seriesPicksCsv },
+                  { label: 'Palpites jogo a jogo (.csv)', value: latestBackup.files.gamePicksCsv },
+                  { label: 'Ranking congelado (.csv)', value: latestBackup.files.rankingCsv },
+                  { label: 'Resumo da rodada (.md)', value: latestBackup.files.summaryMd },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(200,150,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.75rem', fontWeight: 700, marginBottom: 6 }}>
+                      {item.label}
+                    </div>
+                    <div
+                      style={{
+                        color: 'var(--nba-text)',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.5,
+                        wordBreak: 'break-word',
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {digestModalOpen && latestDigest && (
         <div
           style={{
