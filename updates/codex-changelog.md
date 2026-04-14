@@ -1,5 +1,29 @@
 # Codex Changelog
 
+## 2026-04-14 - Tradução automática das notícias ESPN para português (Claude Code)
+
+### Objetivo
+- Traduzir automaticamente `title` e `summary` de cada notícia da ESPN de inglês para português antes de enviá-las ao frontend.
+
+### Arquivos alterados
+- `backend/src/lib/news.ts`
+
+### Mudanças feitas
+
+#### `backend/src/lib/news.ts`
+- Adicionada função `translateText(text)`: chama a **MyMemory API** (`api.mymemory.translated.net`) com `langpair=en|pt-BR`, timeout de 6s. Retorna o texto original silenciosamente em caso de erro (rede, rate limit, resposta inválida).
+- Adicionada função `translateNewsItem(item)`: traduz `title` e `summary` em paralelo via `Promise.all`, retorna o item com os campos substituídos.
+- Em `fetchNBANews`: após o parse do RSS, os 12 itens são traduzidos em paralelo com `Promise.all(rawNews.map(translateNewsItem))` antes de serem retornados.
+
+### Comportamento em caso de falha
+- Se a MyMemory API estiver indisponível, lenta ou tiver atingido o limite diário, cada item retorna com o texto original em inglês — o app continua funcionando normalmente sem nenhum erro visível ao usuário.
+
+### Limites da API gratuita
+- MyMemory free tier: **5.000 chars/dia** por IP (anônimo).
+- Estimativa por chamada: 12 itens × ~250 chars médios = ~3.000 chars — dentro do limite para uso normal do bolão.
+
+---
+
 ## 2026-04-14 - Polimento visual II: cravada, hero, gráfico, ScoringGuide (Claude Code)
 
 ### Objetivo

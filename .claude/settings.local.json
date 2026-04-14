@@ -15,7 +15,9 @@
       "Bash(cmd /c \"cd C:\\\\Dev\\\\pessoal\\\\projetos\\\\nba-bolao\\\\frontend && npm run build > build_output.txt 2>&1 && type build_output.txt\")",
       "Bash(cmd /c \"cd C:\\\\Dev\\\\pessoal\\\\projetos\\\\nba-bolao\\\\frontend && npx tsc --noEmit 2>&1\")",
       "Bash(powershell -Command \"cd 'C:\\\\Dev\\\\pessoal\\\\projetos\\\\nba-bolao\\\\frontend'; npm run build 2>&1 | Select-Object -Last 20\")",
-      "Bash(powershell -Command \"npm run build 2>&1 | Select-Object -Last 20\")"
+      "Bash(powershell -Command \"npm run build 2>&1 | Select-Object -Last 20\")",
+      "Bash(powershell -Command \"npx tsc --noEmit 2>&1 | Select-Object -Last 20\")",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ]
   }
 }

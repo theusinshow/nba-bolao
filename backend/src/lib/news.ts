@@ -16,6 +16,38 @@ export interface AnalysisNewsItem {
   source: string
 }
 
+// ─── Tradução automática via MyMemory (gratuita, sem chave) ───────────────────
+
+async function translateText(text: string): Promise<string> {
+  if (!text || text.trim().length === 0) return text
+  try {
+    const encoded = encodeURIComponent(text.slice(0, 500))
+    const url = `https://api.mymemory.translated.net/get?q=${encoded}&langpair=en|pt-BR`
+    const response = await axios.get<{
+      responseData: { translatedText: string }
+      responseStatus: number
+    }>(url, { timeout: 6000 })
+
+    if (
+      response.data?.responseStatus === 200 &&
+      response.data?.responseData?.translatedText
+    ) {
+      return response.data.responseData.translatedText
+    }
+    return text
+  } catch {
+    return text
+  }
+}
+
+async function translateNewsItem(item: AnalysisNewsItem): Promise<AnalysisNewsItem> {
+  const [title, summary] = await Promise.all([
+    translateText(item.title),
+    item.summary ? translateText(item.summary) : Promise.resolve(null),
+  ])
+  return { ...item, title, summary }
+}
+
 const ESPN_NBA_RSS_URL = 'https://www.espn.com/espn/rss/nba/news'
 
 function decodeXml(value: string): string {
@@ -79,7 +111,8 @@ export async function fetchNBANews(): Promise<{ status: NewsProviderStatus; news
       },
     })
 
-    const news = parseRssItems(response.data).slice(0, 12)
+    const rawNews = parseRssItems(response.data).slice(0, 12)
+    const news = await Promise.all(rawNews.map(translateNewsItem))
 
     return {
       status: {
