@@ -81,37 +81,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-@keyframes loading-basketball-bounce {
-  0%, 100% {
-    transform: translateY(-1px) scaleX(1) scaleY(1);
+@keyframes loading-basketball-spin {
+  0% {
+    transform: rotate(0deg) scale(0.98);
   }
-  35% {
-    transform: translateY(-18%) scaleX(0.99) scaleY(1.02);
+  50% {
+    transform: rotate(180deg) scale(1);
   }
-  55% {
-    transform: translateY(0) scaleX(1.04) scaleY(0.94);
-  }
-  70% {
-    transform: translateY(-8%) scaleX(0.995) scaleY(1.01);
+  100% {
+    transform: rotate(360deg) scale(0.98);
   }
 }
 
 @keyframes loading-basketball-shadow {
   0%, 100% {
-    opacity: 0.22;
-    transform: translateY(0) scaleX(0.9);
+    opacity: 0.2;
+    transform: translateX(-50%) scaleX(0.88);
   }
-  35% {
-    opacity: 0.12;
-    transform: translateY(2px) scaleX(0.72);
-  }
-  55% {
+  50% {
     opacity: 0.28;
-    transform: translateY(0) scaleX(1);
-  }
-  70% {
-    opacity: 0.16;
-    transform: translateY(1px) scaleX(0.82);
+    transform: translateX(-50%) scaleX(0.98);
   }
 }
 
@@ -124,8 +113,8 @@ body {
 }
 
 .loading-basketball-icon {
-  animation: loading-basketball-bounce 1.25s ease-in-out infinite;
-  transform-origin: center bottom;
+  animation: loading-basketball-spin 1.15s linear infinite;
+  transform-origin: center center;
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.2));
 }
 
@@ -136,7 +125,7 @@ body {
   border-radius: 999px;
   background: radial-gradient(circle, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0.12) 55%, rgba(0, 0, 0, 0) 100%);
   transform: translateX(-50%);
-  animation: loading-basketball-shadow 1.25s ease-in-out infinite;
+  animation: loading-basketball-shadow 1.15s ease-in-out infinite;
 }
 
 ::-webkit-scrollbar {

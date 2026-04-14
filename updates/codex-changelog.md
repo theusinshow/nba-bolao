@@ -1,5 +1,60 @@
 # Codex Changelog
 
+## 2026-04-14 - Fundo do login com quadra de basquete em vez de campo (Codex)
+
+### Objetivo
+- Fazer o fundo da tela de login comunicar basquete com mais clareza
+- Remover a leitura ambígua de “campo de futebol” nas linhas de fundo
+
+### Arquivos alterados
+- `frontend/src/pages/Login.tsx`
+
+### Mudanças feitas
+- O SVG de fundo da página de login foi redesenhado para parecer uma quadra de basquete completa.
+- As linhas passaram a destacar elementos típicos do esporte:
+  - linha de meio da quadra
+  - círculo central
+  - garrafões
+  - área restrita
+  - tabela e aro
+  - linhas laterais do perímetro
+  - arco de três pontos
+- A composição foi mantida em clima escuro e premium, sem mudar a identidade geral da tela.
+
+### Resultado prático
+- A primeira impressão do login ficou mais coerente com o tema do app.
+- O fundo agora lê imediatamente como basquete, sem confusão visual com futebol.
+
+### Validações
+- `frontend`: `npm run build` — ✓
+
+---
+
+## 2026-04-14 - Loading com bola girando em vez de quicando (Codex)
+
+### Objetivo
+- Trocar a animação do loader para uma leitura mais simples e contínua
+- Remover o movimento de quique e substituir por rotação da bola
+
+### Arquivos alterados
+- `frontend/src/index.css`
+
+### Mudanças feitas
+- A animação `loading-basketball-bounce` foi substituída por `loading-basketball-spin`.
+- O ícone da bola passou a girar continuamente em torno do próprio centro.
+- O `transform-origin` foi alterado de `center bottom` para `center center`.
+- A sombra abaixo da bola foi suavizada para acompanhar a nova proposta visual, sem simular impacto no chão.
+- O tempo da animação foi ajustado para `1.15s` para deixar a rotação fluida e limpa.
+
+### Resultado prático
+- O loading ficou com uma estética mais estável e menos “saltitante”.
+- A leitura visual passa a ser de bola girando, não de bola quicando.
+
+### Validações
+- `frontend`: `npm run build` — ✓
+
+---
+
 ## 2026-04-14 - Reset administrativo de palpites pré-largada com backup automático (Codex)
 
 ### Objetivo
