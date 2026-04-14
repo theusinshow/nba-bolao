@@ -1,5 +1,49 @@
 # Codex Changelog
 
+## 2026-04-13 - Melhorias visuais na página Bracket (desktop + mobile) (Claude Code)
+
+### Objetivo
+- Melhorar a experiência visual do bracket tanto no desktop (SVG muito pequeno, fixo em pixel) quanto no mobile (cards sem identidade visual dos times, layout single-column sem hierarquia).
+
+### Arquivos alterados
+- `frontend/src/components/BracketSVG.tsx`
+- `frontend/src/pages/BracketEditor.tsx`
+
+### Mudanças feitas
+
+#### Desktop — SVG responsivo
+- SVG alterado de `width: VB_W` (px fixo ~1332px) para `width: '100%', minWidth: VB_W`.
+- O SVG agora preenche a largura disponível do container; o `viewBox` cuida do escalonamento proporcional das caixas e fontes.
+- Em monitores grandes (1440px+) o bracket cresce proporcional ao espaço — sem scroll horizontal na maioria dos casos.
+- Em viewports menores que 1332px o `minWidth` mantém a legibilidade com scroll horizontal.
+- Removido `display: flex; justifyContent: 'safe center'` do container (causava dependência circular de largura).
+
+#### Mobile — identidade visual das equipes nos cards (`MobileSeriesCard`)
+- Adicionada barra de cor topo (3px) dividida ao meio pelas cores primárias dos dois times (`linear-gradient` 50%/50%).
+- Background do card alterado de `var(--nba-surface)` sólido para gradiente lateral sutil usando as cores primárias de cada time (`${colorA}12` em cada extremidade).
+- `borderRadius` dos cards aumentado de 8px para 10px.
+- `minHeight` da linha de times aumentado de 80 para 82px.
+
+#### Mobile — layout em grade para R1/R2 (`MobileBracketView`)
+- Em `sm+` (≥640px), rodadas 1 e 2 exibem os cards em `grid-cols-2` (2 colunas).
+- Finais de conferência e NBA Finals continuam em coluna única (mais destaque).
+- Adicionada constante `ROUND_COLOR` com cor diferente por rodada (azul R1, roxo R2, laranja CF, dourado Finals).
+- Headers de rodada aprimorados: badge circular colorido com número da rodada (`R1`/`R2`/`CF`/`★`), cor ajustada por fase, contagem de séries à direita (`X série(s)`).
+
+#### Mobile — limpeza do `BracketEditor`
+- Removido bloco de duas tiles de dica ("Dica: Toque numa série..." / "Leitura: Use a legenda...") — informação redundante com os próprios cards.
+- Removido pill hint "Arraste lateralmente para ver toda a chave" — texto incorreto no mobile (que não usa SVG scrollável, mas sim cards).
+- Removido fade-gradient de borda direita (só fazia sentido no contexto do SVG scrollável).
+
+### Resultado prático
+- Desktop: bracket preenche o ecrã e é imediatamente legível sem scroll em monitores comuns.
+- Mobile: cada card é visualmente identificável pelo time pelo gradiente e barra colorida; layout 2-col em telas maiores reduz scroll; hierarquia entre fases mais clara.
+
+### Validações
+- `frontend`: `npm run build` — ✓ built in 2.55s, zero erros.
+
+---
+
 ## 2026-04-13 - Melhorias e correções completas na aba Análise (Claude Code)
 
 ### Objetivo

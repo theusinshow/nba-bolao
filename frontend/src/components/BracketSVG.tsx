@@ -159,6 +159,8 @@ function MobileSeriesCard({
   }
 
   const pickedTeamId = pick?.winner_id
+  const colorA = tA?.primary_color ?? 'rgba(200,150,60,0.4)'
+  const colorB = tB?.primary_color ?? 'rgba(200,150,60,0.4)'
 
   return (
     <button
@@ -166,9 +168,9 @@ function MobileSeriesCard({
       disabled={!onClick}
       style={{
         width: '100%',
-        background: 'var(--nba-surface)',
+        background: `linear-gradient(to right, ${colorA}12 0%, var(--nba-surface) 32%, var(--nba-surface) 68%, ${colorB}12 100%)`,
         border: `1px solid ${borderColor}`,
-        borderRadius: 8,
+        borderRadius: 10,
         padding: 0,
         cursor: onClick ? 'pointer' : 'default',
         textAlign: 'left',
@@ -176,8 +178,15 @@ function MobileSeriesCard({
         transition: 'border-color 0.2s, box-shadow 0.2s',
       }}
     >
+      {/* Team color accent bar */}
+      <div style={{
+        height: 3,
+        background: `linear-gradient(to right, ${colorA} 50%, ${colorB} 50%)`,
+        opacity: 0.7,
+      }} />
+
       {/* Teams row */}
-      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 80 }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 82 }}>
 
         {/* Team A (home) */}
         <div
@@ -358,6 +367,13 @@ function MobileBracketView({
     items: filteredSeries.filter((s) => s.round === r),
   })).filter((g) => g.items.length > 0)
 
+  const ROUND_COLOR: Record<number, string> = {
+    1: 'var(--nba-east)',
+    2: '#9b59b6',
+    3: 'var(--nba-west)',
+    4: 'var(--nba-gold)',
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '4px 0 8px' }}>
       {rounds.map(({ round, label, items }) => (
@@ -368,13 +384,22 @@ function MobileBracketView({
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              marginBottom: 12,
+              marginBottom: 14,
             }}
           >
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+              background: `${ROUND_COLOR[round]}18`,
+              border: `1px solid ${ROUND_COLOR[round]}40`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: ROUND_COLOR[round], fontSize: '0.76rem', fontWeight: 700,
+            }}>
+              {round === 4 ? '★' : `R${round}`}
+            </div>
             <span
               className="title"
               style={{
-                color: 'var(--nba-gold)',
+                color: ROUND_COLOR[round],
                 fontSize: '1rem',
                 letterSpacing: '0.1em',
               }}
@@ -382,10 +407,13 @@ function MobileBracketView({
               {label}
             </span>
             <div style={{ flex: 1, height: 1, background: 'var(--nba-border)' }} />
+            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', flexShrink: 0 }}>
+              {items.length} {items.length === 1 ? 'série' : 'séries'}
+            </span>
           </div>
 
-          {/* Series cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Series cards — 2-col grid on sm+ for R1/R2 */}
+          <div className={round <= 2 ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''} style={round > 2 ? { display: 'flex', flexDirection: 'column', gap: 12 } : {}}>
             {items.map((s) => (
               <MobileSeriesCard
                 key={s.id}
@@ -779,16 +807,14 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
         scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'],
         scrollbarColor: 'rgba(200,150,60,0.3) transparent',
-        display: 'flex',
-        justifyContent: 'safe center',
       }}
     >
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         style={{
-          width: VB_W,
+          width: '100%',
+          minWidth: VB_W,
           display: 'block',
-          margin: '0 auto',
           overflow: 'visible',
         }}
       >
