@@ -99,8 +99,9 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                     ? 'border-nba-gold bg-nba-surface-2'
                     : 'border-nba-border hover:border-nba-gold/40'
                 } ${series.is_complete && isWinner ? 'border-nba-success' : ''}`}
+                style={{ borderLeft: `4px solid ${team.secondary_color ?? team.primary_color}` }}
               >
-                <div className="font-bebas text-xl" style={teamAbbrStyle(team.primary_color, team.secondary_color, 1)}>{team.abbreviation}</div>
+                <div className="font-bebas text-xl" style={teamAbbrStyle(team.primary_color)}>{team.abbreviation}</div>
                 <div className="text-xs text-nba-muted truncate">{team.name.split(' ').slice(-1)[0]}</div>
                 {isSelected && !series.is_complete && <Check size={12} className="mx-auto mt-1 text-nba-gold" />}
                 {series.is_complete && isWinner && <Check size={12} className="mx-auto mt-1 text-nba-success" />}

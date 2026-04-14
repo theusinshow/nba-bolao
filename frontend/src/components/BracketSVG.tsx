@@ -189,13 +189,6 @@ function MobileSeriesCard({
         transition: 'background 0.2s, box-shadow 0.2s',
       }}
     >
-      {/* Accent bar: secondary colors */}
-      <div style={{
-        height: 3,
-        background: `linear-gradient(to right, ${secA} 50%, ${secB} 50%)`,
-        opacity: 0.85,
-      }} />
-
       {/* Teams row */}
       <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 82 }}>
 
@@ -208,6 +201,7 @@ function MobileSeriesCard({
             alignItems: 'flex-start',
             justifyContent: 'center',
             padding: '14px 12px',
+            borderLeft: `3px solid ${secA}`,
             background: tAWins ? 'rgba(46,204,113,0.07)' : 'transparent',
             opacity: isComplete && !tAWins ? 0.4 : 1,
             transition: 'opacity 0.2s',
@@ -218,7 +212,7 @@ function MobileSeriesCard({
             style={{
               ...(homeDisplay.isPlaceholder
                 ? { color: 'var(--nba-text-muted)' }
-                : teamAbbrStyle(tA?.primary_color, tA?.secondary_color, 1.5)),
+                : teamAbbrStyle(tA?.primary_color)),
               fontSize: '1.9rem',
               lineHeight: 1,
               letterSpacing: '-0.01em',
@@ -281,6 +275,7 @@ function MobileSeriesCard({
             alignItems: 'flex-end',
             justifyContent: 'center',
             padding: '14px 12px',
+            borderRight: `3px solid ${secB}`,
             background: tBWins ? 'rgba(46,204,113,0.07)' : 'transparent',
             opacity: isComplete && !tBWins ? 0.4 : 1,
             transition: 'opacity 0.2s',
@@ -291,7 +286,7 @@ function MobileSeriesCard({
             style={{
               ...(awayDisplay.isPlaceholder
                 ? { color: 'var(--nba-text-muted)' }
-                : teamAbbrStyle(tB?.primary_color, tB?.secondary_color, 1.5)),
+                : teamAbbrStyle(tB?.primary_color)),
               fontSize: '1.9rem',
               lineHeight: 1,
               letterSpacing: '-0.01em',
@@ -610,6 +605,10 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         />
 
         {/* ── Team A ── */}
+        {/* Secondary color left strip */}
+        {tA?.secondary_color && (
+          <rect x={0} y={1.5} width={3} height={rowH - 3} rx={1.5} fill={tA.secondary_color} />
+        )}
         {/* Winner highlight tint */}
         {tAWins && (
           <rect
@@ -622,11 +621,11 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
 
         {/* Abbreviation */}
         <text
-          x={10} y={yA}
+          x={12} y={yA}
           dominantBaseline="middle"
           {...(homeDisplay.isPlaceholder
             ? { fill: '#6f88aa' }
-            : teamAbbrSVGProps(tA?.primary_color, tA?.secondary_color, 0.8))}
+            : teamAbbrSVGProps(tA?.primary_color))}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"
@@ -686,6 +685,10 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         />
 
         {/* ── Team B ── */}
+        {/* Secondary color left strip */}
+        {tB?.secondary_color && (
+          <rect x={0} y={rowH + 1.5} width={3} height={rowH - 3} rx={1.5} fill={tB.secondary_color} />
+        )}
         {tBWins && (
           <rect
             x={1.5} y={rowH + 0.5}
@@ -696,11 +699,11 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         )}
 
         <text
-          x={10} y={yB}
+          x={12} y={yB}
           dominantBaseline="middle"
           {...(awayDisplay.isPlaceholder
             ? { fill: '#6f88aa' }
-            : teamAbbrSVGProps(tB?.primary_color, tB?.secondary_color, 0.8))}
+            : teamAbbrSVGProps(tB?.primary_color))}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"

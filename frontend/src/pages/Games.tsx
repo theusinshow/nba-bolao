@@ -1123,6 +1123,8 @@ function TeamSide({
         background: resultBg,
         border: '1px solid transparent',
         borderColor,
+        borderLeft:  side === 'left'  ? `4px solid ${team?.secondary_color ?? 'transparent'}` : undefined,
+        borderRight: side === 'right' ? `4px solid ${team?.secondary_color ?? 'transparent'}` : undefined,
         cursor: locked ? 'default' : 'pointer',
         transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
         outline: 'none',
@@ -1147,7 +1149,7 @@ function TeamSide({
         style={{
           ...(abbr === 'TBD'
             ? { color: 'var(--nba-text-muted)' }
-            : teamAbbrStyle(team?.primary_color, team?.secondary_color, 2)),
+            : teamAbbrStyle(team?.primary_color)),
           fontSize: 'clamp(1.6rem, 4vw, 2.2rem)',
           lineHeight: 1,
           letterSpacing: '-0.01em',
