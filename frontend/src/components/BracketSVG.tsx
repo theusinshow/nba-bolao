@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Trophy } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
 import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
+import { teamAbbrStyle, teamAbbrSVGProps } from '../utils/teamColors'
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const BOX_W    = 148   // width of each series box
@@ -215,7 +216,9 @@ function MobileSeriesCard({
           <span
             className="font-condensed font-bold"
             style={{
-              color: homeDisplay.isPlaceholder ? 'var(--nba-text-muted)' : colorA,
+              ...(homeDisplay.isPlaceholder
+                ? { color: 'var(--nba-text-muted)' }
+                : teamAbbrStyle(tA?.primary_color, tA?.secondary_color, 1.5)),
               fontSize: '1.9rem',
               lineHeight: 1,
               letterSpacing: '-0.01em',
@@ -286,7 +289,9 @@ function MobileSeriesCard({
           <span
             className="font-condensed font-bold"
             style={{
-              color: awayDisplay.isPlaceholder ? 'var(--nba-text-muted)' : colorB,
+              ...(awayDisplay.isPlaceholder
+                ? { color: 'var(--nba-text-muted)' }
+                : teamAbbrStyle(tB?.primary_color, tB?.secondary_color, 1.5)),
               fontSize: '1.9rem',
               lineHeight: 1,
               letterSpacing: '-0.01em',
@@ -619,7 +624,9 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         <text
           x={10} y={yA}
           dominantBaseline="middle"
-          fill={homeDisplay.isPlaceholder ? '#6f88aa' : (tA?.primary_color ?? '#c8963c')}
+          {...(homeDisplay.isPlaceholder
+            ? { fill: '#6f88aa' }
+            : teamAbbrSVGProps(tA?.primary_color, tA?.secondary_color, 0.8))}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"
@@ -691,7 +698,9 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
         <text
           x={10} y={yB}
           dominantBaseline="middle"
-          fill={awayDisplay.isPlaceholder ? '#6f88aa' : (tB?.primary_color ?? '#c8963c')}
+          {...(awayDisplay.isPlaceholder
+            ? { fill: '#6f88aa' }
+            : teamAbbrSVGProps(tB?.primary_color, tB?.secondary_color, 0.8))}
           fontSize={13}
           fontFamily={baseFont}
           fontWeight="700"

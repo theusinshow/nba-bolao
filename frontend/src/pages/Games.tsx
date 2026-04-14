@@ -9,6 +9,7 @@ import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
 import { TEAM_MAP } from '../data/teams2025'
+import { teamAbbrStyle } from '../utils/teamColors'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1144,7 +1145,9 @@ function TeamSide({
       <span
         className="font-condensed font-bold"
         style={{
-          color: abbr === 'TBD' ? 'var(--nba-text-muted)' : color,
+          ...(abbr === 'TBD'
+            ? { color: 'var(--nba-text-muted)' }
+            : teamAbbrStyle(team?.primary_color, team?.secondary_color, 2)),
           fontSize: 'clamp(1.6rem, 4vw, 2.2rem)',
           lineHeight: 1,
           letterSpacing: '-0.01em',
