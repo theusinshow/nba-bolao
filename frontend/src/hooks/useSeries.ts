@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Game, Series, SeriesPick } from '../types'
 import { getSeriesSlot } from '../utils/bracket'
+import { TEAM_MAP } from '../data/teams2025'
 
 function getSeriesLockTipOff(seriesId: string, games: Game[]): string | null {
   const datedGames = games
@@ -49,7 +50,9 @@ export function useSeries(participantId?: string) {
       supabase.from('games').select('series_id, tip_off_at'),
     ])
     if (!seriesData) return
-    const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
+    const teamMap = Object.fromEntries(
+      (teamsData ?? []).map((t) => [t.id, { ...t, ...TEAM_MAP[t.id] }])
+    )
     const games = (gamesData ?? []) as Pick<Game, 'series_id' | 'tip_off_at'>[] as Game[]
     const merged = seriesData.map((s) => ({
       ...s,

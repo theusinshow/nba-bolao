@@ -8,6 +8,7 @@ import { type OddsSummaryItem, useOddsSummary } from '../hooks/useOddsSummary'
 import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
+import { TEAM_MAP } from '../data/teams2025'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2114,7 +2115,9 @@ export function Games({ participantId }: Props) {
         .select('id, round, games_played, is_complete')
         .in('id', seriesIds)
 
-      const teamMap = Object.fromEntries((teamsData ?? []).map((t) => [t.id, t]))
+      const teamMap = Object.fromEntries(
+        (teamsData ?? []).map((t) => [t.id, { ...t, ...TEAM_MAP[t.id] }])
+      )
       const seriesMetaById = Object.fromEntries((seriesData ?? []).map((series) => [series.id, series]))
       const merged = gamesData.map((g) => ({
         ...normalizeGame(g as Game, seriesMetaById[g.series_id]?.round),
