@@ -57,6 +57,12 @@ export const TEAMS_2025: Team[] = [
 
   { id: 'ATL', name: 'Atlanta Hawks',         abbreviation: 'ATL', conference: 'East', seed: 99,
     primary_color: '#C1D32F', secondary_color: '#E03A3E' },   // Hawks Volt / Red
+
+  { id: 'SAS', name: 'San Antonio Spurs',     abbreviation: 'SAS', conference: 'West', seed: 99,
+    primary_color: '#C0C0C0', secondary_color: '#8A8A8A' },   // Spurs Silver / Gray
+
+  { id: 'POR', name: 'Portland Trail Blazers',abbreviation: 'POR', conference: 'West', seed: 99,
+    primary_color: '#E03A3E', secondary_color: '#892020' },   // Rip City Red / Deep Red
 ]
 
 export const TEAM_MAP: Record<string, Team> = Object.fromEntries(

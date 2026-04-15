@@ -4,9 +4,14 @@ import type { Series, SeriesPick } from '../types'
 import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 import { teamAbbrStyle, teamAbbrSVGProps } from '../utils/teamColors'
 
+// ─── Team logo helper ────────────────────────────────────────────────────────
+function teamLogoUrl(abbreviation: string): string {
+  return `https://a.espncdn.com/i/teamlogos/nba/500/${abbreviation.toLowerCase()}.png`
+}
+
 // ─── Layout constants ────────────────────────────────────────────────────────
 const BOX_W    = 148   // width of each series box
-const BOX_H    = 70    // height of each series box (35px per team row)
+const BOX_H    = 90    // height of each series box (45px per team row)
 const COL_GAP  = 40    // horizontal gap between columns
 const ROW_GAP  = 18    // vertical gap between boxes in same column
 const SVG_PAD  = 28    // padding around the whole SVG
@@ -119,6 +124,8 @@ function MobileSeriesCard({
   isCompareMode: boolean
   onClick?: () => void
 }) {
+  const [logoErr, setLogoErr] = useState({ a: false, b: false })
+
   const tA = s.home_team
   const tB = s.away_team
   const homeDisplay = getSeriesTeamDisplay(s, 'home')
@@ -207,19 +214,28 @@ function MobileSeriesCard({
             transition: 'opacity 0.2s',
           }}
         >
-          <span
-            className="font-condensed font-bold"
-            style={{
-              ...(homeDisplay.isPlaceholder
-                ? { color: 'var(--nba-text-muted)' }
-                : teamAbbrStyle(tA?.primary_color)),
-              fontSize: '1.9rem',
-              lineHeight: 1,
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {homeDisplay.abbreviation}
-          </span>
+          {tA && !homeDisplay.isPlaceholder && !logoErr.a ? (
+            <img
+              src={teamLogoUrl(tA.abbreviation)}
+              alt={tA.abbreviation}
+              onError={() => setLogoErr((e) => ({ ...e, a: true }))}
+              style={{ width: 44, height: 44, objectFit: 'contain' }}
+            />
+          ) : (
+            <span
+              className="font-condensed font-bold"
+              style={{
+                ...(homeDisplay.isPlaceholder
+                  ? { color: 'var(--nba-text-muted)' }
+                  : teamAbbrStyle(tA?.primary_color)),
+                fontSize: '1.9rem',
+                lineHeight: 1,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {homeDisplay.abbreviation}
+            </span>
+          )}
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
             {homeDisplay.isPlaceholder ? homeDisplay.name : tA?.name?.split(' ').pop() ?? ''}
           </span>
@@ -281,19 +297,28 @@ function MobileSeriesCard({
             transition: 'opacity 0.2s',
           }}
         >
-          <span
-            className="font-condensed font-bold"
-            style={{
-              ...(awayDisplay.isPlaceholder
-                ? { color: 'var(--nba-text-muted)' }
-                : teamAbbrStyle(tB?.primary_color)),
-              fontSize: '1.9rem',
-              lineHeight: 1,
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {awayDisplay.abbreviation}
-          </span>
+          {tB && !awayDisplay.isPlaceholder && !logoErr.b ? (
+            <img
+              src={teamLogoUrl(tB.abbreviation)}
+              alt={tB.abbreviation}
+              onError={() => setLogoErr((e) => ({ ...e, b: true }))}
+              style={{ width: 44, height: 44, objectFit: 'contain' }}
+            />
+          ) : (
+            <span
+              className="font-condensed font-bold"
+              style={{
+                ...(awayDisplay.isPlaceholder
+                  ? { color: 'var(--nba-text-muted)' }
+                  : teamAbbrStyle(tB?.primary_color)),
+                fontSize: '1.9rem',
+                lineHeight: 1,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {awayDisplay.abbreviation}
+            </span>
+          )}
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3, textAlign: 'right' }}>
             {awayDisplay.isPlaceholder ? awayDisplay.name : tB?.name?.split(' ').pop() ?? ''}
           </span>
@@ -619,20 +644,40 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
           />
         )}
 
-        {/* Abbreviation */}
-        <text
-          x={12} y={yA}
-          dominantBaseline="middle"
-          {...(homeDisplay.isPlaceholder
-            ? { fill: '#6f88aa' }
-            : teamAbbrSVGProps(tA?.primary_color))}
-          fontSize={13}
-          fontFamily={baseFont}
-          fontWeight="700"
-          opacity={isComplete && !tAWins ? 0.35 : 1}
-        >
-          {homeDisplay.abbreviation}
-        </text>
+        {/* Logo + Abbreviation */}
+        {tA && !homeDisplay.isPlaceholder ? (
+          <image
+            href={teamLogoUrl(tA.abbreviation)}
+            x={8} y={(rowH - 28) / 2}
+            width={28} height={28}
+            opacity={isComplete && !tAWins ? 0.35 : 1}
+            preserveAspectRatio="xMidYMid meet"
+          />
+        ) : (
+          <text
+            x={12} y={yA}
+            dominantBaseline="middle"
+            fill="#6f88aa"
+            fontSize={13}
+            fontFamily={baseFont}
+            fontWeight="700"
+          >
+            {homeDisplay.abbreviation}
+          </text>
+        )}
+        {tA && !homeDisplay.isPlaceholder && (
+          <text
+            x={40} y={yA}
+            dominantBaseline="middle"
+            {...teamAbbrSVGProps(tA.primary_color)}
+            fontSize={11}
+            fontFamily={baseFont}
+            fontWeight="700"
+            opacity={isComplete && !tAWins ? 0.35 : 1}
+          >
+            {homeDisplay.abbreviation}
+          </text>
+        )}
 
         {/* Score (on winner row) */}
         {score && tAWins && (
@@ -698,19 +743,40 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
           />
         )}
 
-        <text
-          x={12} y={yB}
-          dominantBaseline="middle"
-          {...(awayDisplay.isPlaceholder
-            ? { fill: '#6f88aa' }
-            : teamAbbrSVGProps(tB?.primary_color))}
-          fontSize={13}
-          fontFamily={baseFont}
-          fontWeight="700"
-          opacity={isComplete && !tBWins ? 0.35 : 1}
-        >
-          {awayDisplay.abbreviation}
-        </text>
+        {/* Logo + Abbreviation */}
+        {tB && !awayDisplay.isPlaceholder ? (
+          <image
+            href={teamLogoUrl(tB.abbreviation)}
+            x={8} y={rowH + (rowH - 28) / 2}
+            width={28} height={28}
+            opacity={isComplete && !tBWins ? 0.35 : 1}
+            preserveAspectRatio="xMidYMid meet"
+          />
+        ) : (
+          <text
+            x={12} y={yB}
+            dominantBaseline="middle"
+            fill="#6f88aa"
+            fontSize={13}
+            fontFamily={baseFont}
+            fontWeight="700"
+          >
+            {awayDisplay.abbreviation}
+          </text>
+        )}
+        {tB && !awayDisplay.isPlaceholder && (
+          <text
+            x={40} y={yB}
+            dominantBaseline="middle"
+            {...teamAbbrSVGProps(tB.primary_color)}
+            fontSize={11}
+            fontFamily={baseFont}
+            fontWeight="700"
+            opacity={isComplete && !tBWins ? 0.35 : 1}
+          >
+            {awayDisplay.abbreviation}
+          </text>
+        )}
 
         {score && tBWins && (
           <text
