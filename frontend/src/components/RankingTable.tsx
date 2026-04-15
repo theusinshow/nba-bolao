@@ -4,6 +4,7 @@ import type { RankingEntry } from '../types'
 interface Props {
   ranking: RankingEntry[]
   highlightId?: string
+  selectedId?: string
   onParticipantClick?: (participantId: string) => void
 }
 
@@ -119,7 +120,7 @@ const RANK_COLOR: Record<number, string> = {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function RankingTable({ ranking, highlightId, onParticipantClick }: Props) {
+export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick }: Props) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -160,6 +161,7 @@ export function RankingTable({ ranking, highlightId, onParticipantClick }: Props
         <tbody>
           {ranking.map((e, idx) => {
             const isMe    = e.participant_id === highlightId
+            const isSelected = e.participant_id === selectedId
             const isMedal = e.rank <= 3
             const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : null
             const seriesPct = e.series_total > 0
@@ -176,6 +178,7 @@ export function RankingTable({ ranking, highlightId, onParticipantClick }: Props
             // Left accent: medal glow or user gold
             const rowShadow =
               isMedal ? MEDAL_GLOW[e.rank] :
+              isSelected ? 'inset 3px 0 0 var(--nba-accent, var(--nba-gold))' :
               isMe    ? 'inset 3px 0 0 var(--nba-gold)' :
               'none'
 
@@ -187,6 +190,7 @@ export function RankingTable({ ranking, highlightId, onParticipantClick }: Props
                 style={{
                   background: rowBg,
                   boxShadow: rowShadow,
+                  outline: isSelected ? '1px solid rgba(200,150,60,0.35)' : 'none',
                   borderBottom: idx < ranking.length - 1 ? '1px solid var(--nba-border)' : 'none',
                   transition: 'background 0.2s ease, filter 0.2s ease',
                   cursor: onParticipantClick ? 'pointer' : 'default',
@@ -215,8 +219,8 @@ export function RankingTable({ ranking, highlightId, onParticipantClick }: Props
                     <Avatar name={e.participant_name} />
                     <span
                       style={{
-                        color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
-                        fontWeight: isMe ? 600 : 400,
+                        color: isMe || isSelected ? 'var(--nba-gold)' : 'var(--nba-text)',
+                        fontWeight: isMe || isSelected ? 600 : 400,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
