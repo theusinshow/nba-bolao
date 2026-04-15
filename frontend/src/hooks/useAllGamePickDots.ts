@@ -36,21 +36,23 @@ export function useAllGamePickDots(): {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('game_picks')
-      .select(`
-        participant_id,
-        winner_id,
-        game_id,
-        games (
-          id, winner_id, played, tip_off_at, round,
-          home_team_id, away_team_id, series_id, game_number
-        )
-      `)
-      .then(({ data }) => {
+    async function load() {
+      try {
+        const { data } = await supabase
+          .from('game_picks')
+          .select(`
+            participant_id,
+            winner_id,
+            game_id,
+            games (
+              id, winner_id, played, tip_off_at, round,
+              home_team_id, away_team_id, series_id, game_number
+            )
+          `)
+
         const map = new Map<string, DotData[]>()
 
-        for (const raw of (data ?? []) as RawPick[]) {
+        for (const raw of (data ?? []) as unknown as RawPick[]) {
           const game = raw.games
           if (!game) continue
 
@@ -89,8 +91,12 @@ export function useAllGamePickDots(): {
         })
 
         setDotsById(map)
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
   }, [])
 
   return { dotsById, loading }
