@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, Check } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
-import { getTeam } from '../data/teams2025'
+import { getTeam, getTeamLogoUrl } from '../data/teams2025'
 import { useUIStore } from '../store/useUIStore'
 import { getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 import { teamAbbrStyle } from '../utils/teamColors'
@@ -124,6 +124,12 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                   opacity: isSelected ? 1 : 0.35,
                   transition: 'opacity 0.18s ease',
                 }} />
+                <img
+                  src={getTeamLogoUrl(team.abbreviation)}
+                  alt={team.abbreviation}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                  style={{ width: 48, height: 48, objectFit: 'contain', marginBottom: 6 }}
+                />
                 <div
                   className="font-condensed font-bold"
                   style={{

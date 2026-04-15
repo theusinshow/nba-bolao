@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, Lock } from 'lucide-react'
 import type { Series } from '../types'
-import { getTeam } from '../data/teams2025'
+import { getTeam, getTeamLogoUrl } from '../data/teams2025'
 import { useGamePicks } from '../hooks/useGamePicks'
 import { useUIStore } from '../store/useUIStore'
 import { CountdownTimer } from './CountdownTimer'
@@ -43,9 +43,27 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
         <p className="text-nba-muted text-xs font-condensed uppercase mb-1">
           {series.conference} — {['R1', 'R2', 'Conf Finals', 'NBA Finals'][series.round - 1]}
         </p>
-        <h2 className="title text-2xl text-nba-gold mb-1">
-          {teamA?.abbreviation} vs {teamB?.abbreviation}
-        </h2>
+        <div className="flex items-center gap-2 mb-1">
+          {teamA && (
+            <img
+              src={getTeamLogoUrl(teamA.abbreviation)}
+              alt={teamA.abbreviation}
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+              style={{ width: 32, height: 32, objectFit: 'contain' }}
+            />
+          )}
+          <h2 className="title text-2xl text-nba-gold">
+            {teamA?.abbreviation} vs {teamB?.abbreviation}
+          </h2>
+          {teamB && (
+            <img
+              src={getTeamLogoUrl(teamB.abbreviation)}
+              alt={teamB.abbreviation}
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+              style={{ width: 32, height: 32, objectFit: 'contain' }}
+            />
+          )}
+        </div>
         <p className="text-nba-muted text-xs mb-4">Palpite jogo a jogo — bloqueado após tip-off</p>
 
         {loading ? (
@@ -113,7 +131,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                           key={id}
                           disabled={locked || saving === game.id}
                           onClick={() => handlePick(game.id, id)}
-                          className={`flex-1 py-2 px-3 rounded border text-sm font-condensed transition-all ${
+                          className={`flex-1 py-3 px-3 rounded border font-condensed transition-all flex flex-col items-center gap-1 ${
                             isPicked && isWinner ? 'border-nba-success bg-nba-success/10 text-nba-success' :
                             isPicked && game.played && !isWinner ? 'border-nba-danger bg-nba-danger/10 text-nba-danger' :
                             isPicked ? 'border-nba-gold bg-nba-surface-2 text-nba-gold' :
@@ -121,7 +139,13 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                             'border-nba-border text-nba-muted hover:border-nba-gold/40'
                           } ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >
-                          {team.abbreviation}
+                          <img
+                            src={getTeamLogoUrl(team.abbreviation)}
+                            alt={team.abbreviation}
+                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                            style={{ width: 40, height: 40, objectFit: 'contain' }}
+                          />
+                          <span className="text-sm">{team.abbreviation}</span>
                         </button>
                       )
                     })}
