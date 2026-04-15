@@ -17,6 +17,7 @@ const Compare = lazy(() => import('./pages/Compare').then((module) => ({ default
 const Games = lazy(() => import('./pages/Games').then((module) => ({ default: module.Games })))
 const SimulationLab = lazy(() => import('./pages/SimulationLab').then((module) => ({ default: module.SimulationLab })))
 const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })))
+const Profile = lazy(() => import('./pages/Profile').then((module) => ({ default: module.Profile })))
 
 function RouteFallback() {
   return (
@@ -128,6 +129,14 @@ export default function App() {
             element={
               <ProtectedRoute auth={auth} requireAdmin>
                 <Admin participantId={participantId} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/:id"
+            element={
+              <ProtectedRoute auth={auth}>
+                <Profile />
               </ProtectedRoute>
             }
           />

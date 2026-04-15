@@ -8,7 +8,7 @@ import { type OddsSummaryItem, useOddsSummary } from '../hooks/useOddsSummary'
 import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
-import { TEAM_MAP } from '../data/teams2025'
+import { TEAM_MAP, getTeamLogoUrl } from '../data/teams2025'
 import { teamAbbrStyle } from '../utils/teamColors'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -884,7 +884,17 @@ function RevealedPicksModal({
               border: `1px solid ${game.team_a?.primary_color ?? '#4a90d9'}40`,
             }}
           >
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_a?.name ?? game.home_team_id}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              {game.team_a && (
+                <img
+                  src={getTeamLogoUrl(game.team_a.abbreviation)}
+                  alt={game.team_a.abbreviation}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                  style={{ width: 22, height: 22, objectFit: 'contain' }}
+                />
+              )}
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_a?.name ?? game.home_team_id}</div>
+            </div>
             <div className="font-condensed font-bold" style={{ color: game.team_a?.primary_color ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
               {homeVotes.length}
               <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 6 }}>{homePct}%</span>
@@ -903,7 +913,17 @@ function RevealedPicksModal({
               border: `1px solid ${game.team_b?.primary_color ?? '#e05c3a'}40`,
             }}
           >
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_b?.name ?? game.away_team_id}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              {game.team_b && (
+                <img
+                  src={getTeamLogoUrl(game.team_b.abbreviation)}
+                  alt={game.team_b.abbreviation}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                  style={{ width: 22, height: 22, objectFit: 'contain' }}
+                />
+              )}
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.team_b?.name ?? game.away_team_id}</div>
+            </div>
             <div className="font-condensed font-bold" style={{ color: game.team_b?.primary_color ?? 'var(--nba-text)', fontSize: '1.5rem', lineHeight: 1.1 }}>
               {awayVotes.length}
               <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 6 }}>{awayPct}%</span>
@@ -1089,9 +1109,12 @@ function TeamSide({
   locked: boolean
   onClick: () => void
 }) {
+  const [logoError, setLogoError] = useState(false)
+
   const color = team?.primary_color ?? 'var(--nba-gold)'
   const abbr  = team?.abbreviation ?? '?'
   const name  = team?.name ?? '—'
+  const showLogo = !!team && abbr !== 'TBD' && !logoError
 
   const teamTint    = !team?.primary_color ? 'rgba(200,150,60,0.32)' : `${team.primary_color}50`
   const teamOutline = !team?.primary_color ? 'rgba(200,150,60,0.8)'  : `${color}cc`
@@ -1144,16 +1167,31 @@ function TeamSide({
         }
       }}
     >
+      {showLogo ? (
+        <img
+          src={getTeamLogoUrl(team!.abbreviation)}
+          alt={abbr}
+          onError={() => setLogoError(true)}
+          style={{
+            width: 52,
+            height: 52,
+            objectFit: 'contain',
+            filter: isLoser ? 'grayscale(0.6)' : 'none',
+            transition: 'filter 0.2s ease',
+          }}
+        />
+      ) : null}
       <span
         className="font-condensed font-bold"
         style={{
           ...(abbr === 'TBD'
             ? { color: 'var(--nba-text-muted)' }
             : teamAbbrStyle(team?.primary_color)),
-          fontSize: 'clamp(1.6rem, 4vw, 2.2rem)',
+          fontSize: showLogo ? '1rem' : 'clamp(1.6rem, 4vw, 2.2rem)',
           lineHeight: 1,
           letterSpacing: '-0.01em',
-          textShadow: isSelected ? `0 0 12px ${team?.primary_color ?? '#c8963c'}aa` : 'none',
+          marginTop: showLogo ? 4 : 0,
+          textShadow: isSelected && !showLogo ? `0 0 12px ${team?.primary_color ?? '#c8963c'}aa` : 'none',
         }}
       >
         {abbr}

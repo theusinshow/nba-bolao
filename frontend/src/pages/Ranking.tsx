@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BarChart2, Crown, Flame, Info, Medal, ReceiptText, Trophy, X } from 'lucide-react'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
 import { RankingTable } from '../components/RankingTable'
@@ -359,11 +360,11 @@ export function Ranking({ participantId }: Props) {
     return breakdowns[selectedParticipantId]
   }, [breakdowns, selectedParticipantId])
 
+  const navigate = useNavigate()
+
   function handleParticipantReportOpen(nextParticipantId: string) {
     setSelectedParticipantId(nextParticipantId)
-    if (window.innerWidth < 1024) {
-      setMobileReportOpen(true)
-    }
+    navigate(`/profile/${nextParticipantId}`)
   }
 
   return (

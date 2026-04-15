@@ -98,7 +98,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                 onClick={() => setSelectedWinner(team.id)}
                 style={{
                   flex: 1,
-                  padding: '14px 8px',
+                  padding: '18px 8px 14px',
                   borderRadius: 10,
                   border: isWinner
                     ? '2px solid var(--nba-success)'
@@ -108,7 +108,9 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                   background: isSelected
                     ? `${accentColor}14`
                     : 'rgba(12,12,18,0.3)',
-                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                   cursor: (readOnly || series.is_complete || !matchupReady || seriesLocked) ? 'default' : 'pointer',
                   transition: 'border-color 0.18s ease, background 0.18s ease',
                   position: 'relative',
