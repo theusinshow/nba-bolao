@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useNowTick } from '../hooks/useNowTick'
 
 interface Props {
   targetDate: string
@@ -11,16 +11,8 @@ interface Props {
 function pad(n: number) { return String(n).padStart(2, '0') }
 
 export function CountdownTimer({ targetDate, label, urgentUnderOneHour = false, className }: Props) {
-  const [diff, setDiff] = useState(() =>
-    Math.max(0, new Date(targetDate).getTime() - Date.now())
-  )
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setDiff(Math.max(0, new Date(targetDate).getTime() - Date.now()))
-    }, 1000)
-    return () => clearInterval(id)
-  }, [targetDate])
+  const now = useNowTick()
+  const diff = Math.max(0, new Date(targetDate).getTime() - now)
 
   if (diff === 0) {
     return (

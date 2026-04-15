@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Lock } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import type { Series } from '../types'
 import { getTeam, getTeamLogoUrl } from '../data/teams2025'
 import { useGamePicks } from '../hooks/useGamePicks'
@@ -18,6 +19,16 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
   const { games, loading, saveGamePick, getPickForGame, isGameLocked } = useGamePicks(participantId, series.id)
   const { addToast } = useUIStore()
   const [saving, setSaving] = useState<string | null>(null)
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
+  const titleId = 'game-pick-modal-title'
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const teamA = series.home_team ?? getTeam(series.home_team_id)
   const teamB = series.away_team ?? getTeam(series.away_team_id)
@@ -34,9 +45,18 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="card w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-4 right-4 text-nba-muted hover:text-nba-text">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      aria-hidden="true"
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="card w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto"
+      >
+        <button onClick={onClose} aria-label="Fechar" className="absolute top-4 right-4 text-nba-muted hover:text-nba-text">
           <X size={20} />
         </button>
 
@@ -52,7 +72,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
               style={{ width: 32, height: 32, objectFit: 'contain' }}
             />
           )}
-          <h2 className="title text-2xl text-nba-gold">
+          <h2 id={titleId} className="title text-2xl text-nba-gold">
             {teamA?.abbreviation} vs {teamB?.abbreviation}
           </h2>
           {teamB && (

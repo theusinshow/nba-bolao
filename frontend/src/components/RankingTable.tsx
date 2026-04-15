@@ -224,26 +224,18 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
             return (
               <tr
                 key={e.participant_id}
-                className={
-                  flashById[e.participant_id] === 'success'
-                    ? 'flash-success'
-                    : flashById[e.participant_id] === 'danger'
-                    ? 'flash-danger'
-                    : undefined
-                }
+                className={[
+                  flashById[e.participant_id] === 'success' ? 'flash-success' : '',
+                  flashById[e.participant_id] === 'danger' ? 'flash-danger' : '',
+                  onParticipantClick ? 'ranking-row-interactive' : '',
+                ].filter(Boolean).join(' ') || undefined}
                 style={{
                   background: rowBg,
                   boxShadow: rowShadow,
                   outline: isSelected ? '1px solid rgba(200,150,60,0.35)' : 'none',
                   borderBottom: idx < ranking.length - 1 ? '1px solid var(--nba-border)' : 'none',
-                  transition: 'background 0.2s ease, filter 0.2s ease',
+                  transition: 'background 0.2s ease',
                   cursor: onParticipantClick ? 'pointer' : 'default',
-                }}
-                onMouseEnter={(ev) => {
-                  ev.currentTarget.style.filter = 'brightness(1.12)'
-                }}
-                onMouseLeave={(ev) => {
-                  ev.currentTarget.style.filter = 'none'
                 }}
                 onClick={() => onParticipantClick?.(e.participant_id)}
               >

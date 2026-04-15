@@ -1,5 +1,271 @@
 # Codex Changelog
 
+## 2026-04-15 - Feature: contexto de temporada regular no SeriesModal
+
+### Objetivo
+Ao abrir o modal de palpite de série, exibir dados reais da temporada regular 2024–25 (aproveitamento, recordes casa/fora e confronto direto) para ajudar na decisão.
+
+### Visual no modal
+```
+OKC  68-14 na temp. | Casa: 38-3 | Fora: 30-11
+IND  48-34 na temp. | Casa: 27-14 | Fora: 21-20
+Confronto direto: OKC 2 × 1 IND
+```
+
+### Decisões de implementação
+- **IDs do BDL resolvidos dinamicamente**: em vez de mapa estático (o spec tinha colisão `MEM: 20` e `MIL: 20`), o backend faz fetch do `/v1/standings` e constrói o mapa `abreviação → id` a partir da resposta. Sem IDs hardcoded.
+- **Cache duplo**: backend (Map em memória, permanente enquanto o processo viver) + frontend (Map de módulo, persiste entre aberturas do modal na mesma sessão). Dados da temporada regular nunca mudam.
+- **Degradação silenciosa**: se BDL estiver fora ou retornar erro, o bloco simplesmente não renderiza. O modal funciona normalmente.
+- **Não bloqueia abertura**: o hook dispara o fetch após o modal montar, exibindo skeleton enquanto carrega.
+
+---
+
+### Arquivos criados
+
+#### `backend/src/routes/seriesContext.ts` (novo)
+- Instância axios própria com `BALLDONTLIE_API_KEY` e timeout de 10s.
+- `GET /api/series-context/:homeId/:awayId` (público, sem auth).
+- Fluxo: fetch `/v1/standings?season=N` → extrai `wins/losses/home_record/visitor_record` para cada time → fetch `/v1/games` com `team_ids[]` dos dois times → filtra apenas jogos entre os dois (H2H) → conta vitórias por time.
+- Resposta:
+  ```json
+  {
+    "ok": true,
+    "home": { "abbreviation": "OKC", "wins": 68, "losses": 14, "homeWins": 38, "homeLosses": 3, "awayWins": 30, "awayLosses": 11 },
+    "away": { ... },
+    "headToHead": { "homeWins": 2, "awayWins": 1 }
+  }
+  ```
+- Cache por chave `sort([homeId, awayId]).join('-')` — simétrico independente da ordem.
+
+#### `frontend/src/hooks/useSeriesContext.ts` (novo)
+- Fetch simples com `fetch()` (sem auth — rota pública).
+- Cache de módulo por chave simétrica de times.
+- Retorna `{ data: SeriesContextData | null, loading: boolean }`.
+- Cancela request em curso se o componente desmontar antes da resposta.
+
+---
+
+### Arquivos alterados
+
+#### `backend/src/index.ts`
+- Importado e registrado `seriesContextRouter` em `/api/series-context`.
+
+#### `frontend/src/components/SeriesModal.tsx`
+- Importado `useSeriesContext`.
+- Hook chamado com `teamA.id` e `teamB.id` (disponíveis após resolução dos times).
+- Bloco inserido entre o team picker e o games picker, apenas quando `matchupReady && !series.is_complete`:
+  - Loading: 3 linhas skeleton usando a classe `.skeleton` existente.
+  - Dados: box compacto com fonte Barlow Condensed, fundo dourado suave, aproveitamento dos dois times e confronto direto separados por linha.
+  - Sem dados: nada é renderizado.
+
+---
+
+## 2026-04-15 - Auditoria UX/UI — acessibilidade, performance e qualidade de interação
+
+### Contexto
+Auditoria do arquivo `analises/ui/ux.md`. Foram confirmados os problemas reais e implementadas as correções de maior impacto que não exigem refatoração estrutural do design system.
+
+### O que foi confirmado e corrigido
+
+| Problema | Arquivo | Solução |
+|---|---|---|
+| Modais sem semântica de diálogo acessível | `SeriesModal`, `GamePickModal` | `role="dialog"`, `aria-modal`, `aria-labelledby`, Esc key, focus trap, restore de foco |
+| Toast sem anúncio acessível | `Toast` | `role="status"`, `aria-live="polite"`, `aria-atomic="false"` |
+| `setInterval` por instância no CountdownTimer | `CountdownTimer` | Hook singleton `useNowTick` com intervalo compartilhado |
+| Animações infinitas sem fallback de acessibilidade | `index.css` | `@media (prefers-reduced-motion: reduce)` desabilita animações decorativas |
+| Hover imperativo com `onMouseEnter/Leave` no RankingTable | `RankingTable` | CSS class `.ranking-row-interactive` com `filter: brightness(1.12)` no `:hover` |
+
+### O que NÃO foi alterado (e por quê)
+- **Refetch total no `useRanking`**: exige reescrita da estratégia de cache/patch incremental — escopo separado.
+- **Semântica de `<tr>` clicável**: a última coluna já tem botão "Ver" acessível por teclado, cobrindo o caso crítico sem refatoração de tabela.
+- **Design system / inline styles**: migração de inline styles para componentes reutilizáveis é trabalho de longo prazo, não urgente.
+
+---
+
+### Arquivos criados
+
+#### `frontend/src/hooks/useFocusTrap.ts` (novo)
+- Hook que recebe `active: boolean` e uma ref tipada.
+- Ao ativar: foca o primeiro elemento focalizável dentro do container, instala trap de Tab/Shift+Tab, e ao desmontar restaura o foco ao elemento que estava ativo antes da abertura.
+- Usa seletor de elementos focalizáveis (`button`, `[href]`, `input`, `select`, `textarea`, `[tabindex]`) com filtro de `disabled`.
+
+#### `frontend/src/hooks/useNowTick.ts` (novo)
+- Singleton: único `setInterval` de 1000ms compartilhado por todos os `CountdownTimer` ativos.
+- Ao primeiro subscriber, inicia o intervalo; ao último sair, limpa com `clearInterval`.
+- Retorna `now: number` (timestamp em ms), atualizado a cada segundo.
+
+---
+
+### Arquivos alterados
+
+#### `frontend/src/components/SeriesModal.tsx`
+- Overlay externo recebe `aria-hidden="true"` (esconde o fundo para leitores de tela).
+- Container do diálogo recebe `role="dialog"`, `aria-modal="true"`, `aria-labelledby="series-modal-title"` e `ref={dialogRef}` do `useFocusTrap`.
+- `<h2>` recebe `id="series-modal-title"`.
+- Botão fechar recebe `aria-label="Fechar"`.
+- `useEffect` adiciona listener de `Escape` no `document` enquanto o modal está montado.
+
+#### `frontend/src/components/GamePickModal.tsx`
+- Mesmas mudanças de acessibilidade do `SeriesModal`, com `id="game-pick-modal-title"`.
+
+#### `frontend/src/components/Toast.tsx`
+- Container recebe `role="status"`, `aria-live="polite"` e `aria-atomic="false"`.
+- Com `aria-atomic="false"`, leitores de tela anunciam cada toast individualmente conforme aparece.
+
+#### `frontend/src/components/CountdownTimer.tsx`
+- Removido `useState` + `useEffect` com `setInterval` próprio.
+- Agora usa `useNowTick()` — o `diff` é calculado como expressão derivada de `now`.
+- Resultado: N timers na tela = 1 intervalo, não N.
+
+#### `frontend/src/index.css`
+- Adicionado bloco `.ranking-row-interactive` com `filter: brightness(1.12)` no `:hover` e `transition: filter 0.2s ease`.
+- Adicionado `@media (prefers-reduced-motion: reduce)` que:
+  - Desabilita `animation` em `.title-glow`, `.podium-gold/silver/bronze`, `.skeleton`, `.animate-in-*`.
+  - Aplica `transition-duration: 0.01ms`, `animation-duration: 0.01ms`, `animation-iteration-count: 1` globalmente.
+
+#### `frontend/src/components/RankingTable.tsx`
+- Removidos `onMouseEnter` e `onMouseLeave` que alteravam `style.filter` imperativamente.
+- Linha recebe classe `ranking-row-interactive` (condicionada a `onParticipantClick` existir) para o hover via CSS.
+- Removida `transition: filter` do `style` inline (agora fica no CSS).
+
+---
+
+## 2026-04-15 - Auditoria de backend e correções de integridade de pontuação
+
+### Contexto
+Auditoria completa da lógica de pontuação, sync e integridade do backend, conforme documento `analises/logica.md`. Foram confirmados os problemas reais e implementadas as correções com melhor custo/benefício para o contexto do projeto (bolão entre amigos, instância única no Render.com).
+
+### O que foi confirmado como bug real
+
+| Problema | Arquivo | Impacto confirmado |
+|---|---|---|
+| `recalculateAllScores` engolia erros silenciosamente | `backend/src/scoring/engine.ts` | Alto — sync terminava como sucesso mesmo com pontuação desatualizada |
+| Duplicidade de picks não deduplida no cálculo | `backend/src/scoring/engine.ts` | Médio — pontuação inflada se houvesse duplicatas no banco |
+| Config de scoring duplicada sem mecanismo de validação | `rules.ts` + `scoring.ts` | Médio — risco de divergência silenciosa em mudanças futuras |
+| Lock de palpite apenas no frontend | `useSeries.ts`, `useGamePicks.ts` | Baixo/médio — contornável direto na API Supabase |
+
+### O que NÃO foi corrigido (e por quê)
+- **Sync sem transação atômica**: instância única no Render, falha no meio é rara e recuperável no próximo ciclo.
+- **`isRunning` em memória**: só é problema com múltiplas réplicas; não se aplica ao setup atual.
+- **`game_number` race condition**: mesma condição acima.
+- **DST no `parseTipOffAt`**: ET = UTC-4 durante playoffs (abr–jun), sem mudança de DST no período crítico.
+- **Lock de palpite no banco (RLS)**: ver seção SQL abaixo — requer execução manual no Supabase.
+
+---
+
+### Arquivos alterados
+
+#### `backend/src/scoring/engine.ts`
+- **`recalculateAllScores()`**: adicionado `throw error` no bloco `catch`. O erro agora propaga para o `syncNBA.ts` e para rotas admin (`/admin/rescore`), que podem tratá-lo corretamente em vez de reportar sucesso falso.
+- **`computeRankingSnapshot()`**: adicionada deduplicação defensiva de picks antes do cálculo. Se houver múltiplas linhas de `series_picks` ou `game_picks` para o mesmo `participant_id + series_id/game_id` (violação de unicidade não enforçada no banco), apenas a primeira ocorrência é considerada. Previne pontuação inflada.
+
+#### `backend/src/index.ts`
+- Adicionado endpoint público `GET /scoring-rules` (sem autenticação). Retorna o objeto `SCORING` de `backend/src/scoring/rules.ts`. Usado para validar sincronia entre backend e frontend quando as regras forem alteradas.
+
+#### `backend/src/scoring/rules.ts`
+- Comentário atualizado: deixa claro que este é o source of truth e que mudanças devem ser propagadas ao frontend. Aponta para o endpoint `/scoring-rules`.
+
+#### `frontend/src/utils/scoring.ts`
+- Comentário atualizado: instrui o desenvolvedor a usar `GET /scoring-rules` para validar sincronia antes de alterar os valores.
+
+---
+
+### SQL para rodar no Supabase (não foi executado automaticamente)
+
+Os scripts abaixo resolvem os problemas P1 restantes. Devem ser rodados no SQL Editor do Supabase em produção após validação em staging.
+
+#### 1. Unique constraints (previne duplicidade de picks no banco)
+
+```sql
+-- Garante que cada participante só tenha um palpite por série
+ALTER TABLE series_picks
+  ADD CONSTRAINT series_picks_participant_series_unique
+  UNIQUE (participant_id, series_id);
+
+-- Garante que cada participante só tenha um palpite por jogo
+ALTER TABLE game_picks
+  ADD CONSTRAINT game_picks_participant_game_unique
+  UNIQUE (participant_id, game_id);
+```
+
+> Se já existirem duplicatas no banco, o ALTER TABLE vai falhar. Antes de rodar, execute:
+> ```sql
+> -- Verificar duplicatas em series_picks
+> SELECT participant_id, series_id, COUNT(*) FROM series_picks
+> GROUP BY participant_id, series_id HAVING COUNT(*) > 1;
+>
+> -- Verificar duplicatas em game_picks
+> SELECT participant_id, game_id, COUNT(*) FROM game_picks
+> GROUP BY participant_id, game_id HAVING COUNT(*) > 1;
+> ```
+
+#### 2. RLS Policy para bloquear palpite de jogo após tip_off_at (enforcement no banco)
+
+```sql
+-- Remove policy de INSERT existente se houver, recria com check de tip_off_at
+CREATE POLICY "game_picks_block_after_tipoff"
+ON game_picks
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM games g
+    WHERE g.id = game_id
+      AND g.played = false
+      AND (g.tip_off_at IS NULL OR g.tip_off_at > now())
+  )
+);
+
+-- Idem para UPDATE (impede alteração após início)
+CREATE POLICY "game_picks_block_update_after_tipoff"
+ON game_picks
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM games g
+    WHERE g.id = game_id
+      AND g.played = false
+      AND (g.tip_off_at IS NULL OR g.tip_off_at > now())
+  )
+);
+```
+
+#### 3. RLS Policy para bloquear palpite de série após tip_off do primeiro jogo
+
+```sql
+-- Bloqueia INSERT em series_picks se o primeiro jogo da série já iniciou
+CREATE POLICY "series_picks_block_after_tipoff"
+ON series_picks
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  NOT EXISTS (
+    SELECT 1 FROM games g
+    WHERE g.series_id = series_id
+      AND g.tip_off_at IS NOT NULL
+      AND g.tip_off_at <= now()
+  )
+);
+
+CREATE POLICY "series_picks_block_update_after_tipoff"
+ON series_picks
+FOR UPDATE
+TO authenticated
+USING (
+  NOT EXISTS (
+    SELECT 1 FROM games g
+    WHERE g.series_id = series_id
+      AND g.tip_off_at IS NOT NULL
+      AND g.tip_off_at <= now()
+  )
+);
+```
+
+> **Nota**: Testar estas policies em staging antes de aplicar em produção. Caso o Supabase já tenha policies conflitantes, rodar `DROP POLICY IF EXISTS` com o nome antigo primeiro.
+
+---
+
 ## 2026-04-15 - Fase 3: onboarding tour com driver.js (Codex)
 
 ### Objetivo

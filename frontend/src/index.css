@@ -162,6 +162,45 @@
   color: var(--nba-text-muted);
 }
 
+/* ─── RankingTable: hover via CSS em vez de onMouseEnter imperativo ─── */
+.ranking-row-interactive {
+  transition: filter 0.2s ease;
+}
+.ranking-row-interactive:hover {
+  filter: brightness(1.12);
+}
+
+/* ─── Respeitar preferência do sistema por menos movimento ─── */
+@media (prefers-reduced-motion: reduce) {
+  /* Desabilita todas as animações decorativas contínuas */
+  .title-glow,
+  .podium-gold,
+  .podium-silver,
+  .podium-bronze,
+  .skeleton {
+    animation: none;
+  }
+
+  /* Mantém animações de feedback (flash, burst) mas remove as infinitas */
+  .animate-in,
+  .animate-in-1,
+  .animate-in-2,
+  .animate-in-3,
+  .animate-in-4,
+  .animate-in-5 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Desabilita transições longas */
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 /* ─── Animação das linhas da quadra na Login ─── */
 @keyframes courtFade {
   0%,100% { opacity: 0.04; }

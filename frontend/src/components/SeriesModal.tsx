@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Check } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useSeriesContext } from '../hooks/useSeriesContext'
 import type { Series, SeriesPick } from '../types'
 import { getTeam, getTeamLogoUrl } from '../data/teams2025'
 import { useUIStore } from '../store/useUIStore'
@@ -22,9 +24,23 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
   const [selectedGames, setSelectedGames] = useState<number>(existingPick?.games_count ?? 0)
   const [saving, setSaving] = useState(false)
   const { addToast } = useUIStore()
+  const dialogRef = useFocusTrap<HTMLDivElement>(true)
+  const titleId = 'series-modal-title'
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const teamA = series.home_team ?? getTeam(series.home_team_id)
   const teamB = series.away_team ?? getTeam(series.away_team_id)
+  const { data: ctx, loading: ctxLoading } = useSeriesContext(
+    teamA?.id ?? series.home_team_id,
+    teamB?.id ?? series.away_team_id,
+  )
   const teamADisplay = getSeriesTeamDisplay(series, 'home')
   const teamBDisplay = getSeriesTeamDisplay(series, 'away')
   const matchupReady = isSeriesReadyForPick(series)
@@ -50,17 +66,27 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="card w-full max-w-sm p-6 relative">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      aria-hidden="true"
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="card w-full max-w-sm p-6 relative"
+      >
         <button
           onClick={onClose}
+          aria-label="Fechar"
           className="absolute top-4 right-4 text-nba-muted hover:text-nba-text"
         >
           <X size={20} />
         </button>
 
         <p className="text-nba-muted text-xs font-condensed uppercase mb-1">{confLabel} — {roundLabel}</p>
-        <h2 className="title text-2xl text-nba-gold mb-4">Palpite da Série</h2>
+        <h2 id={titleId} className="title text-2xl text-nba-gold mb-4">Palpite da Série</h2>
 
         {!matchupReady && (
           <div className="mb-4 p-3 rounded-lg border border-nba-gold/20 bg-nba-surface-2">
@@ -160,6 +186,55 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
             )
           })}
         </div>
+
+        {/* Contexto de temporada regular */}
+        {matchupReady && !series.is_complete && (
+          <div className="mb-5">
+            {ctxLoading && (
+              <div className="flex flex-col gap-1.5">
+                <div className="skeleton h-4 w-3/4 rounded" />
+                <div className="skeleton h-4 w-2/3 rounded" />
+                <div className="skeleton h-4 w-1/2 rounded" />
+              </div>
+            )}
+            {!ctxLoading && ctx && (
+              <div
+                style={{
+                  background: 'rgba(200,150,60,0.05)',
+                  border: '1px solid rgba(200,150,60,0.12)',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  fontSize: '0.75rem',
+                  lineHeight: 1.6,
+                  color: 'var(--nba-text-muted)',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                }}
+              >
+                <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Temporada Regular 2024–25
+                </div>
+                <div>{ctx.home.abbreviation}&nbsp;&nbsp;
+                  <span style={{ color: 'var(--nba-text)' }}>{ctx.home.wins}–{ctx.home.losses}</span>
+                  {' '}na temp.
+                  &nbsp;|&nbsp;Casa: <span style={{ color: 'var(--nba-text)' }}>{ctx.home.homeWins}–{ctx.home.homeLosses}</span>
+                  &nbsp;|&nbsp;Fora: <span style={{ color: 'var(--nba-text)' }}>{ctx.home.awayWins}–{ctx.home.awayLosses}</span>
+                </div>
+                <div>{ctx.away.abbreviation}&nbsp;&nbsp;
+                  <span style={{ color: 'var(--nba-text)' }}>{ctx.away.wins}–{ctx.away.losses}</span>
+                  {' '}na temp.
+                  &nbsp;|&nbsp;Casa: <span style={{ color: 'var(--nba-text)' }}>{ctx.away.homeWins}–{ctx.away.homeLosses}</span>
+                  &nbsp;|&nbsp;Fora: <span style={{ color: 'var(--nba-text)' }}>{ctx.away.awayWins}–{ctx.away.awayLosses}</span>
+                </div>
+                <div style={{ marginTop: 4, borderTop: '1px solid rgba(200,150,60,0.10)', paddingTop: 4 }}>
+                  Confronto direto:&nbsp;
+                  <span style={{ color: 'var(--nba-text)' }}>
+                    {ctx.home.abbreviation} {ctx.headToHead.homeWins} × {ctx.headToHead.awayWins} {ctx.away.abbreviation}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Games picker */}
         <p className="text-nba-muted text-xs mb-2">Em quantos jogos?</p>

@@ -45,8 +45,23 @@ export async function computeRankingSnapshot(): Promise<RankingSnapshotEntry[]> 
   const ranking: RankingSnapshotEntry[] = []
 
   for (const { id: participantId, name: participantName } of participants) {
-    const mySeriesPicks = (allSeriesPicks as SeriesPickRow[]).filter((pick) => pick.participant_id === participantId)
-    const myGamePicks = (allGamePicks as GamePickRow[]).filter((pick) => pick.participant_id === participantId)
+    // Deduplicate: keep only the last pick per series/game in case unique constraint
+    // is missing or was bypassed. Without this, duplicate rows would inflate scores.
+    const rawSeriesPicks = (allSeriesPicks as SeriesPickRow[]).filter((pick) => pick.participant_id === participantId)
+    const seenSeriesIds = new Set<string>()
+    const mySeriesPicks = rawSeriesPicks.filter((pick) => {
+      if (seenSeriesIds.has(pick.series_id)) return false
+      seenSeriesIds.add(pick.series_id)
+      return true
+    })
+
+    const rawGamePicks = (allGamePicks as GamePickRow[]).filter((pick) => pick.participant_id === participantId)
+    const seenGameIds = new Set<string>()
+    const myGamePicks = rawGamePicks.filter((pick) => {
+      if (seenGameIds.has(pick.game_id)) return false
+      seenGameIds.add(pick.game_id)
+      return true
+    })
 
     let total = 0
     let cravadas = 0
@@ -131,5 +146,6 @@ export async function recalculateAllScores(): Promise<void> {
     })
   } catch (error) {
     console.error('[scoring] Failed to recalculate scores:', error)
+    throw error
   }
 }

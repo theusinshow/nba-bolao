@@ -5,7 +5,12 @@ export function Toast() {
   const { toasts, removeToast } = useUIStore()
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+      className="fixed top-4 right-4 z-50 flex flex-col gap-2"
+    >
       {toasts.map((t) => (
         <div
           key={t.id}
