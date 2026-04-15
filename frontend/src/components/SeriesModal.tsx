@@ -188,7 +188,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
         </div>
 
         {/* Contexto de temporada regular */}
-        {matchupReady && !series.is_complete && (
+        {matchupReady && (
           <div className="mb-5">
             {ctxLoading && (
               <div className="flex flex-col gap-1.5">

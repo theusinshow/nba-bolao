@@ -2,10 +2,42 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ArrowLeftRight, AlertTriangle, Sparkles, Swords, ShieldCheck, Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { BracketSVG } from '../components/BracketSVG'
+import { GamePickDots, type DotData, type DotStatus } from '../components/GamePickDots'
 import { useSeries } from '../hooks/useSeries'
 import { useRanking } from '../hooks/useRanking'
 import { calculateGamePickPoints, calculateSeriesPickPoints } from '../utils/scoring'
+import { TEAM_MAP } from '../data/teams2025'
 import type { Participant, SeriesPick, Series, Game, GamePick, Team } from '../types'
+
+function computeCompareDots(gamePicks: GamePick[], games: Game[]): DotData[] {
+  const gameById = new Map(games.map((g) => [g.id, g]))
+  return gamePicks
+    .map((pick): DotData | null => {
+      const game = gameById.get(pick.game_id)
+      if (!game) return null
+      const status: DotStatus = !game.played
+        ? 'pending'
+        : pick.winner_id === game.winner_id ? 'correct' : 'wrong'
+      return {
+        gameId: pick.game_id,
+        status,
+        round: game.round ?? 1,
+        seriesId: game.series_id,
+        homeTeamId: game.home_team_id,
+        awayTeamId: game.away_team_id,
+        homeAbbr: TEAM_MAP[game.home_team_id]?.abbreviation ?? game.home_team_id,
+        awayAbbr: TEAM_MAP[game.away_team_id]?.abbreviation ?? game.away_team_id,
+        gameNumber: game.game_number,
+        tipOffAt: game.tip_off_at,
+      }
+    })
+    .filter((d): d is DotData => d !== null)
+    .sort((a, b) => {
+      if (!a.tipOffAt) return 1
+      if (!b.tipOffAt) return -1
+      return new Date(a.tipOffAt).getTime() - new Date(b.tipOffAt).getTime()
+    })
+}
 
 // ─── Avatar (shared with RankingTable) ───────────────────────────────────────
 
@@ -1892,6 +1924,47 @@ export function Compare() {
             pts1={pts1} pts2={pts2}
             insights={insights}
           />
+
+          {/* Histórico de acertos jogo a jogo */}
+          {(leftGamePicks.length > 0 || rightGamePicks.length > 0) && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+                marginBottom: 16,
+                padding: '14px 16px',
+                background: 'var(--nba-surface)',
+                border: '1px solid var(--nba-border)',
+                borderRadius: 8,
+              }}
+            >
+              <div>
+                <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                  {p1.name} — Jogos
+                </div>
+                <GamePickDots
+                  dots={computeCompareDots(leftGamePicks, games)}
+                  variant="grouped"
+                />
+                {leftGamePicks.length === 0 && (
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Sem palpites de jogo</span>
+                )}
+              </div>
+              <div>
+                <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                  {p2.name} — Jogos
+                </div>
+                <GamePickDots
+                  dots={computeCompareDots(rightGamePicks, games)}
+                  variant="grouped"
+                />
+                {rightGamePicks.length === 0 && (
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Sem palpites de jogo</span>
+                )}
+              </div>
+            </div>
+          )}
 
           <DivergenceSpotlightCard insights={insights} p1={p1} p2={p2} />
 

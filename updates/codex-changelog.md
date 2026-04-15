@@ -1,5 +1,81 @@
 # Codex Changelog
 
+## 2026-04-15 - Feature: GamePickDots — histórico visual de palpites de jogos
+
+### Objetivo
+Exibir um histórico visual dos últimos 5 palpites de jogo de cada participante diretamente na tabela de ranking (pontos coloridos inline) e uma visão agrupada por série na página Compare.
+
+### Visual
+
+**Ranking (compact):**
+```
+#1  [avatar] Victor ↑  ● ● ● ○ ●   Ver >
+```
+Pontos verdes = acerto, vermelhos = erro. Hover revela tooltip `J3 · OKC vs IND · Acertou`.
+
+**Compare (grouped):**
+```
+OKC × IND   ● ● ● ○ ●  ▼
+             J1 — Acertou
+             J2 — Acertou
+             J3 — Acertou
+             J4 — Errou
+             J5 — Acertou
+```
+
+### Decisões de implementação
+- **Query única para todos os participantes**: `useAllGamePickDots` faz 1 query `game_picks JOIN games` e distribui os dados por `participant_id` no cliente. Evita N+1 completamente.
+- **Compare reusa dados existentes**: `computeCompareDots()` recebe os `gamePicks` e `games` que Compare já tinha carregado — zero queries adicionais.
+- **Compact mostra apenas jogos finalizados**: filtra `status === 'correct' | 'wrong'`, ignora pending/no-pick.
+- **Grouped expande ao toque**: label clicável toggling mini-legenda com J1/J2/… e status. Adequado para mobile.
+- **Variante controlada por prop `variant`**: `compact` (padrão) | `grouped` — componente único.
+
+---
+
+### Arquivos criados
+
+#### `frontend/src/hooks/useAllGamePickDots.ts` (novo)
+- Query: `supabase.from('game_picks').select('participant_id, winner_id, game_id, games(...)')`.
+- Mapeia cada linha para `DotData`, resolve `homeAbbr`/`awayAbbr` via `TEAM_MAP` de `teams2025.ts`.
+- Ordena os dots de cada participante por `tip_off_at` ascendente.
+- Retorna `{ dotsById: Map<string, DotData[]>, loading: boolean }`.
+
+#### `frontend/src/components/GamePickDots.tsx` (novo)
+- Tipos exportados: `DotStatus` (`correct | wrong | pending | no-pick`), `DotData`.
+- `DOT_COLOR`: correct=`#2ecc71`, wrong=`#e74c3c`, pending=`#3a3a4e`, no-pick=`#2a2a38`.
+- `CompactDots`: últimos 5 jogos finalizados, círculo 7px, `title` para tooltip nativo.
+- `GroupedDots`: agrupado por `seriesId`, label `HOME × AWAY`, tap expande linhas `J{n} — {label}`.
+- `GamePickDots`: wrapper público, `variant='compact'` por padrão.
+
+---
+
+### Arquivos alterados
+
+#### `frontend/src/pages/Ranking.tsx`
+- Importado `useAllGamePickDots`.
+- Hook chamado no topo do componente: `const { dotsById } = useAllGamePickDots()`.
+- Prop `dotsById` passada para `<RankingTable>`.
+
+#### `frontend/src/components/RankingTable.tsx`
+- Adicionada prop `dotsById?: Map<string, DotData[]>`.
+- Importado `GamePickDots` e tipo `DotData`.
+- Renderiza `<GamePickDots dots={dotsById.get(id) ?? []} variant="compact" />` inline após as setas de rank.
+- `maxWidth` do span de nome reduzido de 140→120px para acomodar os dots.
+
+#### `frontend/src/pages/Compare.tsx`
+- Importados `GamePickDots`, `DotData`, `DotStatus`, `TEAM_MAP`.
+- Adicionada função `computeCompareDots(gamePicks, games)` — reusa dados já carregados, sem nova query.
+- Seção de dots agrupados inserida após `SummaryCard`, mostrando os dois participantes lado a lado.
+
+#### `frontend/src/components/SeriesModal.tsx`
+- Condição do bloco de contexto corrigida: removido `&& !series.is_complete` — contexto agora exibe também em séries já encerradas.
+
+#### `frontend/.env` e `frontend/.env.example`
+- Adicionada variável `VITE_BACKEND_URL=https://nba-bolao-backend.onrender.com`.
+- Sem essa variável, `useSeriesContext` fazia fallback para `http://localhost:3001` e falhava silenciosamente em produção.
+
+---
+
 ## 2026-04-15 - Feature: contexto de temporada regular no SeriesModal
 
 ### Objetivo

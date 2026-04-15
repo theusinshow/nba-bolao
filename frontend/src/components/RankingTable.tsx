@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, ArrowDown, ChevronRight, Minus, Star } from 'lucide-react'
 import type { RankingEntry } from '../types'
+import { GamePickDots, type DotData } from './GamePickDots'
 
 interface Props {
   ranking: RankingEntry[]
   highlightId?: string
   selectedId?: string
   onParticipantClick?: (participantId: string) => void
+  dotsById?: Map<string, DotData[]>
 }
 
 // ─── Avatar com iniciais ──────────────────────────────────────────────────────
@@ -121,7 +123,7 @@ const RANK_COLOR: Record<number, string> = {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick }: Props) {
+export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick, dotsById }: Props) {
   const previousByIdRef = useRef<Record<string, RankingEntry>>({})
   const [flashById, setFlashById] = useState<Record<string, 'success' | 'danger'>>({})
 
@@ -260,7 +262,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        maxWidth: 140,
+                        maxWidth: 120,
                       }}
                     >
                       {e.participant_name}
@@ -273,6 +275,12 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                     )}
                     {rankDiff !== null && rankDiff === 0 && (
                       <Minus size={11} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
+                    )}
+                    {dotsById && (
+                      <GamePickDots
+                        dots={dotsById.get(e.participant_id) ?? []}
+                        variant="compact"
+                      />
                     )}
                   </div>
                 </td>

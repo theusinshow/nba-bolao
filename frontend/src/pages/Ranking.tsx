@@ -7,6 +7,7 @@ import { SimulatorPanel } from '../components/SimulatorPanel'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
+import { useAllGamePickDots } from '../hooks/useAllGamePickDots'
 import { SCORING_CONFIG } from '../utils/scoring'
 
 interface Props {
@@ -379,6 +380,7 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
 
 export function Ranking({ participantId }: Props) {
   const { ranking, breakdowns, rawSeries, rawSeriesPicks, loading, error } = useRanking()
+  const { dotsById } = useAllGamePickDots()
   const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
   const [simOpen, setSimOpen] = useState(false)
   const [isReordering, setIsReordering] = useState(false)
@@ -626,6 +628,7 @@ const navigate = useNavigate()
                   ranking={ranking}
                   highlightId={participantId}
                   onParticipantClick={handleParticipantClick}
+                  dotsById={dotsById}
                 />
               </div>
 
