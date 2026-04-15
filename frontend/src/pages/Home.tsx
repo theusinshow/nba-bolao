@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
+import { OnboardingTour } from '../components/OnboardingTour'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
+import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
 
 interface Props {
@@ -456,6 +458,7 @@ function RankingCard({
       )}
 
       <Link to="/ranking" style={{ display: 'block', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--nba-border)', textAlign: 'center', fontSize: '0.78rem', color: 'var(--nba-text-muted)' }}>
+        <span id="scoring-guide-highlight" />
         Ver ranking completo →
       </Link>
     </div>
@@ -771,7 +774,33 @@ function HomeQuickDeck() {
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}>
       <CardTitle icon={<Sparkles size={14} />}>Acessos Rápidos</CardTitle>
-      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-3">
+      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-2 lg:grid-cols-4">
+        <Link
+          id="bracket-highlight"
+          to="/bracket"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '11px 14px',
+            borderRadius: 10,
+            textDecoration: 'none',
+            color: 'var(--nba-text)',
+            border: '1px solid rgba(200,150,60,0.2)',
+            background: 'rgba(200,150,60,0.08)',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <Target size={15} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Abrir Bracket</span>
+              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>palpite série por série</span>
+            </span>
+          </span>
+          <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
+        </Link>
+
         <Link
           to="/games"
           style={{
@@ -854,6 +883,7 @@ export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
   const { recentCompletedGames, upcomingGames, hasRealGames } = useGameFeed()
+  const { show, complete } = useOnboarding()
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
   const leader = ranking[0]
@@ -861,9 +891,11 @@ export function Home({ participantId }: Props) {
   const readySeries = series.filter(isSeriesReadyForPick)
   const readySeriesIds = new Set(readySeries.map((item) => item.id))
   const pickedSeries = picks.filter((pick) => readySeriesIds.has(pick.series_id)).length
+  const canStartTour = !rankLoading && !seriesLoading && show
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto grid gap-4 xl:gap-5 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]" style={{ maxWidth: 1420 }}>
+      {canStartTour && <OnboardingTour show={canStartTour} onComplete={complete} />}
       <div className="hidden xl:flex xl:flex-col xl:gap-4">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
         <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />

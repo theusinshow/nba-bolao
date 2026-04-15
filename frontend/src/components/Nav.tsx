@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X, Shield, Activity } from 'lucide-react'
+import { Home, GitBranch, Calendar, BarChart2, ArrowLeftRight, LogOut, Menu, TestTube2, X, Shield, Activity, Sparkles } from 'lucide-react'
 import type { AuthState } from '../hooks/useAuth'
+import { restartOnboardingTour } from '../hooks/useOnboarding'
 
 interface Props {
   auth: AuthState
@@ -162,6 +163,29 @@ export function Nav({ auth, onSignOut }: Props) {
               )}
 
               <button
+                onClick={() => {
+                  setMenuOpen(false)
+                  restartOnboardingTour()
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 12px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: 'rgba(200,150,60,0.08)',
+                  color: 'var(--nba-gold)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.86rem',
+                }}
+              >
+                <Sparkles size={16} />
+                Ver tour novamente
+              </button>
+
+              <button
                 onClick={onSignOut}
                 style={{
                   display: 'flex',
@@ -213,6 +237,7 @@ export function Nav({ auth, onSignOut }: Props) {
             <NavLink
               key={to}
               to={to}
+              id={to === '/ranking' ? 'ranking-nav' : undefined}
               end={to === '/'}
               style={({ isActive }) => ({
                 flex: 1,

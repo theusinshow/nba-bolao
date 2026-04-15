@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart2, Crown, Flame, FlaskConical, Info, Medal, Trophy, X } from 'lucide-react'
 import { RankingTable } from '../components/RankingTable'
@@ -381,10 +381,25 @@ export function Ranking({ participantId }: Props) {
   const { ranking, breakdowns, rawSeries, rawSeriesPicks, loading, error } = useRanking()
   const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
   const [simOpen, setSimOpen] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+  const previousOrderRef = useRef('')
 
   const hasOpenSeries = rawSeries.some((s) => !s.is_complete && s.home_team_id != null)
 
 const navigate = useNavigate()
+
+  useEffect(() => {
+    const currentOrder = ranking.map((entry) => entry.participant_id).join('|')
+    if (!currentOrder) return
+    if (previousOrderRef.current && previousOrderRef.current !== currentOrder) {
+      setIsReordering(true)
+      const timeout = window.setTimeout(() => setIsReordering(false), 700)
+      previousOrderRef.current = currentOrder
+      return () => window.clearTimeout(timeout)
+    }
+    previousOrderRef.current = currentOrder
+    return undefined
+  }, [ranking])
 
   function handleParticipantClick(id: string) {
     navigate(`/profile/${id}`)
@@ -408,6 +423,7 @@ const navigate = useNavigate()
           >
             <aside className="hidden lg:block">
               <div
+                className={isReordering ? 'ranking-reorder' : undefined}
                 style={{
                   background: 'var(--nba-surface)',
                   border: '1px solid var(--nba-border)',

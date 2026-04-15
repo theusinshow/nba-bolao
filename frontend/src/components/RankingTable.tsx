@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, ArrowDown, ChevronRight, Minus, Star } from 'lucide-react'
 import type { RankingEntry } from '../types'
 
@@ -121,6 +122,42 @@ const RANK_COLOR: Record<number, string> = {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick }: Props) {
+  const previousByIdRef = useRef<Record<string, RankingEntry>>({})
+  const [flashById, setFlashById] = useState<Record<string, 'success' | 'danger'>>({})
+
+  useEffect(() => {
+    const nextById: Record<string, RankingEntry> = {}
+    const pendingFlash: Record<string, 'success' | 'danger'> = {}
+
+    for (const entry of ranking) {
+      const previous = previousByIdRef.current[entry.participant_id]
+      if (previous) {
+        if (entry.total_points > previous.total_points || entry.rank < previous.rank) {
+          pendingFlash[entry.participant_id] = 'success'
+        } else if (entry.rank > previous.rank) {
+          pendingFlash[entry.participant_id] = 'danger'
+        }
+      }
+      nextById[entry.participant_id] = entry
+    }
+
+    previousByIdRef.current = nextById
+
+    if (Object.keys(pendingFlash).length === 0) return
+    setFlashById((current) => ({ ...current, ...pendingFlash }))
+    const timeout = window.setTimeout(() => {
+      setFlashById((current) => {
+        const cleaned = { ...current }
+        for (const participantId of Object.keys(pendingFlash)) {
+          delete cleaned[participantId]
+        }
+        return cleaned
+      })
+    }, 800)
+
+    return () => window.clearTimeout(timeout)
+  }, [ranking])
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -187,6 +224,13 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
             return (
               <tr
                 key={e.participant_id}
+                className={
+                  flashById[e.participant_id] === 'success'
+                    ? 'flash-success'
+                    : flashById[e.participant_id] === 'danger'
+                    ? 'flash-danger'
+                    : undefined
+                }
                 style={{
                   background: rowBg,
                   boxShadow: rowShadow,

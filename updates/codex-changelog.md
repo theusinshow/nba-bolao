@@ -1,5 +1,97 @@
 # Codex Changelog
 
+## 2026-04-15 - Fase 3: onboarding tour com driver.js (Codex)
+
+### Objetivo
+- Implementar tour guiado no primeiro acesso autorizado.
+- Permitir relançar o tour manualmente pelo menu do avatar.
+
+### Arquivos alterados
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/src/hooks/useOnboarding.ts`
+- `frontend/src/components/OnboardingTour.tsx`
+- `frontend/src/components/Nav.tsx`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/index.css`
+
+### Mudanças feitas
+
+#### Dependência
+- Adicionado `driver.js` ao frontend (`npm install driver.js`).
+
+#### `useOnboarding.ts` (novo)
+- Hook com persistência via `localStorage` (`nba_bolao_onboarding_done`).
+- Exposição de `show`, `complete` e `skip`.
+- Adicionado evento global `nba-bolao:restart-onboarding` e helper `restartOnboardingTour()` para reabrir o tour sem backend.
+
+#### `OnboardingTour.tsx` (novo)
+- Implementação do tour com `driver.js` e 5 etapas:
+  1. boas-vindas,
+  2. destaque do acesso ao bracket,
+  3. explicação do SeriesModal,
+  4. guia de pontuação/cravada,
+  5. atalho para ranking.
+- Configurado overlay escuro, textos em PT-BR e fechamento marcando onboarding como concluído.
+
+#### `Home.tsx`
+- Integração do hook `useOnboarding` com render do `OnboardingTour` após carregamento de dados principais.
+- Adicionado alvo estável para o tour no acesso do bracket (`#bracket-highlight`).
+- Adicionado alvo estável para o tour no guia de pontuação/ranking (`#scoring-guide-highlight`).
+- Expandido bloco de “Acessos Rápidos” para incluir cartão dedicado ao bracket.
+
+#### `Nav.tsx`
+- Adicionado botão `Ver tour novamente` no menu do avatar.
+- Botão dispara `restartOnboardingTour()` e fecha o menu.
+- Adicionado id `#ranking-nav` na aba Ranking da navegação para uso no tour.
+
+#### `index.css`
+- Estilização da popover do driver (`.nba-tour-popover`) alinhada ao design system (`--nba-*`), incluindo título, descrição, progresso e botões.
+
+### Validação
+- `ReadLints` sem erros nos arquivos alterados.
+- `npm run build` do frontend executado com sucesso.
+
+## 2026-04-15 - Fase 2: feedback visual no ranking e score report (Codex)
+
+### Objetivo
+- Dar feedback visual imediato quando pontuação/posição muda com updates do Realtime.
+- Adicionar micro-animação para séries recém-resolvidas no relatório individual.
+
+### Arquivos alterados
+- `frontend/src/index.css`
+- `frontend/src/components/RankingTable.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `frontend/src/components/ParticipantScoreReport.tsx`
+
+### Mudanças feitas
+
+#### `index.css`
+- Criadas animações utilitárias:
+  - `flashSuccess` / `.flash-success` (ganho de pontos/subida),
+  - `flashDanger` / `.flash-danger` (queda de posição),
+  - `rankingReorder` / `.ranking-reorder` (reordenação da tabela),
+  - `resolvedPulse` / `.series-resolved` (série resolvida),
+  - `cravadaBurst` / `.series-cravada-burst` (destaque de cravada).
+
+#### `RankingTable.tsx`
+- Adicionado controle de estado anterior por participante (`useRef`) para comparar `total_points` e `rank`.
+- Aplicação automática de flash por linha por ~800ms:
+  - verde (`flash-success`) quando os pontos sobem ou a posição melhora;
+  - vermelho (`flash-danger`) quando a posição piora.
+
+#### `Ranking.tsx`
+- Detecta mudança de ordem da tabela via assinatura do array de participantes.
+- Quando ordem muda, aplica animação curta (`ranking-reorder`) no card da classificação.
+
+#### `ParticipantScoreReport.tsx`
+- Detecta transição de série `pending -> resolvida`.
+- Séries resolvidas recebem micro-feedback (`series-resolved`).
+- Quando a resolução é `cravada`, usa destaque específico (`series-cravada-burst`) por ~800ms.
+
+### Validação
+- `ReadLints` executado nos arquivos alterados sem erros.
+
 ## 2026-04-15 - Fase 1: Skeleton loading em Home/Ranking/Bracket (Codex)
 
 ### Objetivo

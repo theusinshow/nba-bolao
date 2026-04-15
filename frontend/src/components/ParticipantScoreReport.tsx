@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { BarChart3, CheckCircle2, ChevronDown, ChevronRight, CircleOff, Flame, Layers3, Trophy, XCircle } from 'lucide-react'
 import type { GameScoreBreakdownItem, ParticipantScoreBreakdown, RoundNumber, SeriesScoreBreakdownItem } from '../types'
 import { LoadingBasketball } from './LoadingBasketball'
@@ -106,6 +106,8 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
   const [viewMode, setViewMode] = useState<ReportViewMode>('all')
   const [roundFilter, setRoundFilter] = useState<RoundNumber>(1)
   const [conferenceFilter, setConferenceFilter] = useState<ReportConference>('East')
+  const [resolvedSeriesFx, setResolvedSeriesFx] = useState<Record<string, 'resolved' | 'cravada'>>({})
+  const previousSeriesByIdRef = useRef<Record<string, SeriesScoreBreakdownItem>>({})
 
   if (loading) {
     return (
@@ -124,6 +126,36 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
   }
 
   const { participant, summary, series_breakdown, game_breakdown } = breakdown
+
+  useEffect(() => {
+    const currentById: Record<string, SeriesScoreBreakdownItem> = {}
+    const nextFx: Record<string, 'resolved' | 'cravada'> = {}
+
+    for (const item of series_breakdown) {
+      currentById[item.id] = item
+      const previous = previousSeriesByIdRef.current[item.id]
+      const becameResolved = previous?.status === 'pending' && item.status !== 'pending'
+      if (!becameResolved) continue
+      nextFx[item.id] = item.status === 'cravada' ? 'cravada' : 'resolved'
+    }
+
+    previousSeriesByIdRef.current = currentById
+
+    if (Object.keys(nextFx).length === 0) return
+
+    setResolvedSeriesFx((current) => ({ ...current, ...nextFx }))
+    const timeout = window.setTimeout(() => {
+      setResolvedSeriesFx((current) => {
+        const cleaned = { ...current }
+        for (const id of Object.keys(nextFx)) {
+          delete cleaned[id]
+        }
+        return cleaned
+      })
+    }, 850)
+
+    return () => window.clearTimeout(timeout)
+  }, [series_breakdown])
 
   const availableRounds = useMemo(
     () => [...new Set([...series_breakdown.map((item) => item.round), ...game_breakdown.map((item) => item.round)])].sort((a, b) => a - b) as RoundNumber[],
@@ -350,9 +382,11 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
               {filteredSeriesBreakdown.map((item) => {
                 const status = STATUS_META[item.status]
                 const isCravada = item.status === 'cravada'
+                const fxState = resolvedSeriesFx[item.id]
                 return (
                   <div
                     key={item.id}
+                    className={fxState === 'cravada' ? 'series-cravada-burst' : fxState === 'resolved' ? 'series-resolved' : undefined}
                     style={{
                       padding: '12px',
                       borderRadius: 10,

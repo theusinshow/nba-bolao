@@ -68,6 +68,100 @@
   border-radius: 6px;
 }
 
+@keyframes flashSuccess {
+  0% { background-color: rgba(46, 204, 113, 0.28); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashDanger {
+  0% { background-color: rgba(231, 76, 60, 0.24); }
+  100% { background-color: transparent; }
+}
+
+@keyframes rankingReorder {
+  0% { transform: translateY(8px); opacity: 0.88; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes resolvedPulse {
+  0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.35); }
+  100% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+}
+
+@keyframes cravadaBurst {
+  0% { box-shadow: 0 0 0 0 rgba(255, 209, 102, 0.55); transform: scale(1); }
+  60% { box-shadow: 0 0 0 12px rgba(255, 209, 102, 0); transform: scale(1.015); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 209, 102, 0); transform: scale(1); }
+}
+
+.flash-success {
+  animation: flashSuccess 0.8s ease;
+}
+
+.flash-danger {
+  animation: flashDanger 0.8s ease;
+}
+
+.ranking-reorder {
+  animation: rankingReorder 0.65s ease;
+}
+
+.series-resolved {
+  animation: resolvedPulse 0.75s ease;
+}
+
+.series-cravada-burst {
+  animation: cravadaBurst 0.8s ease;
+}
+
+.nba-tour-popover.driver-popover {
+  background: var(--nba-surface);
+  color: var(--nba-text);
+  border: 1px solid rgba(200,150,60,0.24);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+}
+
+.nba-tour-popover .driver-popover-title {
+  color: var(--nba-gold);
+  font-family: 'Bebas Neue', cursive;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 1.06rem;
+}
+
+.nba-tour-popover .driver-popover-description {
+  color: var(--nba-text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.nba-tour-popover .driver-popover-progress-text {
+  color: var(--nba-text-muted);
+  font-size: 0.72rem;
+}
+
+.nba-tour-popover .driver-popover-next-btn,
+.nba-tour-popover .driver-popover-prev-btn {
+  border-radius: 8px;
+  border: 1px solid rgba(200,150,60,0.22);
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  text-shadow: none;
+}
+
+.nba-tour-popover .driver-popover-next-btn {
+  background: var(--nba-gold);
+  color: #0a0a0f;
+}
+
+.nba-tour-popover .driver-popover-prev-btn {
+  background: transparent;
+  color: var(--nba-text-muted);
+}
+
 /* ─── Animação das linhas da quadra na Login ─── */
 @keyframes courtFade {
   0%,100% { opacity: 0.04; }
