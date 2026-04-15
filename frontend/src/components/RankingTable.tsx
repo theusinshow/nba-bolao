@@ -6,6 +6,7 @@ interface Props {
   highlightId?: string
   selectedId?: string
   onParticipantClick?: (participantId: string) => void
+  onAvatarClick?: (participantId: string) => void
 }
 
 // ─── Avatar com iniciais ──────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ const RANK_COLOR: Record<number, string> = {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick }: Props) {
+export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick, onAvatarClick }: Props) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -216,7 +217,17 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                 {/* Name + avatar + arrow */}
                 <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar name={e.participant_name} />
+                    <span
+                      onClick={(ev) => {
+                        if (!onAvatarClick) return
+                        ev.stopPropagation()
+                        onAvatarClick(e.participant_id)
+                      }}
+                      style={{ cursor: onAvatarClick ? 'pointer' : 'default' }}
+                      title={onAvatarClick ? 'Ver perfil' : undefined}
+                    >
+                      <Avatar name={e.participant_name} />
+                    </span>
                     <span
                       style={{
                         color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)',

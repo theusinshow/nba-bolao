@@ -6,6 +6,8 @@ import { buildRankingState } from '../utils/ranking'
 export function useRanking() {
   const [ranking, setRanking] = useState<RankingEntry[]>([])
   const [breakdowns, setBreakdowns] = useState<Record<string, ParticipantScoreBreakdown>>({})
+  const [rawSeries, setRawSeries] = useState<Series[]>([])
+  const [rawSeriesPicks, setRawSeriesPicks] = useState<SeriesPick[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const previousRankingRef = useRef<RankingEntry[]>([])
@@ -78,6 +80,8 @@ export function useRanking() {
       previousRankingRef.current = nextRanking
       setRanking(nextRanking)
       setBreakdowns(nextBreakdowns)
+      setRawSeries(allSeries as Series[])
+      setRawSeriesPicks(allSeriesPicks as SeriesPick[])
     } catch (err) {
       console.error('[useRanking] Unexpected error:', err)
       setError('Erro inesperado ao calcular ranking.')
@@ -90,5 +94,5 @@ export function useRanking() {
     return breakdowns[participantId]
   }
 
-  return { ranking, breakdowns, loading, error, refetch: computeRanking, getBreakdownForParticipant }
+  return { ranking, breakdowns, rawSeries, rawSeriesPicks, loading, error, refetch: computeRanking, getBreakdownForParticipant }
 }

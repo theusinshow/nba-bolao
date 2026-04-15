@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Crown, Flame, Info, Medal, ReceiptText, Trophy, X } from 'lucide-react'
+import { BarChart2, Crown, Flame, FlaskConical, Info, Medal, ReceiptText, Trophy, X } from 'lucide-react'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
 import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
+import { SimulatorPanel } from '../components/SimulatorPanel'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useRanking } from '../hooks/useRanking'
 import { SCORING_CONFIG } from '../utils/scoring'
@@ -350,10 +351,13 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
 }
 
 export function Ranking({ participantId }: Props) {
-  const { ranking, breakdowns, loading, error } = useRanking()
+  const { ranking, breakdowns, rawSeries, rawSeriesPicks, loading, error } = useRanking()
   const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(participantId)
   const [mobileReportOpen, setMobileReportOpen] = useState(false)
+  const [simOpen, setSimOpen] = useState(false)
+
+  const hasOpenSeries = rawSeries.some((s) => !s.is_complete && s.home_team_id != null)
 
   const selectedBreakdown = useMemo(() => {
     if (!selectedParticipantId) return undefined
@@ -364,7 +368,13 @@ export function Ranking({ participantId }: Props) {
 
   function handleParticipantReportOpen(nextParticipantId: string) {
     setSelectedParticipantId(nextParticipantId)
-    navigate(`/profile/${nextParticipantId}`)
+    if (window.innerWidth < 1024) {
+      setMobileReportOpen(true)
+    }
+  }
+
+  function handleAvatarClick(participantId: string) {
+    navigate(`/profile/${participantId}`)
   }
 
   return (
@@ -502,6 +512,32 @@ export function Ranking({ participantId }: Props) {
                     <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
                       {ranking.length} participante{ranking.length !== 1 ? 's' : ''}
                     </span>
+                    {hasOpenSeries && (
+                      <button
+                        onClick={() => setSimOpen((v) => !v)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: simOpen
+                            ? '1px solid rgba(200,150,60,0.5)'
+                            : '1px solid var(--nba-border)',
+                          background: simOpen
+                            ? 'rgba(200,150,60,0.12)'
+                            : 'rgba(12,12,18,0.4)',
+                          color: simOpen ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <FlaskConical size={12} />
+                        E se...
+                      </button>
+                    )}
                     <button
                       className="lg:hidden"
                       onClick={() => setMobileReportOpen(true)}
@@ -531,8 +567,19 @@ export function Ranking({ participantId }: Props) {
                   highlightId={participantId}
                   selectedId={selectedParticipantId ?? undefined}
                   onParticipantClick={handleParticipantReportOpen}
+                  onAvatarClick={handleAvatarClick}
                 />
               </div>
+
+              {/* Simulator panel */}
+              {simOpen && (
+                <SimulatorPanel
+                  ranking={ranking}
+                  rawSeries={rawSeries}
+                  rawSeriesPicks={rawSeriesPicks}
+                  onClose={() => setSimOpen(false)}
+                />
+              )}
 
               <div
                 className="hidden lg:block"
