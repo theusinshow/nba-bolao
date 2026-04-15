@@ -56,6 +56,18 @@
 .podium-silver { animation: glowSilver 3.4s ease-in-out infinite; }
 .podium-bronze { animation: glowBronze 3.8s ease-in-out infinite; }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--nba-surface) 25%, var(--nba-surface-2) 50%, var(--nba-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
 /* ─── Animação das linhas da quadra na Login ─── */
 @keyframes courtFade {
   0%,100% { opacity: 0.04; }

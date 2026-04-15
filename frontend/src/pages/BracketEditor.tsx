@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trophy, GitBranch, Target, BadgeCheck, Hourglass, X } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
-import { LoadingBasketball } from '../components/LoadingBasketball'
 import { SeriesModal } from '../components/SeriesModal'
 import { GamePickModal } from '../components/GamePickModal'
 import { useSeries } from '../hooks/useSeries'
@@ -484,8 +483,8 @@ export function BracketEditor({ participantId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingBasketball size={32} />
+      <div className="pb-24 pt-4 px-2 md:px-6 lg:px-10">
+        <BracketSVG series={[]} loading />
       </div>
     )
   }

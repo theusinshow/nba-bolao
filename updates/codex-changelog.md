@@ -1,5 +1,51 @@
 # Codex Changelog
 
+## 2026-04-15 - Fase 1: Skeleton loading em Home/Ranking/Bracket (Codex)
+
+### Objetivo
+- Substituir estados de carregamento com tela vazia/spinner isolado por skeleton shimmer coerente com o layout real.
+- Melhorar percepção de performance sem alterar regras de negócio.
+
+### Arquivos alterados
+- `frontend/src/components/SkeletonCard.tsx`
+- `frontend/src/index.css`
+- `frontend/src/pages/Home.tsx`
+- `frontend/src/pages/Ranking.tsx`
+- `frontend/src/components/BracketSVG.tsx`
+- `frontend/src/pages/BracketEditor.tsx`
+- `frontend/src/pages/OfficialBracket.tsx`
+
+### Mudanças feitas
+
+#### `SkeletonCard.tsx` (novo)
+- Criado componente base reutilizável de skeleton com props de `width`, `height`, `radius`, `style` e `className`.
+
+#### `index.css`
+- Adicionados `@keyframes shimmer` e classe global `.skeleton` usando `--nba-surface` e `--nba-surface-2`.
+
+#### `Home.tsx`
+- `LastNightRecap` agora recebe `loading` e renderiza skeleton cards horizontais durante carregamento.
+- `RankingCard` trocou spinner por skeleton de linhas simulando os itens do top ranking.
+- `StatsGrid` ganhou estado skeleton para os valores numéricos dos cards.
+- Integração do loading existente de `useSeries` e `useRanking` para controlar skeletons.
+
+#### `Ranking.tsx`
+- Criado `TopThreeCardsSkeleton` para simular cards do pódio.
+- Estado `loading` passou a renderizar estrutura completa da página (sidebar de pontuação, card do gráfico e tabela) com skeletons no formato real.
+- Mantido loader discreto no rodapé para reforçar feedback sem perder layout.
+
+#### `BracketSVG.tsx`
+- Adicionada prop opcional `loading`.
+- Implementado `BracketSkeleton` com duas variações:
+  - mobile: blocos por rodada;
+  - desktop: cabeçalhos e slots do bracket em formato shimmer.
+
+#### `BracketEditor.tsx` e `OfficialBracket.tsx`
+- Durante `loading`, substituído spinner central por render do `BracketSVG` em modo skeleton.
+
+### Validação
+- `ReadLints` executado nos arquivos alterados sem erros.
+
 ## 2026-04-14 - OfficialBracketCard redesenhado com lista por rodada (Claude Code)
 
 ### Objetivo

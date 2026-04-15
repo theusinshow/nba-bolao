@@ -5,6 +5,7 @@ import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
 import { SimulatorPanel } from '../components/SimulatorPanel'
 import { LoadingBasketball } from '../components/LoadingBasketball'
+import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { SCORING_CONFIG } from '../utils/scoring'
 
@@ -87,6 +88,33 @@ function TopThreeCards({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function TopThreeCardsSkeleton() {
+  return (
+    <div style={{ display: 'grid', gap: 12 }} className="grid-cols-1 sm:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={index}
+          style={{
+            background: 'var(--nba-surface)',
+            border: '1px solid var(--nba-border)',
+            borderRadius: 12,
+            padding: '1rem',
+            minHeight: 180,
+            display: 'grid',
+            gap: 10,
+          }}
+        >
+          <SkeletonCard width="45%" height={14} />
+          <SkeletonCard width="68%" height={18} />
+          <SkeletonCard width={74} height={38} />
+          <SkeletonCard width="100%" height={12} />
+          <SkeletonCard width="84%" height={12} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -373,9 +401,61 @@ const navigate = useNavigate()
       )}
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-          <LoadingBasketball size={32} />
-        </div>
+        <>
+          <div
+            className="grid lg:grid-cols-[280px_minmax(0,1fr)]"
+            style={{ gap: 16, alignItems: 'start' }}
+          >
+            <aside className="hidden lg:block">
+              <div
+                style={{
+                  background: 'var(--nba-surface)',
+                  border: '1px solid var(--nba-border)',
+                  borderRadius: 8,
+                  padding: '1rem',
+                  display: 'grid',
+                  gap: 10,
+                }}
+              >
+                <SkeletonCard width="46%" height={20} />
+                <SkeletonCard width="100%" height={12} />
+                <SkeletonCard width="100%" height={12} />
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <SkeletonCard key={index} width="100%" height={52} radius={8} />
+                ))}
+              </div>
+            </aside>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
+              <TopThreeCardsSkeleton />
+
+              <div style={{ background: 'var(--nba-surface)', border: '1px solid var(--nba-border)', borderRadius: 8, padding: '1rem' }}>
+                <SkeletonCard width="40%" height={18} style={{ marginBottom: 16 }} />
+                <SkeletonCard width="100%" height={250} radius={8} />
+              </div>
+
+              <div style={{ background: 'var(--nba-surface)', border: '1px solid var(--nba-border)', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--nba-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <SkeletonCard width={140} height={16} />
+                  <SkeletonCard width={90} height={12} />
+                </div>
+                <div style={{ padding: '14px 16px', display: 'grid', gap: 10 }}>
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div key={index} style={{ display: 'grid', gridTemplateColumns: '34px 1fr 60px', gap: 10, alignItems: 'center' }}>
+                      <SkeletonCard width={24} height={14} />
+                      <SkeletonCard width="100%" height={14} />
+                      <SkeletonCard width={48} height={14} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 24 }}>
+            <LoadingBasketball size={22} />
+          </div>
+        </>
       ) : (
         <>
           <div className="lg:hidden" style={{ marginBottom: 16 }}>

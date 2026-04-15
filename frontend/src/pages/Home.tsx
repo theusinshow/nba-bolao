@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
-import { LoadingBasketball } from '../components/LoadingBasketball'
+import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
@@ -103,10 +103,12 @@ function LastNightRecap({
   games,
   upcomingGames,
   isRealData,
+  loading,
 }: {
   games: ReturnType<typeof useGameFeed>['recentCompletedGames']
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
   isRealData: boolean
+  loading: boolean
 }) {
   const sourceGames = games.map((game) => ({
     home: game.home_team?.abbreviation ?? game.home_team_id,
@@ -143,7 +145,17 @@ function LastNightRecap({
         )}
       </div>
 
-      {sourceGames.length > 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 1rem 0.2rem' }}>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} style={{ minWidth: 250, padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.42)', border: '1px solid rgba(200,150,60,0.14)', display: 'grid', gap: 8 }}>
+              <SkeletonCard width="72%" height={12} />
+              <SkeletonCard width="48%" height={28} />
+              <SkeletonCard width="60%" height={10} />
+            </div>
+          ))}
+        </div>
+      ) : sourceGames.length > 0 ? (
         <div
           style={{
             display: 'flex',
@@ -374,8 +386,14 @@ function RankingCard({
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-          <LoadingBasketball size={20} />
+        <div style={{ display: 'grid', gap: 8 }}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '24px 1fr 44px', gap: 10, alignItems: 'center', padding: '8px 6px' }}>
+              <SkeletonCard width={18} height={12} />
+              <SkeletonCard width="100%" height={13} />
+              <SkeletonCard width={34} height={13} />
+            </div>
+          ))}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 6 }}>
@@ -449,11 +467,13 @@ function StatsGrid({
   completedSeries,
   totalSeries,
   myEntry,
+  loading,
 }: {
   participantCount: number
   completedSeries: number
   totalSeries: number
   myEntry?: { rank: number; total_points: number }
+  loading: boolean
 }) {
   const stats = [
     { icon: <Users size={18} />, label: 'Participantes', value: String(participantCount), gold: false },
@@ -469,9 +489,13 @@ function StatsGrid({
           <span style={{ color: 'var(--nba-gold)', flexShrink: 0, display: 'flex' }}>{icon}</span>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', lineHeight: 1.2 }}>{label}</div>
-            <div className="font-condensed font-bold" style={{ color: gold ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '1.4rem', lineHeight: 1.2 }}>
-              {value}
-            </div>
+            {loading ? (
+              <SkeletonCard width={72} height={24} style={{ marginTop: 4 }} />
+            ) : (
+              <div className="font-condensed font-bold" style={{ color: gold ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '1.4rem', lineHeight: 1.2 }}>
+                {value}
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -828,7 +852,7 @@ function HomeQuickDeck() {
 
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
-  const { series, picks } = useSeries(participantId)
+  const { series, picks, loading: seriesLoading } = useSeries(participantId)
   const { recentCompletedGames, upcomingGames, hasRealGames } = useGameFeed()
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
@@ -842,11 +866,11 @@ export function Home({ participantId }: Props) {
     <div className="pb-24 pt-4 px-4 mx-auto grid gap-4 xl:gap-5 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]" style={{ maxWidth: 1420 }}>
       <div className="hidden xl:flex xl:flex-col xl:gap-4">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-        <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} />
+        <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
-        <div className="animate-in-1"><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} /></div>
+        <div className="animate-in-1"><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} loading={seriesLoading} /></div>
         <div className="animate-in-2"><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></div>
         <div className="animate-in-3"><NewsAlertPill /></div>
         <div className="animate-in-4"><HomeQuickDeck /></div>
@@ -854,7 +878,7 @@ export function Home({ participantId }: Props) {
         <div className="xl:hidden flex flex-col gap-4">
           <MyPicksCard series={series} picks={picks} />
           <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-          <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} />
+          <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
           <RecentSeriesCard series={series} />
         </div>
 

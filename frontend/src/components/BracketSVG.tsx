@@ -3,6 +3,7 @@ import { Trophy } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
 import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 import { teamAbbrStyle, teamAbbrSVGProps } from '../utils/teamColors'
+import { SkeletonCard } from './SkeletonCard'
 
 // ─── Team logo helper ────────────────────────────────────────────────────────
 function teamLogoUrl(abbreviation: string): string {
@@ -472,6 +473,7 @@ function MobileBracketView({
 interface Props {
   series: Series[]
   picks?: SeriesPick[]
+  loading?: boolean
   onSeriesClick?: (series: Series) => void
   // Compare mode — when provided, border colours reflect agreement instead of pick outcome
   comparePicks?: SeriesPick[]
@@ -479,7 +481,46 @@ interface Props {
   focusSection?: 'west' | 'finals' | 'east' | 'full'
 }
 
-export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full' }: Props) {
+function BracketSkeleton({ mobile }: { mobile: boolean }) {
+  if (mobile) {
+    return (
+      <div style={{ display: 'grid', gap: 18, padding: '4px 0 8px' }}>
+        {Array.from({ length: 4 }).map((_, group) => (
+          <div key={group} style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <SkeletonCard width={28} height={28} radius={999} />
+              <SkeletonCard width={160} height={16} />
+              <SkeletonCard width="100%" height={1} />
+            </div>
+            {Array.from({ length: group < 2 ? 2 : 1 }).map((__, index) => (
+              <SkeletonCard key={index} width="100%" height={100} radius={10} />
+            ))}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
+      <div style={{ minWidth: 1300, display: 'grid', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', gap: 12 }}>
+          {Array.from({ length: 7 }).map((_, index) => (
+            <SkeletonCard key={index} width="100%" height={12} />
+          ))}
+        </div>
+        <SkeletonCard width="100%" height={1} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', gap: 12 }}>
+          {Array.from({ length: 15 }).map((_, index) => (
+            <SkeletonCard key={index} width="100%" height={90} radius={8} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function BracketSVG({ series, picks = [], loading = false, onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full' }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
@@ -515,6 +556,10 @@ export function BracketSVG({ series, picks = [], onSeriesClick, comparePicks, on
       behavior: 'smooth',
     })
   }, [focusSection])
+
+  if (loading) {
+    return <BracketSkeleton mobile={isMobile} />
+  }
 
   // ── Mobile view ─────────────────────────────────────────────────────────────
   if (isMobile) {
