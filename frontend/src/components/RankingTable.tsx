@@ -4,9 +4,7 @@ import type { RankingEntry } from '../types'
 interface Props {
   ranking: RankingEntry[]
   highlightId?: string
-  selectedId?: string
   onParticipantClick?: (participantId: string) => void
-  onAvatarClick?: (participantId: string) => void
 }
 
 // ─── Avatar com iniciais ──────────────────────────────────────────────────────
@@ -121,7 +119,7 @@ const RANK_COLOR: Record<number, string> = {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick, onAvatarClick }: Props) {
+export function RankingTable({ ranking, highlightId, onParticipantClick }: Props) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -161,9 +159,8 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
         {/* Rows */}
         <tbody>
           {ranking.map((e, idx) => {
-            const isMe     = e.participant_id === highlightId
-            const isSelected = e.participant_id === selectedId
-            const isMedal  = e.rank <= 3
+            const isMe    = e.participant_id === highlightId
+            const isMedal = e.rank <= 3
             const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : null
             const seriesPct = e.series_total > 0
               ? Math.round((e.series_correct / e.series_total) * 100)
@@ -171,17 +168,15 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
 
             // Row background priority: medal > me > zebra
             const rowBg =
-              isMedal  ? MEDAL_BG[e.rank] :
-              isSelected ? 'rgba(74,144,217,0.12)' :
-              isMe     ? 'var(--nba-surface-2)' :
+              isMedal ? MEDAL_BG[e.rank] :
+              isMe    ? 'var(--nba-surface-2)' :
               idx % 2 === 1 ? 'rgba(255,255,255,0.02)' :
               'transparent'
 
             // Left accent: medal glow or user gold
             const rowShadow =
-              isMedal  ? MEDAL_GLOW[e.rank] :
-              isSelected ? 'inset 3px 0 0 var(--nba-east)' :
-              isMe     ? 'inset 3px 0 0 var(--nba-gold)' :
+              isMedal ? MEDAL_GLOW[e.rank] :
+              isMe    ? 'inset 3px 0 0 var(--nba-gold)' :
               'none'
 
             const rankColor = RANK_COLOR[e.rank] ?? 'var(--nba-gold)'
@@ -217,17 +212,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                 {/* Name + avatar + arrow */}
                 <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span
-                      onClick={(ev) => {
-                        if (!onAvatarClick) return
-                        ev.stopPropagation()
-                        onAvatarClick(e.participant_id)
-                      }}
-                      style={{ cursor: onAvatarClick ? 'pointer' : 'default' }}
-                      title={onAvatarClick ? 'Ver perfil' : undefined}
-                    >
-                      <Avatar name={e.participant_name} />
-                    </span>
+                    <Avatar name={e.participant_name} />
                     <span
                       style={{
                         color: isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
@@ -321,9 +306,9 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                       alignItems: 'center',
                       gap: 4,
                       borderRadius: 999,
-                      border: `1px solid ${isSelected ? 'rgba(74,144,217,0.32)' : 'rgba(200,150,60,0.16)'}`,
-                      background: isSelected ? 'rgba(74,144,217,0.14)' : 'rgba(12,12,18,0.34)',
-                      color: isSelected ? 'var(--nba-east)' : 'var(--nba-gold)',
+                      border: '1px solid rgba(200,150,60,0.16)',
+                      background: 'rgba(12,12,18,0.34)',
+                      color: 'var(--nba-gold)',
                       padding: '6px 10px',
                       fontSize: '0.72rem',
                       fontWeight: 700,

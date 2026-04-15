@@ -5,6 +5,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { useParticipantProfile } from '../hooks/useParticipantProfile'
+import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
 import { getTeamLogoUrl } from '../data/teams2025'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 
@@ -444,20 +445,26 @@ export function Profile() {
         )}
       </div>
 
-      {/* Empty state */}
-      {!breakdown && (
+      {/* Relatório detalhado de pontuação */}
+      <div style={{ marginTop: 4 }}>
         <div
           style={{
-            background: 'var(--nba-surface)',
-            border: '1px solid var(--nba-border)',
-            borderRadius: 12,
-            padding: '2rem',
-            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 14,
           }}
         >
-          <p style={{ color: 'var(--nba-text-muted)' }}>Nenhum palpite feito ainda.</p>
+          <h2
+            className="title"
+            style={{ color: 'var(--nba-gold)', fontSize: '1rem', letterSpacing: '0.14em', lineHeight: 1 }}
+          >
+            RELATÓRIO DE PONTUAÇÃO
+          </h2>
+          <div style={{ height: 1, flex: 1, background: 'var(--nba-border)' }} />
         </div>
-      )}
+        <ParticipantScoreReport breakdown={breakdown} loading={loading} />
+      </div>
     </div>
   )
 }

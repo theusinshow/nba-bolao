@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Info } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Info, Shuffle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -482,114 +482,79 @@ function DailyAutoPickCard({
   return (
     <div
       style={{
-        background: 'var(--nba-surface)',
-        border: '1px solid var(--nba-border)',
-        borderRadius: 12,
-        padding: '1rem',
-        marginBottom: 18,
+        marginTop: 24,
+        borderTop: '1px solid var(--nba-border)',
+        paddingTop: 16,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ position: 'relative', flex: '1 1 280px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 0 }}>
-              Vai na fé
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowInfo((current) => !current)}
-              aria-label="Explicar o botão Vai na fé"
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: '999px',
-                border: '1px solid rgba(200,150,60,0.35)',
-                background: 'rgba(200,150,60,0.14)',
-                color: 'var(--nba-gold)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              <Info size={12} />
-            </button>
-          </div>
-          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
-            Preencha no aleatório só os jogos do dia que ainda estiverem abertos.
-          </p>
-
-          {showInfo && (
-            <div
-              style={{
-                marginTop: 10,
-                maxWidth: 420,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'rgba(12,12,18,0.96)',
-                border: '1px solid rgba(200,150,60,0.26)',
-                color: 'var(--nba-text)',
-                fontSize: '0.78rem',
-                lineHeight: 1.45,
-              }}
-            >
-              O <strong style={{ color: 'var(--nba-gold)' }}>Vai na fé</strong> gera palpites aleatórios para os jogos que ainda estão abertos naquele dia. Você pode usar como atalho para preencher rápido e revisar antes de confirmar.
-            </div>
-          )}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span
           className="font-condensed"
+          style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', letterSpacing: '0.07em', textTransform: 'uppercase' }}
+        >
+          Preencher no aleatório
+        </span>
+        <button
+          type="button"
+          onClick={() => setShowInfo((current) => !current)}
+          aria-label="Explicar o botão Vai na fé"
           style={{
+            width: 18,
+            height: 18,
+            borderRadius: '999px',
+            border: '1px solid rgba(136,136,153,0.3)',
+            background: 'transparent',
             color: 'var(--nba-text-muted)',
-            fontSize: '0.72rem',
-            background: 'var(--nba-surface-2)',
-            border: '1px solid var(--nba-border)',
-            borderRadius: 999,
-            padding: '4px 10px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
           }}
         >
-          {groups.length} dia{groups.length !== 1 ? 's' : ''} disponível{groups.length !== 1 ? 'eis' : ''}
-        </span>
+          <Info size={10} />
+        </button>
+        {showInfo && (
+          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.4 }}>
+            — gera palpites aleatórios para os jogos abertos do dia
+          </span>
+        )}
       </div>
 
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {groups.map((group) => (
           <button
             key={group.key}
             onClick={() => onOpen(group)}
             style={{
-              width: '100%',
-              textAlign: 'left',
-              border: '1px solid rgba(200,150,60,0.16)',
-              borderRadius: 10,
-              background: 'rgba(12,12,18,0.34)',
-              padding: '12px 14px',
-              color: 'inherit',
+              border: '1px solid rgba(136,136,153,0.2)',
+              borderRadius: 8,
+              background: 'transparent',
+              padding: '6px 14px',
+              color: 'var(--nba-text-muted)',
               cursor: 'pointer',
+              fontSize: '0.78rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div>
-                <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.92rem', lineHeight: 1 }}>
-                  {group.label}
-                </div>
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 5 }}>
-                  {group.pendingGames.length} sem palpite • {group.alreadyPickedGames.length} já preenchido{group.alreadyPickedGames.length !== 1 ? 's' : ''}
-                </div>
-              </div>
+            <Shuffle size={12} />
+            <span className="font-condensed">
+              Vai na fé · {group.label}
+            </span>
+            {group.pendingGames.length > 0 && (
               <span
-                className="font-condensed font-bold"
                 style={{
-                  color: 'var(--nba-gold)',
-                  fontSize: '0.82rem',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
+                  background: 'rgba(136,136,153,0.15)',
+                  borderRadius: 4,
+                  padding: '1px 5px',
+                  fontSize: '0.7rem',
                 }}
               >
-                Vai na fé hoje
+                {group.pendingGames.length}
               </span>
-            </div>
+            )}
           </button>
         ))}
       </div>
@@ -2347,7 +2312,6 @@ export function Games({ participantId }: Props) {
         pendingSeries={filterCounts.pending}
         urgentSeries={filterCounts.urgent}
       />
-      <DailyAutoPickCard groups={autoPickDayGroups} onOpen={openAutoPick} />
       <PicksFocusCard entries={pickFocusEntries} />
       <FiltersBar active={activeFilter} counts={filterCounts} onChange={setActiveFilter} />
 
@@ -2438,6 +2402,8 @@ export function Games({ participantId }: Props) {
           />
         ))}
       </div>
+
+      <DailyAutoPickCard groups={autoPickDayGroups} onOpen={openAutoPick} />
 
       {autoPickGroup && (
         <AutoPickModal

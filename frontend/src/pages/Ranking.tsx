@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Crown, Flame, FlaskConical, Info, Medal, ReceiptText, Trophy, X } from 'lucide-react'
-import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
+import { BarChart2, Crown, Flame, FlaskConical, Info, Medal, Trophy, X } from 'lucide-react'
 import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
 import { SimulatorPanel } from '../components/SimulatorPanel'
@@ -353,28 +352,14 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
 export function Ranking({ participantId }: Props) {
   const { ranking, breakdowns, rawSeries, rawSeriesPicks, loading, error } = useRanking()
   const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
-  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(participantId)
-  const [mobileReportOpen, setMobileReportOpen] = useState(false)
   const [simOpen, setSimOpen] = useState(false)
 
   const hasOpenSeries = rawSeries.some((s) => !s.is_complete && s.home_team_id != null)
 
-  const selectedBreakdown = useMemo(() => {
-    if (!selectedParticipantId) return undefined
-    return breakdowns[selectedParticipantId]
-  }, [breakdowns, selectedParticipantId])
+const navigate = useNavigate()
 
-  const navigate = useNavigate()
-
-  function handleParticipantReportOpen(nextParticipantId: string) {
-    setSelectedParticipantId(nextParticipantId)
-    if (window.innerWidth < 1024) {
-      setMobileReportOpen(true)
-    }
-  }
-
-  function handleAvatarClick(participantId: string) {
-    navigate(`/profile/${participantId}`)
+  function handleParticipantClick(id: string) {
+    navigate(`/profile/${id}`)
   }
 
   return (
@@ -538,36 +523,13 @@ export function Ranking({ participantId }: Props) {
                         E se...
                       </button>
                     )}
-                    <button
-                      className="lg:hidden"
-                      onClick={() => setMobileReportOpen(true)}
-                      disabled={!selectedBreakdown}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '7px 10px',
-                        borderRadius: 999,
-                        border: '1px solid rgba(74,144,217,0.26)',
-                        background: selectedBreakdown ? 'rgba(74,144,217,0.12)' : 'rgba(255,255,255,0.03)',
-                        color: selectedBreakdown ? 'var(--nba-east)' : 'var(--nba-text-muted)',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: selectedBreakdown ? 'pointer' : 'default',
-                      }}
-                    >
-                      <ReceiptText size={13} />
-                      Relatório
-                    </button>
                   </div>
                 </div>
 
                 <RankingTable
                   ranking={ranking}
                   highlightId={participantId}
-                  selectedId={selectedParticipantId ?? undefined}
-                  onParticipantClick={handleParticipantReportOpen}
-                  onAvatarClick={handleAvatarClick}
+                  onParticipantClick={handleParticipantClick}
                 />
               </div>
 
@@ -581,104 +543,11 @@ export function Ranking({ participantId }: Props) {
                 />
               )}
 
-              <div
-                className="hidden lg:block"
-                style={{
-                  background: 'var(--nba-surface)',
-                  border: '1px solid var(--nba-border)',
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--nba-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <h2
-                    className="title"
-                    style={{ color: 'var(--nba-gold)', fontSize: '1rem', letterSpacing: '0.1em' }}
-                  >
-                    Relatório de Pontuação
-                  </h2>
-                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
-                    {selectedBreakdown?.participant.name ?? 'Selecione um participante'}
-                  </span>
-                </div>
-
-                <div style={{ padding: 16 }}>
-                  <ParticipantScoreReport breakdown={selectedBreakdown} loading={loading} />
-                </div>
-              </div>
             </div>
           </div>
         </>
       )}
 
-      {mobileReportOpen && (
-        <div className="lg:hidden">
-          <div
-            onClick={() => setMobileReportOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.65)',
-              zIndex: 40,
-            }}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 41,
-              maxHeight: '82vh',
-              overflowY: 'auto',
-              borderTopLeftRadius: 18,
-              borderTopRightRadius: 18,
-              background: 'rgba(19,19,26,0.98)',
-              borderTop: '1px solid rgba(200,150,60,0.18)',
-              padding: '16px 16px calc(20px + env(safe-area-inset-bottom))',
-              boxShadow: '0 -14px 40px rgba(0,0,0,0.32)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-              <div>
-                <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', letterSpacing: '0.08em' }}>
-                  Relatório
-                </div>
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem' }}>
-                  {selectedBreakdown?.participant.name ?? 'Selecione um participante na tabela'}
-                </div>
-              </div>
-              <button
-                onClick={() => setMobileReportOpen(false)}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  border: '1px solid rgba(200,150,60,0.12)',
-                  background: 'rgba(28,28,38,0.9)',
-                  color: 'var(--nba-text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <ParticipantScoreReport breakdown={selectedBreakdown} loading={loading} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
