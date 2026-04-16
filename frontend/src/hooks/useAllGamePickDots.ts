@@ -3,31 +3,36 @@ import { supabase } from '../lib/supabase'
 import { TEAM_MAP } from '../data/teams2025'
 import type { DotData, DotStatus } from '../components/GamePickDots'
 
-interface RawPick {
-  participant_id: string
-  winner_id: string
-  game_id: string
-  games: {
-    id: string
-    winner_id: string | null
-    played: boolean
-    tip_off_at: string | null
-    round: number | null
-    home_team_id: string
-    away_team_id: string
-    series_id: string
-    game_number: number
-  } | null
+interface GameRow {
+  id: string
+  series_id: string
+  game_number: number
+  home_team_id: string
+  away_team_id: string
+  tip_off_at: string | null
+  round: number | null
+  played: boolean
+  winner_id: string | null
 }
 
-function getDotStatus(pickWinnerId: string, game: RawPick['games']): DotStatus {
-  if (!game) return 'no-pick'
+interface PickRow {
+  participant_id: string
+  game_id: string
+  winner_id: string
+}
+
+interface ParticipantRow {
+  id: string
+}
+
+function getDotStatus(pickWinnerId: string, game: GameRow): DotStatus {
   if (!game.played) return 'pending'
   if (!game.winner_id) return 'pending'
   return pickWinnerId === game.winner_id ? 'correct' : 'wrong'
 }
 
-/** Single query — fetches all game_picks + joined game data for all participants. */
+/** Fetches games, picks and participants in parallel.
+ *  Returns a dot entry for EVERY game per participant — including no-pick ones. */
 export function useAllGamePickDots(): {
   dotsById: Map<string, DotData[]>
   loading: boolean
@@ -38,57 +43,57 @@ export function useAllGamePickDots(): {
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await supabase
-          .from('game_picks')
-          .select(`
-            participant_id,
-            winner_id,
-            game_id,
-            games (
-              id, winner_id, played, tip_off_at, round,
-              home_team_id, away_team_id, series_id, game_number
-            )
-          `)
+        const [
+          { data: participants },
+          { data: games },
+          { data: picks },
+        ] = await Promise.all([
+          supabase.from('participants').select('id'),
+          supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, round, played, winner_id').order('tip_off_at', { ascending: true }),
+          supabase.from('game_picks').select('participant_id, game_id, winner_id'),
+        ])
+
+        if (!participants || !games) return
+
+        const gamesById = new Map((games as GameRow[]).map((g) => [g.id, g]))
+
+        // pick lookup: `participantId:gameId` → winnerId
+        const pickMap = new Map<string, string>()
+        for (const pick of (picks ?? []) as PickRow[]) {
+          pickMap.set(`${pick.participant_id}:${pick.game_id}`, pick.winner_id)
+        }
 
         const map = new Map<string, DotData[]>()
 
-        for (const raw of (data ?? []) as unknown as RawPick[]) {
-          const game = raw.games
-          if (!game) continue
+        for (const { id: participantId } of participants as ParticipantRow[]) {
+          const dots: DotData[] = []
 
-          const status = getDotStatus(raw.winner_id, game)
-          const homeAbbr = TEAM_MAP[game.home_team_id]?.abbreviation ?? game.home_team_id
-          const awayAbbr = TEAM_MAP[game.away_team_id]?.abbreviation ?? game.away_team_id
+          for (const game of games as GameRow[]) {
+            const pickKey = `${participantId}:${game.id}`
+            const pickedWinner = pickMap.get(pickKey)
+            const homeAbbr = TEAM_MAP[game.home_team_id]?.abbreviation ?? game.home_team_id
+            const awayAbbr = TEAM_MAP[game.away_team_id]?.abbreviation ?? game.away_team_id
 
-          const dot: DotData = {
-            gameId: raw.game_id,
-            status,
-            round: game.round ?? 1,
-            seriesId: game.series_id,
-            homeTeamId: game.home_team_id,
-            awayTeamId: game.away_team_id,
-            homeAbbr,
-            awayAbbr,
-            gameNumber: game.game_number,
-            tipOffAt: game.tip_off_at,
+            const status: DotStatus = pickedWinner
+              ? getDotStatus(pickedWinner, game)
+              : 'no-pick'
+
+            dots.push({
+              gameId: game.id,
+              status,
+              round: game.round ?? 1,
+              seriesId: game.series_id,
+              homeTeamId: game.home_team_id,
+              awayTeamId: game.away_team_id,
+              homeAbbr,
+              awayAbbr,
+              gameNumber: game.game_number,
+              tipOffAt: game.tip_off_at,
+            })
           }
 
-          const existing = map.get(raw.participant_id) ?? []
-          existing.push(dot)
-          map.set(raw.participant_id, existing)
+          map.set(participantId, dots)
         }
-
-        // Sort each participant's dots by tip_off_at ascending
-        map.forEach((dots, id) => {
-          map.set(
-            id,
-            dots.sort((a, b) => {
-              if (!a.tipOffAt) return 1
-              if (!b.tipOffAt) return -1
-              return new Date(a.tipOffAt).getTime() - new Date(b.tipOffAt).getTime()
-            }),
-          )
-        })
 
         setDotsById(map)
       } finally {
