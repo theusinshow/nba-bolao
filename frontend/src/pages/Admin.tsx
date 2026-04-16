@@ -18,6 +18,7 @@ import {
   Clock3,
   MessageSquareShare,
   RotateCcw,
+  BellRing,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { adminGet, adminPost } from '../lib/adminApi'
@@ -32,6 +33,27 @@ interface Props {
 interface HealthResponse {
   ok: boolean
   timestamp: string
+}
+
+interface DailyReminderGame {
+  gameId: string
+  gameNumber: number
+  matchup: string
+  tipOff: string
+  missing: string[]
+  picked: number
+}
+
+interface DailyReminderResponse {
+  ok: boolean
+  result: {
+    targetDate: string
+    generatedAt: string
+    whatsappText: string
+    todayGames: number
+    totalParticipants: number
+    gamesWithMissingPicks: DailyReminderGame[]
+  }
 }
 
 interface DailyDigestResponse {
@@ -221,6 +243,8 @@ export function Admin({ participantId }: Props) {
   const [activity, setActivity] = useState<ActivityItem[]>(() => loadActivity())
   const [digestModalOpen, setDigestModalOpen] = useState(false)
   const [latestDigest, setLatestDigest] = useState<DailyDigestResponse['result'] | null>(null)
+  const [reminderModalOpen, setReminderModalOpen] = useState(false)
+  const [latestReminder, setLatestReminder] = useState<DailyReminderResponse['result'] | null>(null)
   const [backupModalOpen, setBackupModalOpen] = useState(false)
   const [latestBackup, setLatestBackup] = useState<BackupResponse['result'] | null>(null)
   const [resetModalOpen, setResetModalOpen] = useState(false)
@@ -382,6 +406,21 @@ export function Admin({ participantId }: Props) {
     } catch (error) {
       addToast((error as Error).message, 'error')
       pushActivity('Falha ao gerar resumo diário do grupo', 'danger')
+    }
+  }
+
+  async function handleDailyReminder() {
+    try {
+      const payload = await runAdminAction('daily-reminder', () =>
+        adminPost<DailyReminderResponse>('/admin/daily-reminder')
+      )
+      setLatestReminder(payload.result)
+      setReminderModalOpen(true)
+      addToast('Lembrete do dia gerado com sucesso.', 'success')
+      pushActivity(`Lembrete gerado para ${payload.result.targetDate}`, 'info')
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      pushActivity('Falha ao gerar lembrete diário', 'danger')
     }
   }
 
@@ -765,6 +804,100 @@ export function Admin({ participantId }: Props) {
 
               <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 14 }}>
                 O caminho do backup gerado foi aberto no modal de backup logo após o reset.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reminderModalOpen && latestReminder && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(5,8,16,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 83 }}
+          onClick={() => setReminderModalOpen(false)}
+        >
+          <div
+            style={{ width: 'min(680px,100%)', maxHeight: '88vh', overflow: 'hidden', borderRadius: 16, border: '1px solid rgba(200,150,60,0.22)', background: 'linear-gradient(180deg,rgba(18,23,34,0.98),rgba(10,13,20,0.98))', boxShadow: '0 30px 80px rgba(0,0,0,0.45)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '18px 20px 14px', borderBottom: '1px solid rgba(200,150,60,0.12)' }}>
+              <div>
+                <div className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Lembrete do dia
+                </div>
+                <div style={{ color: 'var(--nba-text)', fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>
+                  Quem ainda não palpitou hoje
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+                  {latestReminder.todayGames} jogo(s) hoje · {latestReminder.totalParticipants} participantes · gerado às {latestReminder.generatedAt}
+                </div>
+              </div>
+              <button
+                onClick={() => setReminderModalOpen(false)}
+                style={{ border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(255,255,255,0.04)', color: 'var(--nba-text)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)', display: 'grid', gap: 14 }}>
+              {latestReminder.todayGames === 0 ? (
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', padding: '12px 0' }}>
+                  Nenhum jogo pendente para hoje.
+                </div>
+              ) : (
+                latestReminder.gamesWithMissingPicks.map((game) => (
+                  <div key={game.gameId} style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(12,12,18,0.5)', border: `1px solid ${game.missing.length === 0 ? 'rgba(46,204,113,0.2)' : 'rgba(200,150,60,0.14)'}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                      <div>
+                        <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem' }}>
+                          Jogo {game.gameNumber} — {game.matchup}
+                        </span>
+                        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 10 }}>{game.tipOff}</span>
+                      </div>
+                      <span className="font-condensed" style={{ color: game.missing.length === 0 ? 'var(--nba-success)' : 'var(--nba-gold)', fontSize: '0.84rem', fontWeight: 700, flexShrink: 0 }}>
+                        {game.picked}/{latestReminder.totalParticipants}
+                      </span>
+                    </div>
+
+                    {game.missing.length === 0 ? (
+                      <div style={{ color: 'var(--nba-success)', fontSize: '0.8rem' }}>✅ Todos palpitaram!</div>
+                    ) : (
+                      <div>
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 6 }}>Faltam palpitar:</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {game.missing.map((name) => (
+                            <span key={name} style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(231,76,60,0.1)', border: '1px solid rgba(231,76,60,0.22)', color: 'var(--nba-danger)', fontSize: '0.76rem', fontWeight: 600 }}>
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+
+              <div style={{ borderTop: '1px solid rgba(200,150,60,0.1)', paddingTop: 14 }}>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 8 }}>Mensagem para WhatsApp</div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(latestReminder.whatsappText)
+                        addToast('Mensagem copiada!', 'success')
+                      } catch {
+                        addToast('Não foi possível copiar.', 'error')
+                      }
+                    }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(200,150,60,0.10)', color: 'var(--nba-gold)', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}
+                  >
+                    <MessageSquareShare size={14} />
+                    Copiar mensagem
+                  </button>
+                </div>
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace,monospace', fontSize: '0.82rem', lineHeight: 1.55, color: 'var(--nba-text)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.10)', borderRadius: 12, padding: '14px 16px' }}>
+                  {latestReminder.whatsappText}
+                </pre>
               </div>
             </div>
           </div>
@@ -1268,6 +1401,31 @@ export function Admin({ participantId }: Props) {
                 </span>
                 <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
                   {busyAction === 'daily-digest' ? 'Gerando...' : 'WhatsApp'}
+                </span>
+              </button>
+
+              <button
+                onClick={handleDailyReminder}
+                disabled={busyAction === 'daily-reminder'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(200,150,60,0.14)',
+                  background: 'rgba(12,12,18,0.34)',
+                  color: 'var(--nba-text)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <BellRing size={15} />
+                  Lembrete de palpites do dia
+                </span>
+                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                  {busyAction === 'daily-reminder' ? 'Gerando...' : 'Reminder'}
                 </span>
               </button>
 

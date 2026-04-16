@@ -1,5 +1,44 @@
 # Codex Changelog
 
+## 2026-04-16 - Admin: lembrete de palpites do dia
+
+### Contexto
+Nova função no painel admin que mostra quem ainda não palpitou nos jogos do dia e gera mensagem pronta para WhatsApp. Complementa o "Resumo do grupo" existente, mas focado em lembrete pré-jogo.
+
+### `backend/src/digest/exportDailyReminder.ts` (novo)
+- Busca jogos do dia (BRT) cujo `played = false`
+- Cruza com `game_picks` para identificar quem palpitou em cada jogo
+- Para cada jogo: retorna `matchup`, `tipOff`, lista `missing` (quem falta), contador `picked/total`
+- Gera texto WhatsApp com emojis ⏰ / ⚠️ / ✅ por jogo
+- Aceita `targetDate` opcional (padrão = hoje BRT)
+
+### `backend/src/routes/admin.ts`
+- Nova rota `POST /admin/daily-reminder`
+- Aceita `{ targetDate?: string }` no body
+
+### `frontend/src/pages/Admin.tsx`
+- Interface `DailyReminderResponse` / `DailyReminderGame` adicionadas
+- Estado `reminderModalOpen` + `latestReminder`
+- Handler `handleDailyReminder` — chama rota, abre modal, registra atividade
+- Botão "Lembrete de palpites do dia" (`BellRing`) inserido na seção Operações
+- Modal: cards por jogo com contador `X/total`, nomes de quem falta em tags vermelhas, badge verde "✅ Todos palpitaram!" quando completo, texto WhatsApp com botão copiar
+
+---
+
+## 2026-04-16 - GamePickDots: dots cinzas para jogos sem palpite
+
+### Contexto
+Antes do início dos playoffs, os dots ficavam invisíveis porque `CompactDots` só exibia `correct | wrong`. Agora mostra todos os 5 slots visualmente.
+
+### `frontend/src/components/GamePickDots.tsx`
+- `CompactDots` reescrito: usa todos os dots (sem filtrar por status), preenche até 5 slots com padding
+- Slots de padding (menos de 5 dots): círculo vazio com borda `rgba(136,136,153,0.25)`
+- `no-pick`: círculo transparente com borda `rgba(136,136,153,0.3)`
+- `pending`: fundo `#555566`
+- `DOT_COLOR` atualizado: `pending: '#555566'`, `no-pick: 'transparent'`
+
+---
+
 ## 2026-04-16 - Modo visitante (guest mode)
 
 ### Contexto

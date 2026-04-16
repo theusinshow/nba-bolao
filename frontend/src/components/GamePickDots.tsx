@@ -18,8 +18,8 @@ export interface DotData {
 const DOT_COLOR: Record<DotStatus, string> = {
   correct: '#2ecc71',
   wrong: '#e74c3c',
-  pending: '#3a3a4e',
-  'no-pick': '#2a2a38',
+  pending: '#555566',
+  'no-pick': 'transparent',
 }
 
 const DOT_LABEL: Record<DotStatus, string> = {
@@ -36,30 +36,48 @@ const DOT_LABEL: Record<DotStatus, string> = {
 const COMPACT_COUNT = 5
 
 function CompactDots({ dots }: { dots: DotData[] }) {
-  // Last 5 played games (tip_off_at in the past or already played)
-  const recent = dots
-    .filter((d) => d.status === 'correct' || d.status === 'wrong')
-    .slice(-COMPACT_COUNT)
+  // Last 5 games (any status), padded to COMPACT_COUNT slots
+  const recent = dots.slice(-COMPACT_COUNT)
+  const padded: (DotData | null)[] = [
+    ...Array(Math.max(0, COMPACT_COUNT - recent.length)).fill(null),
+    ...recent,
+  ]
 
-  if (recent.length === 0) return null
+  if (dots.length === 0) return null
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
-      {recent.map((dot) => (
-        <span
-          key={dot.gameId}
-          title={`J${dot.gameNumber} · ${dot.homeAbbr} vs ${dot.awayAbbr} · ${DOT_LABEL[dot.status]}`}
-          style={{
-            display: 'inline-block',
-            width: 7,
-            height: 7,
-            borderRadius: '50%',
-            background: DOT_COLOR[dot.status],
-            flexShrink: 0,
-            cursor: 'default',
-          }}
-        />
-      ))}
+      {padded.map((dot, i) =>
+        dot === null ? (
+          <span
+            key={`empty-${i}`}
+            style={{
+              display: 'inline-block',
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: 'transparent',
+              border: '1px solid rgba(136,136,153,0.25)',
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <span
+            key={dot.gameId}
+            title={`J${dot.gameNumber} · ${dot.homeAbbr} vs ${dot.awayAbbr} · ${DOT_LABEL[dot.status]}`}
+            style={{
+              display: 'inline-block',
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: dot.status === 'no-pick' ? 'transparent' : DOT_COLOR[dot.status],
+              border: dot.status === 'no-pick' ? '1px solid rgba(136,136,153,0.3)' : 'none',
+              flexShrink: 0,
+              cursor: 'default',
+            }}
+          />
+        )
+      )}
     </span>
   )
 }

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { removeParticipantCompletely } from '../admin/removeParticipant'
 import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
 import { exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
+import { exportDailyReminder } from '../digest/exportDailyReminder'
 
 const router = Router()
 
@@ -266,6 +267,19 @@ router.post('/daily-digest', async (req, res) => {
     })
   } catch (err: unknown) {
     console.error('[admin/daily-digest] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/daily-reminder — generate WhatsApp-ready reminder of who hasn't picked today
+router.post('/daily-reminder', async (req, res) => {
+  try {
+    const targetDate = typeof req.body?.targetDate === 'string' ? req.body.targetDate.trim() : ''
+    const result = await exportDailyReminder(targetDate || undefined)
+
+    res.json({ ok: true, result })
+  } catch (err: unknown) {
+    console.error('[admin/daily-reminder] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })
