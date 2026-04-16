@@ -409,7 +409,7 @@ function RankingCard({
   ]
 
   return (
-    <div style={{ ...card, minWidth: 0, overflow: 'hidden' }}>
+    <div style={{ ...card, minWidth: 0 }}>
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
 
       {loading ? (
@@ -1023,7 +1023,7 @@ export function Home({ participantId }: Props) {
   return (
     <div className="pb-24 pt-4 px-4 mx-auto grid gap-4 xl:gap-5 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]" style={{ maxWidth: 1420 }}>
       {canStartTour && <OnboardingTour show={canStartTour} onComplete={complete} />}
-      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0 overflow-hidden">
+      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
         <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
       </div>
