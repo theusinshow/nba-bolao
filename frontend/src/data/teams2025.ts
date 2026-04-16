@@ -63,6 +63,9 @@ export const TEAMS_2025: Team[] = [
 
   { id: 'POR', name: 'Portland Trail Blazers',abbreviation: 'POR', conference: 'West', seed: 99,
     primary_color: '#E03A3E', secondary_color: '#892020' },   // Rip City Red / Deep Red
+
+  { id: 'PHI', name: 'Philadelphia 76ers',   abbreviation: 'PHI', conference: 'East', seed: 99,
+    primary_color: '#006BB6', secondary_color: '#ED174C' },   // Sixers Blue / Red
 ]
 
 export const TEAM_MAP: Record<string, Team> = Object.fromEntries(
