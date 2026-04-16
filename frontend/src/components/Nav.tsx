@@ -54,6 +54,7 @@ export function Nav({ auth, onSignOut }: Props) {
             }}
           />
           <div
+            className="nav-menu-open"
             style={{
               position: 'fixed',
               right: 12,

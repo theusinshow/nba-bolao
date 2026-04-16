@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNowTick } from '../hooks/useNowTick'
 
 interface Props {
@@ -13,6 +14,21 @@ function pad(n: number) { return String(n).padStart(2, '0') }
 export function CountdownTimer({ targetDate, label, urgentUnderOneHour = false, className }: Props) {
   const now = useNowTick()
   const diff = Math.max(0, new Date(targetDate).getTime() - now)
+  const [ticking, setTicking] = useState(false)
+  const prevSecondsRef = useRef(-1)
+
+  const s = Math.floor((diff % 60_000) / 1_000)
+
+  // Trigger tick animation each time the seconds digit changes
+  useEffect(() => {
+    if (diff === 0) return
+    if (prevSecondsRef.current !== s && prevSecondsRef.current !== -1) {
+      setTicking(true)
+      const id = setTimeout(() => setTicking(false), 130)
+      return () => clearTimeout(id)
+    }
+    prevSecondsRef.current = s
+  }, [s, diff])
 
   if (diff === 0) {
     return (
@@ -24,7 +40,6 @@ export function CountdownTimer({ targetDate, label, urgentUnderOneHour = false, 
 
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
-  const s = Math.floor((diff % 60_000) / 1_000)
   const isUrgent = urgentUnderOneHour && diff < 3_600_000
 
   const timeStr = h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
@@ -37,11 +52,12 @@ export function CountdownTimer({ targetDate, label, urgentUnderOneHour = false, 
         </span>
       )}
       <span
-        className="font-condensed font-bold"
+        className={`font-condensed font-bold${ticking ? ' digit-tick' : ''}`}
         style={{
           color: isUrgent ? 'var(--nba-danger)' : 'var(--nba-gold)',
           fontSize: '0.95rem',
           lineHeight: 1,
+          display: 'inline-block',
           transition: 'color 0.3s ease',
         }}
       >

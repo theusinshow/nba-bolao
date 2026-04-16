@@ -244,7 +244,7 @@ function NextGamesCard({
   const featured = sourceGames[0]
 
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle icon={<Clock size={14} />}>Próximos Confrontos</CardTitle>
 
       {featured ? (
@@ -343,7 +343,7 @@ function RecentResultsCard({
   })
 
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle icon={<Database size={14} />}>Resultados Recentes</CardTitle>
 
       {sourceGames.length > 0 ? (
@@ -402,7 +402,7 @@ function OddsCard({
   teamStylesByName: Record<string, TeamOddsStyle>
 }) {
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle icon={<TrendingUp size={14} />}>Odds dos Confrontos</CardTitle>
 
       {loading ? (
@@ -540,7 +540,7 @@ function NewsCard({
   reason?: string
 }) {
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle icon={<Newspaper size={14} />}>Notícias da NBA</CardTitle>
 
       {loading ? (
@@ -623,7 +623,7 @@ function InjuriesCard({
   })
 
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle icon={<HeartPulse size={14} />}>Relatório de Lesões</CardTitle>
 
       {loading ? (

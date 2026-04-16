@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Suspense, lazy } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useRef } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Nav } from './components/Nav'
@@ -7,6 +7,35 @@ import { Toast } from './components/Toast'
 import { Login } from './pages/Login'
 import { Unauthorized } from './pages/Unauthorized'
 import { LoadingBasketball } from './components/LoadingBasketball'
+
+// Patch <a> clicks inside BrowserRouter to use View Transitions API when available
+function ViewTransitionHandler() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const locationRef = useRef(location)
+  useEffect(() => { locationRef.current = location }, [location])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      const anchor = (e.target as Element).closest('a[href]') as HTMLAnchorElement | null
+      if (!anchor) return
+      const url = new URL(anchor.href, window.location.href)
+      if (url.origin !== window.location.origin) return
+      if (anchor.target || anchor.download || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      const path = url.pathname + url.search + url.hash
+      if (path === locationRef.current.pathname + locationRef.current.search + locationRef.current.hash) return
+      if (!('startViewTransition' in document)) return
+      e.preventDefault()
+      ;(document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => {
+        navigate(path)
+      })
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [navigate])
+
+  return null
+}
 
 const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })))
 const Analysis = lazy(() => import('./pages/Analysis').then((module) => ({ default: module.Analysis })))
@@ -58,6 +87,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ViewTransitionHandler />
       <Toast />
       <Suspense fallback={<RouteFallback />}>
         <Routes>

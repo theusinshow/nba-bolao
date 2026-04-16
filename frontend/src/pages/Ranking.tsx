@@ -38,10 +38,12 @@ function TopThreeCards({
         const style = styles[index]
         const isMe = entry.participant_id === participantId
 
+        const enterClass = index === 0 ? 'podium-enter-center' : index === 1 ? 'podium-enter-right' : 'podium-enter-left'
+
         return (
           <div
             key={entry.participant_id}
-            className={style.glowClass}
+            className={`${style.glowClass} ${enterClass}`}
             style={{
               background: `linear-gradient(180deg, ${style.glow}, rgba(19,19,26,0.96))`,
               border: `1px solid ${style.color}33`,

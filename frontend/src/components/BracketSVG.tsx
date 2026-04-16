@@ -184,6 +184,7 @@ function MobileSeriesCard({
     <button
       onClick={onClick}
       disabled={!onClick}
+      className="bracket-series-node"
       style={{
         width: '100%',
         background: cardBackground,
@@ -193,7 +194,7 @@ function MobileSeriesCard({
         cursor: onClick ? 'pointer' : 'default',
         textAlign: 'left',
         overflow: 'hidden',
-        transition: 'background 0.2s, box-shadow 0.2s',
+        transition: 'background 0.2s, box-shadow 0.2s, filter 0.25s',
       }}
     >
       {/* Teams row */}

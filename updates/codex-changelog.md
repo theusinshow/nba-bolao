@@ -1,5 +1,98 @@
 # Codex Changelog
 
+## 2026-04-16 - Feature: Visual Upgrade — Animações e micro-interações premium
+
+### Contexto
+O app funcionava corretamente mas era completamente estático — navegação instantânea, modais sem entrada/saída, toasts sem movimento, sem feedback de press em botões, sem sentido de vida nas páginas. O objetivo foi tornar cada parte do app fluída e responsiva usando **somente CSS puro + View Transitions API** (sem adicionar nenhuma biblioteca de animação). Intensidade alvo: "presente e fluído" — 200–350ms, nada teatral.
+
+### `frontend/src/index.css`
+Adicionados novos keyframes e classes utilitárias:
+- **Page transitions**: `@keyframes page-fade-in`, `@keyframes page-fade-out` + `::view-transition-new(root)` e `::view-transition-old(root)` — cross-fade com leve slide de 6px ao trocar de rota (220ms entrada / 180ms saída)
+- **Modal animations**: `modal-backdrop-in/out`, `modal-panel-in/out` — backdrop faz fade, painel desliza 16px + escala de 0.98 → 1 (200–220ms)
+- **Toast**: `toast-in/out` + classes `.toast-enter` e `.toast-exit` — slide de 24px pela direita com fade (250ms / 200ms)
+- **Nav menu**: `nav-menu-in` + `.nav-menu-open` — menu desliza de -10px + scale 0.98 → 1 (200ms)
+- **Ranking row stagger**: `.stagger-row-1` até `.stagger-row-9` — rows aparecem em cascata com delay de 40ms entre cada uma (300ms base, usando `fadeInUp` existente)
+- **Card hover lift**: `.card-hover` com `transition` e hover `translateY(-1px)` + glow dourado sutil — sem background fixo, compatível com estilo inline
+- **Bracket glow**: `.bracket-series-node:hover` e `.bracket-slot.clickable:hover` — `filter: drop-shadow(0 0 10px rgba(200,150,60,0.22/0.3))` em ambas as versões (mobile card e SVG desktop)
+- **Podium entrance**: `podium-center/left/right` + classes `.podium-enter-center/left/right` — cards do pódio entram de ângulos opostos (300–320ms)
+- **Digit tick**: `digit-tick` + `.digit-tick` — scale vertical 1 → 0.84 → 1 a cada tick do contador (120ms)
+- **Button press**: `.btn-primary:active { transform: scale(0.97) }` e `.btn-ghost:active:not(:disabled) { transform: scale(0.97) }` — feedback tátil imediato em todos os botões principais
+- **Prefers-reduced-motion**: todas as novas classes adicionadas ao bloco existente de `prefers-reduced-motion: reduce` + `::view-transition-*` desabilitados explicitamente
+
+### `frontend/src/App.tsx`
+- Adicionado `ViewTransitionHandler` — componente interno ao `BrowserRouter` que intercepta clicks em `<a>` internos e envolve a navegação com `document.startViewTransition()` quando disponível (progressive enhancement — browsers sem suporte ignoram silenciosamente)
+
+### `frontend/src/components/SeriesModal.tsx`
+- Adicionado estado `closing: boolean` — quando usuário fecha o modal (botão X ou Escape), aciona `.closing` em vez de chamar `onClose` diretamente
+- `onAnimationEnd` no painel chama `onClose()` depois da animação de saída (180ms)
+- Backdrop e painel recebem `modal-backdrop` e `modal-panel` classes, com `closing` adicionada condicionalmente
+
+### `frontend/src/components/GamePickModal.tsx`
+- Mesma lógica de animação de saída do `SeriesModal` — `closing` state, `handleClose()`, `onAnimationEnd`
+
+### `frontend/src/components/Toast.tsx`
+- Refatorado para manter lista local `DisplayToast[]` que sobrevive à remoção do store
+- Quando um toast sai do store, é marcado como `exiting: true` e removido da lista local após 210ms (após animação `toast-exit`)
+- Cada toast recebe `toast-enter` ou `toast-exit` class dinamicamente — slide visível tanto na entrada quanto na saída
+
+### `frontend/src/components/Nav.tsx`
+- Painel do menu mobile recebe `className="nav-menu-open"` — aparece com slide-down + scale (200ms) em vez de instantâneo
+
+### `frontend/src/components/RankingTable.tsx`
+- Rows recebem `stagger-row-{N}` (de 1 a 9) baseado no índice — entrance em cascata ao carregar a tabela inicial
+- A lógica de `flash-success` / `flash-danger` existente não foi alterada
+
+### `frontend/src/components/CountdownTimer.tsx`
+- Adicionado `ticking` state — togglado `true` por 130ms cada vez que o dígito de segundos muda
+- Span do tempo recebe `digit-tick` class quando `ticking === true` — scale vertical sutil a cada segundo
+- `display: 'inline-block'` adicionado ao span para que `transform: scaleY()` funcione
+
+### `frontend/src/components/BracketSVG.tsx`
+- `SeriesCard` (versão mobile/card) recebe `className="bracket-series-node"` + `transition: '... filter 0.25s'`
+- CSS do glow via `.bracket-series-node:hover:not(:disabled)` e `.bracket-slot.clickable:hover`
+
+### `frontend/src/pages/Home.tsx`
+- Stats grid (Participantes, Séries, Posição, Pontos): `card-hover` adicionado — hover lift nos 4 cards
+- Card "Séries Recentes": `card-hover` adicionado
+- Card "Meus Palpites": `card-hover` adicionado
+- Rows do ranking compacto (top 5): `animate-in-{i+1}` para entrada em cascata
+
+### `frontend/src/pages/Analysis.tsx`
+- Cards "Próximos Confrontos", "Resultados Recentes", "Odds dos Confrontos", "Notícias da NBA", "Relatório de Lesões": todos recebem `card-hover` class
+
+### `frontend/src/pages/Ranking.tsx`
+- `TopThreeCards`: cada card do pódio recebe `podium-enter-center/left/right` baseado no índice — 1º lugar entra do centro, 2º da direita, 3º da esquerda
+
+---
+
+## 2026-04-16 - Fix: Layout do Ranking Geral invadindo coluna na Home
+
+### Contexto
+O card "Ranking Geral" na coluna esquerda da Home estava extrapolando o container de `280px`, invadindo visualmente o conteúdo central. Causa raiz: comportamento padrão do flexbox onde `flex: 1` sem `minWidth: 0` não força truncamento, e a coluna do grid não tinha contenção de overflow.
+
+### `frontend/src/pages/Home.tsx`
+- **Coluna esquerda**: adicionadas classes `min-w-0 overflow-hidden` ao `<div>` da sidebar esquerda — contém o conteúdo dentro dos `280px` do grid track
+- **`RankingCard`**: `style={card}` expandido com `minWidth: 0, overflow: 'hidden'` para que o card não extrapole a coluna pai
+- **Span do nome**: adicionado `minWidth: 0` ao `<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>` — sem isso o flex item não trunca nomes longos (comportamento padrão do flexbox onde `min-width: auto` prevalece sobre `overflow: hidden`)
+
+---
+
+## 2026-04-16 - Fix: LoadingBasketball SVG embutido inline
+
+### Contexto
+A animação de loading da bolinha de basquete não estava funcionando porque o componente carregava o SVG via `<img src="/loading-basketball.svg">`. Isso é frágil — o path absoluto pode falhar em ambientes com base path diferente, hot reload ou deploy CDN, e o `<img>` não garante que a animação CSS será aplicada ao SVG interno.
+
+### `frontend/src/components/LoadingBasketball.tsx`
+- SVG migrado de arquivo externo (`/loading-basketball.svg` via `<img>`) para **SVG inline** no JSX
+- `viewBox="0 0 2000 2000"` perfeitamente quadrado com centro em (1000, 1000) — garante que `transform-origin: center center` do CSS rotacione em torno do centro exato da bola
+- Visual redesenhado e mais legível no dark mode:
+  - Corpo: `circle` com fill `#1a1a24` (quase preto) e stroke dourado `#C8963C` (`strokeWidth="80"`)
+  - 4 costuras curvas em `#E05C3A` (laranja) com `opacity="0.85"` e `strokeLinecap="round"` — 2 horizontais curvas para cima/baixo, 2 verticais curvas para esquerda/direita
+- `loading-basketball-icon` aplicado ao `<svg>` direto — a animação `loading-basketball-spin` agora é garantida pelo DOM (antes dependia do `<img>` aplicar CSS ao seu conteúdo SVG)
+- Classes CSS e keyframes em `index.css` não foram alterados
+
+---
+
 ## 2026-04-16 - Feature: Relatório de Lesões na página de Análise
 
 ### Contexto

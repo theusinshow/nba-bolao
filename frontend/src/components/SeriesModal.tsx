@@ -23,17 +23,21 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
   const [selectedWinner, setSelectedWinner] = useState<string>(existingPick?.winner_id ?? '')
   const [selectedGames, setSelectedGames] = useState<number>(existingPick?.games_count ?? 0)
   const [saving, setSaving] = useState(false)
+  const [closing, setClosing] = useState(false)
   const { addToast } = useUIStore()
   const dialogRef = useFocusTrap<HTMLDivElement>(true)
   const titleId = 'series-modal-title'
 
+  function handleClose() { setClosing(true) }
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') handleClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const teamA = series.home_team ?? getTeam(series.home_team_id)
   const teamB = series.away_team ?? getTeam(series.away_team_id)
@@ -67,7 +71,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm modal-backdrop${closing ? ' closing' : ''}`}
       aria-hidden="true"
     >
       <div
@@ -75,10 +79,11 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card w-full max-w-sm p-6 relative"
+        className={`card w-full max-w-sm p-6 relative modal-panel${closing ? ' closing' : ''}`}
+        onAnimationEnd={() => { if (closing) onClose() }}
       >
         <button
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Fechar"
           className="absolute top-4 right-4 text-nba-muted hover:text-nba-text"
         >

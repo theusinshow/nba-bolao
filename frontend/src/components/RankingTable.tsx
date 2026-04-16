@@ -224,6 +224,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
               <tr
                 key={e.participant_id}
                 className={[
+                  idx < 9 ? `stagger-row-${idx + 1}` : '',
                   flashById[e.participant_id] === 'success' ? 'flash-success' : '',
                   flashById[e.participant_id] === 'danger' ? 'flash-danger' : '',
                   onParticipantClick ? 'ranking-row-interactive' : '',

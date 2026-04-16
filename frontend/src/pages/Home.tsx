@@ -409,7 +409,7 @@ function RankingCard({
   ]
 
   return (
-    <div style={card}>
+    <div style={{ ...card, minWidth: 0, overflow: 'hidden' }}>
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
 
       {loading ? (
@@ -432,6 +432,7 @@ function RankingCard({
             return (
               <div
                 key={e.participant_id}
+                className={i < 5 ? `animate-in-${i + 1}` : ''}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -455,6 +456,7 @@ function RankingCard({
                 {/* Nome */}
                 <span style={{
                   flex: 1,
+                  minWidth: 0,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -513,7 +515,7 @@ function StatsGrid({
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
       {stats.map(({ icon, label, value, gold }) => (
-        <div key={label} style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, padding: '0.85rem' }}>
+        <div key={label} className="card-hover" style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, padding: '0.85rem' }}>
           <span style={{ color: 'var(--nba-gold)', flexShrink: 0, display: 'flex' }}>{icon}</span>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', lineHeight: 1.2 }}>{label}</div>
@@ -535,7 +537,7 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
   const completed = series.filter((s) => s.is_complete).slice(-5).reverse()
 
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle>Séries Recentes</CardTitle>
 
       {completed.length === 0 ? (
@@ -832,7 +834,7 @@ function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['
   const pendingSeries = Math.max(picks.length - completedSeries, 0)
 
   return (
-    <div style={card}>
+    <div className="card-hover" style={card}>
       <CardTitle>Meus Palpites</CardTitle>
 
       <div style={{ display: 'grid', gap: 8, marginBottom: 12 }} className="grid-cols-2">
@@ -1021,7 +1023,7 @@ export function Home({ participantId }: Props) {
   return (
     <div className="pb-24 pt-4 px-4 mx-auto grid gap-4 xl:gap-5 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]" style={{ maxWidth: 1420 }}>
       {canStartTour && <OnboardingTour show={canStartTour} onComplete={complete} />}
-      <div className="hidden xl:flex xl:flex-col xl:gap-4">
+      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0 overflow-hidden">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
         <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
       </div>

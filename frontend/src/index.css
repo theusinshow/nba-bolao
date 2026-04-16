@@ -200,10 +200,22 @@
   .animate-in-2,
   .animate-in-3,
   .animate-in-4,
-  .animate-in-5 {
+  .animate-in-5,
+  .stagger-row-1, .stagger-row-2, .stagger-row-3, .stagger-row-4, .stagger-row-5,
+  .stagger-row-6, .stagger-row-7, .stagger-row-8, .stagger-row-9,
+  .podium-enter-center, .podium-enter-left, .podium-enter-right,
+  .toast-enter, .toast-exit,
+  .modal-backdrop, .modal-panel,
+  .nav-menu-open,
+  .digit-tick {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  ::view-transition-new(root),
+  ::view-transition-old(root) {
+    animation: none !important;
   }
 
   /* Desabilita transições longas */
@@ -342,7 +354,7 @@ body {
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
 .btn-primary:disabled {
@@ -377,6 +389,10 @@ body {
   background: rgba(200,150,60,0.06);
 }
 
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .btn-ghost:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -400,3 +416,125 @@ body {
 .num {
   font-family: 'Barlow Condensed', sans-serif;
 }
+
+/* ─── Page Transitions (View Transitions API) ─── */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes page-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+::view-transition-new(root) {
+  animation: page-fade-in 220ms ease-out;
+}
+::view-transition-old(root) {
+  animation: page-fade-out 180ms ease-in forwards;
+}
+
+/* ─── Modal Enter/Exit ─── */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes modal-panel-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(12px) scale(0.98); }
+}
+.modal-backdrop         { animation: modal-backdrop-in  200ms ease-out; }
+.modal-panel            { animation: modal-panel-in     220ms ease-out; }
+.modal-backdrop.closing { animation: modal-backdrop-out 180ms ease-in forwards; }
+.modal-panel.closing    { animation: modal-panel-out    180ms ease-in forwards; }
+
+/* ─── Toast Slide-In / Slide-Out ─── */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}
+.toast-enter { animation: toast-in  250ms ease-out; }
+.toast-exit  { animation: toast-out 200ms ease-in forwards; }
+
+/* ─── Nav Mobile Menu Slide-Down ─── */
+@keyframes nav-menu-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+.nav-menu-open { animation: nav-menu-in 200ms ease-out; }
+
+/* ─── Ranking Row Stagger Entrance ─── */
+.stagger-row-1 { animation: fadeInUp 0.30s 0.00s ease both; }
+.stagger-row-2 { animation: fadeInUp 0.30s 0.04s ease both; }
+.stagger-row-3 { animation: fadeInUp 0.30s 0.08s ease both; }
+.stagger-row-4 { animation: fadeInUp 0.30s 0.12s ease both; }
+.stagger-row-5 { animation: fadeInUp 0.30s 0.16s ease both; }
+.stagger-row-6 { animation: fadeInUp 0.30s 0.20s ease both; }
+.stagger-row-7 { animation: fadeInUp 0.30s 0.24s ease both; }
+.stagger-row-8 { animation: fadeInUp 0.30s 0.28s ease both; }
+.stagger-row-9 { animation: fadeInUp 0.30s 0.32s ease both; }
+
+/* ─── Card Hover Lift (utility, sem background fixo) ─── */
+.card-hover {
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+.card-hover:hover {
+  border-color: rgba(200,150,60,0.4);
+  box-shadow: 0 4px 20px rgba(200,150,60,0.08);
+  transform: translateY(-1px);
+}
+
+/* ─── Bracket Series Node Hover ─── */
+.bracket-series-node:hover:not(:disabled) {
+  filter: drop-shadow(0 0 10px rgba(200,150,60,0.22));
+}
+.bracket-slot.clickable {
+  cursor: pointer;
+  transition: filter 250ms ease;
+}
+.bracket-slot.clickable:hover {
+  filter: drop-shadow(0 0 10px rgba(200,150,60,0.3));
+}
+.bracket-winner-glow {
+  filter: drop-shadow(0 0 8px rgba(200,150,60,0.35));
+  transition: filter 250ms ease;
+}
+.bracket-series-node:hover .bracket-winner-glow {
+  filter: drop-shadow(0 0 16px rgba(200,150,60,0.65));
+}
+
+/* ─── Podium Entrance Animation ─── */
+@keyframes podium-center {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes podium-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes podium-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.podium-enter-center { animation: podium-center 320ms 0.10s ease both; }
+.podium-enter-left   { animation: podium-left   300ms 0.00s ease both; }
+.podium-enter-right  { animation: podium-right  300ms 0.20s ease both; }
+
+/* ─── CountdownTimer Digit Tick ─── */
+@keyframes digit-tick {
+  0%   { transform: scaleY(1); }
+  50%  { transform: scaleY(0.84); }
+  100% { transform: scaleY(1); }
+}
+.digit-tick { animation: digit-tick 120ms ease-in-out; }

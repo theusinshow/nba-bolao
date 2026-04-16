@@ -20,18 +20,22 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
   const { games, loading, saveGamePick, getPickForGame, isGameLocked } = useGamePicks(participantId, series.id)
   const { addToast } = useUIStore()
   const [saving, setSaving] = useState<string | null>(null)
+  const [closing, setClosing] = useState(false)
   // Estado local da série — atualizado via realtime enquanto o modal estiver aberto
   const [liveSeries, setLiveSeries] = useState<Series>(series)
   const dialogRef = useFocusTrap<HTMLDivElement>(true)
   const titleId = 'game-pick-modal-title'
 
+  function handleClose() { setClosing(true) }
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') handleClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Assina mudanças na série enquanto o modal está aberto para detectar encerramento em tempo real
   useEffect(() => {
@@ -65,7 +69,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm modal-backdrop${closing ? ' closing' : ''}`}
       aria-hidden="true"
     >
       <div
@@ -73,9 +77,10 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto"
+        className={`card w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto modal-panel${closing ? ' closing' : ''}`}
+        onAnimationEnd={() => { if (closing) onClose() }}
       >
-        <button onClick={onClose} aria-label="Fechar" className="absolute top-4 right-4 text-nba-muted hover:text-nba-text">
+        <button onClick={handleClose} aria-label="Fechar" className="absolute top-4 right-4 text-nba-muted hover:text-nba-text">
           <X size={20} />
         </button>
 
