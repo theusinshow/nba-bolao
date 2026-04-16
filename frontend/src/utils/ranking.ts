@@ -74,6 +74,12 @@ interface RankingComputationInput {
   previousRanking?: RankingEntry[]
 }
 
+function dedupeByLast<T>(items: T[], getKey: (item: T) => string): T[] {
+  const map = new Map<string, T>()
+  for (const item of items) map.set(getKey(item), item)
+  return Array.from(map.values())
+}
+
 export function buildRankingState({
   participants,
   series,
@@ -104,8 +110,14 @@ export function buildRankingState({
   const breakdowns: Record<string, ParticipantScoreBreakdown> = {}
 
   for (const participant of participants) {
-    const mySeriesPicks = seriesPicks.filter((pick) => pick.participant_id === participant.id)
-    const myGamePicks = gamePicks.filter((pick) => pick.participant_id === participant.id)
+    const mySeriesPicks = dedupeByLast(
+      seriesPicks.filter((pick) => pick.participant_id === participant.id),
+      (pick) => pick.series_id
+    )
+    const myGamePicks = dedupeByLast(
+      gamePicks.filter((pick) => pick.participant_id === participant.id),
+      (pick) => pick.game_id
+    )
 
     const roundPoints: [number, number, number, number] = [0, 0, 0, 0]
     let seriesPoints = 0

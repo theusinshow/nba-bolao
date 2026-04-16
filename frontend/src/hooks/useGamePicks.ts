@@ -6,7 +6,14 @@ import { normalizeGame } from '../utils/bracket'
 export function useGamePicks(participantId?: string, seriesId?: string) {
   const [games, setGames] = useState<Game[]>([])
   const [picks, setPicks] = useState<GamePick[]>([])
+  const [seriesLockTipOff, setSeriesLockTipOff] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  function getSeriesLockTipOff(nextGames: Game[]) {
+    return nextGames
+      .filter((game) => !!game.tip_off_at)
+      .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]?.tip_off_at ?? null
+  }
 
   useEffect(() => {
     if (!seriesId) return
@@ -36,7 +43,9 @@ export function useGamePicks(participantId?: string, seriesId?: string) {
 
     if (gamesData) {
       const round = seriesData?.round
-      setGames((gamesData as Game[]).map((game) => normalizeGame(game, round)))
+      const normalizedGames = (gamesData as Game[]).map((game) => normalizeGame(game, round))
+      setGames(normalizedGames)
+      setSeriesLockTipOff(getSeriesLockTipOff(normalizedGames))
     }
   }
 
@@ -61,8 +70,8 @@ export function useGamePicks(participantId?: string, seriesId?: string) {
     if (game.played) return { error: 'Game already finished' }
 
     // Check if game has started (tip_off_at is a proper datetime when parsed from API status)
-    if (game.tip_off_at && new Date(game.tip_off_at) <= new Date()) {
-      return { error: 'Game already started' }
+    if (seriesLockTipOff && new Date(seriesLockTipOff) <= new Date()) {
+      return { error: 'Series already started' }
     }
 
     const existing = picks.find((p) => p.game_id === gameId)
@@ -93,8 +102,8 @@ export function useGamePicks(participantId?: string, seriesId?: string) {
 
   function isGameLocked(game: Game): boolean {
     if (game.played) return true
-    if (!game.tip_off_at) return false
-    return new Date(game.tip_off_at) <= new Date()
+    if (!seriesLockTipOff) return false
+    return new Date(seriesLockTipOff) <= new Date()
   }
 
   return { games, picks, loading, saveGamePick, getPickForGame, isGameLocked }

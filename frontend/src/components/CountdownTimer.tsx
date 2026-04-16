@@ -23,6 +23,7 @@ export function CountdownTimer({ targetDate, label, urgentUnderOneHour = false, 
   useEffect(() => {
     if (diff === 0) return
     if (prevSecondsRef.current !== s && prevSecondsRef.current !== -1) {
+      prevSecondsRef.current = s
       setTicking(true)
       const id = setTimeout(() => setTicking(false), 130)
       return () => clearTimeout(id)

@@ -64,6 +64,14 @@ export function useAuth() {
     }
   }, [auth])
 
+  async function loadParticipant(userId: string) {
+    return supabase
+      .from('participants')
+      .select('id, is_admin')
+      .eq('user_id', userId)
+      .maybeSingle()
+  }
+
   async function handleUser(user: User) {
     const email = user.email!
 
@@ -85,11 +93,7 @@ export function useAuth() {
       return
     }
 
-    let { data: participant, error: fetchError } = await supabase
-      .from('participants')
-      .select('id, is_admin')
-      .eq('user_id', user.id)
-      .single()
+    let { data: participant, error: fetchError } = await loadParticipant(user.id)
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('[useAuth] DB error fetching participant:', fetchError.message)
@@ -108,13 +112,21 @@ export function useAuth() {
         .select('id, is_admin')
         .single()
 
-      if (createError || !created) {
+      if (createError && createError.code === '23505') {
+        const { data: existingAfterRace, error: raceFetchError } = await loadParticipant(user.id)
+        if (raceFetchError || !existingAfterRace) {
+          console.error('[useAuth] Erro ao recuperar participante após corrida:', raceFetchError?.message)
+          setAuth({ status: 'unauthorized', email })
+          return
+        }
+        participant = existingAfterRace
+      } else if (createError || !created) {
         console.error('[useAuth] Erro ao criar participante:', createError?.message)
         setAuth({ status: 'unauthorized', email })
         return
+      } else {
+        participant = created
       }
-
-      participant = created
     }
 
     setAuth({

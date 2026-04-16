@@ -1,5 +1,35 @@
 # Codex Changelog
 
+## 2026-04-16 - Fix: Correcoes de review em locks, ranking, bracket e auth
+
+### Contexto
+Entrada focada em corrigir bugs confirmados pela revisão recente, priorizando regras de negócio e consistência de dados, com o menor escopo possível.
+
+### `frontend/src/hooks/useGamePicks.ts`
+- Lock de palpite de jogo corrigido para usar o lock da série (primeiro `tip_off_at` da série), em vez do horário individual de cada jogo
+- `saveGamePick()` e `isGameLocked()` agora seguem a regra oficial do produto
+
+### `frontend/src/utils/ranking.ts`
+- Adicionada deduplicação defensiva de `series_picks` por `series_id`
+- Adicionada deduplicação defensiva de `game_picks` por `game_id`
+- O ranking e o breakdown deixam de somar picks duplicados em dobro na UI
+
+### `backend/src/jobs/syncNBA.ts`
+- `propagateBracket()` agora também limpa slots descendentes quando o `winner_id` do feeder volta para `null`
+- Isso evita bracket preso com time antigo após correção/reversão de resultado
+
+### `frontend/src/components/CountdownTimer.tsx`
+- Corrigido loop de animação do contador
+- `prevSecondsRef` agora é atualizado na troca real de segundo, evitando flicker e re-render contínuo
+
+### `frontend/src/hooks/useAuth.ts`
+- Corrida de primeiro login mitigada
+- Se a criação do participante falhar por conflito (`23505`), o hook refaz a leitura do participant e conclui a autenticação normalmente
+
+### Pendências
+- A correção completa de atomicidade em `reset-picks` / remoção admin continua pendente, porque pede transação/RPC no banco e não só ajuste local em TypeScript
+- O build geral do frontend continua bloqueado pelo problema pré-existente de `driver.js` em `OnboardingTour`
+
 ## 2026-04-16 - Feature: Visual Upgrade — Animações e micro-interações premium
 
 ### Contexto
