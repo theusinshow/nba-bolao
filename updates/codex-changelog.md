@@ -1,5 +1,45 @@
 # Codex Changelog
 
+## 2026-04-16 - Home: Resultados Reais redesenhado + jogos do dia + acertos por série
+
+### Contexto
+Seção "Resultados Reais" na Home ganhou informação de bolão (quantos acertaram cada série), cores dos times, badges de status e um bloco de jogos do dia com horário e indicador AO VIVO.
+
+### `frontend/src/pages/Home.tsx`
+- `OfficialBracketCard` recebe dois novos props: `upcomingGames` e `participantCount`
+- Hook `useSeriesPickStats` adicionado: busca `series_picks` e agrupa por `seriesId → Map<winnerId, count>`
+- Helpers `getBrtDateKey` e `formatBrtTime` adicionados para filtro e exibição em horário BRT
+- **Jogos de hoje**: nova seção no topo do card mostrando jogos não jogados com tip-off hoje (BRT); cada linha tem cor primária dos times, horário BRT e badge `J1`/`J2`/`AO VIVO`
+- **Cores dos times**: abreviações (BOS, CLE etc.) agora usam `primary_color` do time; time eliminado fica com opacidade 0.4
+- **Badge de status** por série:
+  - Concluída → `X/N ✓` (quantos participantes acertaram o vencedor)
+  - Em andamento → `X/N` (quantos já palpitaram) com borda dourada
+  - Pendente → `pendente` ou `X/N` se já há palpites
+- `import { supabase }` adicionado ao arquivo
+
+---
+
+## 2026-04-16 - Ranking: coluna Sequência + remoção de R1/R2/CF/Finals
+
+### Contexto
+Colunas de pontos por rodada (R1/R2/CF/Finals) removidas da tabela de ranking por serem redundantes com o relatório individual. Os dots de sequência ganharam coluna própria com visual melhorado.
+
+### `frontend/src/components/RankingTable.tsx`
+- Colunas R1, R2, CF, Finals removidas do header e das linhas do body
+- Dots extraídos da célula do nome para **coluna própria** com header "Sequência"
+- `lineHeight: 1` adicionado ao nome para corrigir desalinhamento vertical
+- `maxWidth` do nome aumentado de 120 → 140px
+
+### `frontend/src/components/GamePickDots.tsx`
+- `CompactDots` não retorna mais `null` com `dots = []` — sempre renderiza 5 slots
+- `GamePickDots` só faz early-return para variant `grouped`; compact sempre renderiza
+- Tamanho dos dots: 9px (era 7px), gap: 4px (era 3px)
+- Dots `no-pick` e vazios com fundo `rgba(136,136,153,0.08)` — visíveis no dark mode
+- Dots `correct` com `box-shadow` verde sutil; `wrong` com sombra vermelha
+- Borda do `no-pick` com opacidade 0.4 (era 0.3); `pending` com borda cinza
+
+---
+
 ## 2026-04-16 - Admin: lembrete de palpites do dia
 
 ### Contexto

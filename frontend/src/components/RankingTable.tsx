@@ -178,7 +178,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
           >
             <th style={{ padding: '10px 12px', textAlign: 'left',  fontWeight: 600 }}>#</th>
             <th style={{ padding: '10px 12px', textAlign: 'left',  fontWeight: 600 }}>Participante</th>
-            <th style={{ padding: '10px 8px',  textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Jogos</th>
+            <th style={{ padding: '10px 8px',  textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Sequência</th>
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>Total</th>
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden md:table-cell">
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>

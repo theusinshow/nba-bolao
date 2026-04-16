@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
@@ -573,12 +574,57 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
 const ROUND_FULL_LABEL: Record<number, string> = { 1: 'Primeira Rodada', 2: 'Segunda Rodada', 3: 'Conf. Finals', 4: 'Finals' }
 const ROUND_COLOR: Record<number, string> = { 1: '#4a90d9', 2: '#9b59b6', 3: '#e05c3a', 4: '#c8963c' }
 
-function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>['series'] }) {
+function getBrtDateKey(date: Date): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' })
+      .formatToParts(date).filter((p) => p.type !== 'literal').map((p) => [p.type, p.value])
+  )
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+function formatBrtTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+}
+
+// Map: seriesId → Map<winnerId, count>
+function useSeriesPickStats() {
+  const [bySeriesId, setBySeriesId] = useState<Map<string, Map<string, number>>>(new Map())
+  useEffect(() => {
+    supabase.from('series_picks').select('series_id, winner_id').then(({ data }) => {
+      if (!data) return
+      const map = new Map<string, Map<string, number>>()
+      for (const row of data as { series_id: string; winner_id: string }[]) {
+        if (!map.has(row.series_id)) map.set(row.series_id, new Map())
+        const inner = map.get(row.series_id)!
+        inner.set(row.winner_id, (inner.get(row.winner_id) ?? 0) + 1)
+      }
+      setBySeriesId(map)
+    })
+  }, [])
+  return bySeriesId
+}
+
+function OfficialBracketCard({ series, upcomingGames, participantCount }: {
+  series: ReturnType<typeof useSeries>['series']
+  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
+  participantCount: number
+}) {
+  const pickStats = useSeriesPickStats()
   const completedSeries = series.filter((item) => item.is_complete).length
   const openSeries = Math.max(series.length - completedSeries, 0)
   const finals = series.find((item) => item.id === 'FIN')
   const champion = finals?.is_complete ? finals.winner : null
   const championLabel = champion?.abbreviation ?? (finals?.is_complete ? finals.winner_id ?? 'Definido' : 'Em disputa')
+
+  const today = getBrtDateKey(new Date())
+  const todayGames = upcomingGames.filter(
+    (g) => g.tip_off_at && getBrtDateKey(new Date(g.tip_off_at)) === today
+  )
+  const liveGames = upcomingGames.filter(
+    (g) => g.tip_off_at && new Date(g.tip_off_at).getTime() <= Date.now() && !g.played
+  )
+  const liveIds = new Set(liveGames.map((g) => g.id))
 
   const roundGroups = ([4, 3, 2, 1] as const)
     .map((round) => ({
@@ -607,6 +653,47 @@ function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>[
         ))}
       </div>
 
+      {/* Jogos de hoje */}
+      {todayGames.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ height: 1, width: 10, background: 'rgba(46,204,113,0.5)', flexShrink: 0 }} />
+            <span style={{ color: '#2ecc71', fontSize: '0.64rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700 }}>
+              Jogos de hoje
+            </span>
+            <div style={{ height: 1, flex: 1, background: 'rgba(46,204,113,0.2)' }} />
+          </div>
+          <div style={{ display: 'grid', gap: 5 }}>
+            {todayGames.map((g) => {
+              const isLive = liveIds.has(g.id)
+              const homeColor = g.home_team?.primary_color ?? 'var(--nba-text)'
+              const awayColor = g.away_team?.primary_color ?? 'var(--nba-text)'
+              return (
+                <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}>
+                  <span className="font-condensed font-bold" style={{ color: homeColor, fontSize: '0.92rem', minWidth: 32 }}>
+                    {g.home_team?.abbreviation ?? g.home_team_id}
+                  </span>
+                  <span className="font-condensed" style={{ flex: 1, textAlign: 'center', fontSize: '0.72rem', color: 'var(--nba-text-muted)', letterSpacing: '0.04em' }}>
+                    {isLive ? '●' : formatBrtTime(g.tip_off_at)}
+                  </span>
+                  <span className="font-condensed font-bold" style={{ color: awayColor, fontSize: '0.92rem', minWidth: 32, textAlign: 'right' }}>
+                    {g.away_team?.abbreviation ?? g.away_team_id}
+                  </span>
+                  <span style={{
+                    fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+                    background: isLive ? 'rgba(46,204,113,0.18)' : 'rgba(200,150,60,0.12)',
+                    color: isLive ? '#2ecc71' : 'var(--nba-gold)',
+                    border: `1px solid ${isLive ? 'rgba(46,204,113,0.3)' : 'rgba(200,150,60,0.2)'}`,
+                  }}>
+                    {isLive ? 'AO VIVO' : `J${g.game_number}`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Series grouped by round */}
       {roundGroups.length === 0 ? (
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', padding: '8px 0' }}>
@@ -618,7 +705,6 @@ function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>[
             const color = ROUND_COLOR[round]
             return (
               <div key={round}>
-                {/* Round header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <div style={{ height: 1, width: 10, background: `${color}55`, flexShrink: 0 }} />
                   <span style={{ color, fontSize: '0.64rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -627,7 +713,6 @@ function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>[
                   <div style={{ height: 1, flex: 1, background: `${color}28` }} />
                 </div>
 
-                {/* Series rows */}
                 <div style={{ display: 'grid', gap: 5 }}>
                   {items.map((s) => {
                     const homeAbbr = s.home_team?.abbreviation ?? s.home_team_id ?? '—'
@@ -637,6 +722,12 @@ function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>[
                     const homeWon = s.is_complete && s.winner_id === s.home_team_id
                     const awayWon = s.is_complete && s.winner_id === s.away_team_id
                     const losses = s.games_played - 4
+                    const inProgress = !s.is_complete && s.games_played > 0
+
+                    // Acertos do bolão para essa série
+                    const seriesPickMap = pickStats.get(s.id)
+                    const correctCount = s.winner_id && seriesPickMap ? (seriesPickMap.get(s.winner_id) ?? 0) : 0
+                    const totalPicked = seriesPickMap ? Array.from(seriesPickMap.values()).reduce((a, b) => a + b, 0) : 0
 
                     return (
                       <div
@@ -648,21 +739,23 @@ function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>[
                           padding: '8px 10px',
                           borderRadius: 8,
                           background: s.is_complete ? 'rgba(12,12,18,0.28)' : 'rgba(12,12,18,0.42)',
-                          border: `1px solid ${s.is_complete ? 'rgba(46,204,113,0.12)' : 'rgba(200,150,60,0.10)'}`,
+                          border: `1px solid ${s.is_complete ? 'rgba(46,204,113,0.12)' : inProgress ? 'rgba(200,150,60,0.18)' : 'rgba(200,150,60,0.08)'}`,
                         }}
                       >
+                        {/* Home team */}
                         <span
                           className="font-condensed font-bold"
                           style={{
-                            color: homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : 'var(--nba-text)',
+                            color: homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor,
                             fontSize: '0.92rem',
                             minWidth: 32,
-                            opacity: awayWon ? 0.5 : 1,
+                            opacity: awayWon ? 0.4 : 1,
                           }}
                         >
                           {homeAbbr}
                         </span>
 
+                        {/* Score / status */}
                         <span
                           className="font-condensed font-bold"
                           style={{
@@ -673,28 +766,36 @@ function OfficialBracketCard({ series }: { series: ReturnType<typeof useSeries>[
                             letterSpacing: '0.04em',
                           }}
                         >
-                          {s.is_complete
-                            ? `4 – ${losses}`
-                            : s.games_played > 0
-                            ? `${s.games_played}j`
-                            : 'vs'}
+                          {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'vs'}
                         </span>
 
+                        {/* Away team */}
                         <span
                           className="font-condensed font-bold"
                           style={{
-                            color: awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : 'var(--nba-text)',
+                            color: awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : awayColor,
                             fontSize: '0.92rem',
                             minWidth: 32,
                             textAlign: 'right',
-                            opacity: homeWon ? 0.5 : 1,
+                            opacity: homeWon ? 0.4 : 1,
                           }}
                         >
                           {awayAbbr}
                         </span>
 
-                        {s.is_complete && (
-                          <span style={{ fontSize: '0.68rem', color: 'var(--nba-success)', flexShrink: 0 }}>✓</span>
+                        {/* Status badge */}
+                        {s.is_complete ? (
+                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
+                            {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
+                          </span>
+                        ) : inProgress ? (
+                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
+                            {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
+                            {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'pendente'}
+                          </span>
                         )}
                       </div>
                     )
@@ -937,7 +1038,7 @@ export function Home({ participantId }: Props) {
           <RecentSeriesCard series={series} />
         </div>
 
-        <OfficialBracketCard series={series} />
+        <OfficialBracketCard series={series} upcomingGames={upcomingGames} participantCount={ranking.length} />
       </div>
 
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
