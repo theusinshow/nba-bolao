@@ -35,7 +35,38 @@ Redesign da página Jogos para ter como modo primário a visualização por dia 
 
 ### Modo "Por série"
 - Comportamento original inteiramente preservado
-- `PicksFocusCard`, `TopAutoPickBar`, `FiltersBar`, `DayTabsBar` e accordion de séries mantidos
+- `PicksFocusCard`, `FiltersBar`, `DayTabsBar` e accordion de séries mantidos
+
+### Seleção automática de dia
+- `useEffect` atualizado: se hoje tem jogos → seleciona hoje; senão, seleciona o próximo dia futuro com jogos; senão, o último dia disponível
+- Usuário não precisa clicar em nenhum dia ao abrir a página
+
+---
+
+## 2026-04-16 - JOGOS: "Vai na fé" redesenhado como FAB flutuante (`Games.tsx`)
+
+### Contexto
+`TopAutoPickBar` (barra de pills no topo da lista) substituído por um botão circular flutuante (FAB) posicionado acima da navbar, inspirado no padrão Material Design.
+
+### `AutoPickFAB`
+- `position: fixed`, bottom direito, acima da navbar (`calc(80px + 16px + env(safe-area-inset-bottom))`)
+- Círculo 52×52px com ícone `Shuffle` em fundo `var(--nba-gold)`
+- Badge vermelho no canto superior direito com contagem de jogos pendentes; some quando tudo está salvo
+- Hover: escala 1.08 via `onMouseEnter/Leave`
+- Desabilitado (dourado apagado) quando não há jogos abertos
+
+### Balão de boas-vindas (primeira visita)
+- Aparece automaticamente 700ms após o mount quando `totalPending > 0`
+- Seta CSS triangular (borda dupla) apontando para o FAB
+- Texto: "Vai na fé — sorteia seus palpites, você confere antes de confirmar"
+- Botão "Entendi!" — dispensa e persiste no `localStorage` (`nba-bolao:vai-na-fe-intro-seen`) para nunca mais aparecer
+- Clicar no próprio FAB também dispensa o balão
+- `useRef` garante que a lógica de exibição roda no máximo uma vez por mount
+
+### Comportamento do clique
+- **1 dia com jogos abertos** → abre `AutoPickModal` diretamente
+- **Múltiplos dias** → exibe popover flutuante com lista de dias + contador de pendentes por dia
+- Overlay invisível fecha o popover ao clicar fora
 
 ---
 
@@ -53,11 +84,9 @@ Bateria de melhorias solicitadas antes do início dos playoffs (18/04), cobrindo
 - `filteredByDay` aplica filtro de dia sobre `filteredSeriesGroups` (filtra series que têm ao menos um jogo no dia selecionado)
 - Função auxiliar `getDayLabel` formata a data em BRT com labels relativos
 
-### JOGOS — "Vai na fé" movido para o topo (`Games.tsx`)
+### JOGOS — "Vai na fé" movido para o topo (`Games.tsx`) *(substituído posteriormente por FAB — ver entrada abaixo)*
 - `DailyAutoPickCard` substituído por `TopAutoPickBar` — renderiza acima do `FiltersBar`, como botões compactos em linha
-- Label "Vai na fé" como prefixo estático; cada dia é um botão pill com contador de jogos pendentes
-- Tooltip nativo explica a funcionalidade ao passar o mouse
-- `DailyAutoPickCard` (antigo componente de rodapé) removido
+- `TopAutoPickBar` foi por sua vez substituído pelo `AutoPickFAB` flutuante na mesma sessão
 
 ### APP — Grace period de 5 min antes do tip-off (`Games.tsx`)
 - Constante `PICK_GRACE_MS = 5 * 60_000` centraliza o threshold

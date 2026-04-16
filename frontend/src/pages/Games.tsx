@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Layers3, Users, X, Shuffle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
@@ -485,61 +485,222 @@ function EmptyState() {
   )
 }
 
-function TopAutoPickBar({
+const FAB_TOOLTIP_KEY = 'nba-bolao:vai-na-fe-intro-seen'
+
+function AutoPickFAB({
   groups,
   onOpen,
 }: {
   groups: AutoPickDayGroup[]
   onOpen: (group: AutoPickDayGroup) => void
 }) {
-  if (groups.length === 0) return null
+  const [showTooltip, setShowTooltip] = useState(false)
+  const [showDayPicker, setShowDayPicker] = useState(false)
+  const shownRef = useRef(false)
+  const totalPending = groups.reduce((sum, g) => sum + g.pendingGames.length, 0)
+  const hasGames = groups.length > 0
+
+  // Mostra o balão uma única vez quando há jogos pendentes
+  useEffect(() => {
+    if (!hasGames || shownRef.current) return
+    shownRef.current = true
+    try {
+      if (localStorage.getItem(FAB_TOOLTIP_KEY)) return
+    } catch { return }
+    const t = setTimeout(() => setShowTooltip(true), 700)
+    return () => clearTimeout(t)
+  }, [hasGames])
+
+  function dismissTooltip() {
+    setShowTooltip(false)
+    try { localStorage.setItem(FAB_TOOLTIP_KEY, '1') } catch { /* noop */ }
+  }
+
+  function handleFabClick() {
+    dismissTooltip()
+    setShowDayPicker(false)
+    if (groups.length === 0) return
+    if (groups.length === 1) {
+      onOpen(groups[0])
+    } else {
+      setShowDayPicker((v) => !v)
+    }
+  }
+
+  // Posição base acima da barra de navegação
+  const fabBottom = 'calc(80px + 16px + env(safe-area-inset-bottom))'
+  const popoverBottom = 'calc(80px + 16px + 52px + 12px + env(safe-area-inset-bottom))'
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-      <span
-        className="font-condensed"
-        style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}
-      >
-        Vai na fé
-      </span>
-      {groups.map((group) => (
-        <button
-          key={group.key}
-          onClick={() => onOpen(group)}
-          title="Gera palpites aleatórios para os jogos abertos do dia. Você confere antes de confirmar."
+    <>
+      {/* Overlay fecha o seletor de dia */}
+      {showDayPicker && (
+        <div
+          onClick={() => setShowDayPicker(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 48 }}
+        />
+      )}
+
+      {/* Balão explicativo (primeira visita) */}
+      {showTooltip && (
+        <div
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 11px',
-            borderRadius: 999,
-            border: '1px solid rgba(136,136,153,0.22)',
-            background: 'rgba(12,12,18,0.3)',
-            color: 'var(--nba-text-muted)',
-            cursor: 'pointer',
-            fontSize: '0.75rem',
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontWeight: 700,
-            letterSpacing: '0.04em',
+            position: 'fixed',
+            bottom: popoverBottom,
+            right: 16,
+            zIndex: 51,
+            background: 'var(--nba-surface)',
+            border: '1px solid rgba(200,150,60,0.32)',
+            borderRadius: 12,
+            padding: '14px 16px',
+            maxWidth: 230,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
           }}
         >
-          <Shuffle size={12} />
-          {group.label}
-          {group.pendingGames.length > 0 && (
-            <span
+          {/* Seta apontando para o FAB */}
+          <div style={{
+            position: 'absolute', bottom: -8, right: 18,
+            width: 0, height: 0,
+            borderLeft: '8px solid transparent',
+            borderRight: '8px solid transparent',
+            borderTop: '8px solid rgba(200,150,60,0.32)',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: -6, right: 19,
+            width: 0, height: 0,
+            borderLeft: '7px solid transparent',
+            borderRight: '7px solid transparent',
+            borderTop: '7px solid var(--nba-surface)',
+          }} />
+
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.92rem', marginBottom: 6 }}>
+            🎲 Vai na fé
+          </div>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', margin: '0 0 12px', lineHeight: 1.45 }}>
+            Sem tempo para pensar? Deixa eu sortear seus palpites — você confere antes de confirmar.
+          </p>
+          <button
+            onClick={dismissTooltip}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 999,
+              border: '1px solid rgba(200,150,60,0.3)',
+              background: 'rgba(200,150,60,0.12)',
+              color: 'var(--nba-gold)',
+              fontSize: '0.76rem', fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.04em',
+            }}
+          >
+            Entendi!
+          </button>
+        </div>
+      )}
+
+      {/* Seletor de dia (quando há múltiplos dias) */}
+      {showDayPicker && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: popoverBottom,
+            right: 16,
+            zIndex: 49,
+            background: 'rgba(19,19,26,0.98)',
+            border: '1px solid rgba(200,150,60,0.22)',
+            borderRadius: 12,
+            padding: '10px',
+            display: 'flex', flexDirection: 'column', gap: 6,
+            minWidth: 190,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(14px)',
+          }}
+        >
+          <div
+            className="font-condensed"
+            style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 4px 4px' }}
+          >
+            Sortear palpites para…
+          </div>
+          {groups.map((group) => (
+            <button
+              key={group.key}
+              onClick={() => { onOpen(group); setShowDayPicker(false) }}
               style={{
-                background: 'rgba(136,136,153,0.18)',
-                borderRadius: 4,
-                padding: '1px 5px',
-                fontSize: '0.68rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                padding: '10px 12px', borderRadius: 8,
+                border: '1px solid rgba(200,150,60,0.14)',
+                background: 'rgba(12,12,18,0.5)',
+                color: 'var(--nba-text)',
+                cursor: 'pointer',
               }}
             >
-              {group.pendingGames.length}
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
+              <span className="font-condensed font-bold" style={{ fontSize: '0.88rem' }}>
+                {getDayLabel(group.key)}
+              </span>
+              {group.pendingGames.length > 0 && (
+                <span
+                  className="font-condensed"
+                  style={{
+                    background: 'rgba(200,150,60,0.16)',
+                    color: 'var(--nba-gold)',
+                    borderRadius: 4, padding: '1px 7px',
+                    fontSize: '0.72rem', fontWeight: 700,
+                  }}
+                >
+                  {group.pendingGames.length} pendente{group.pendingGames.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Botão circular flutuante */}
+      <button
+        onClick={handleFabClick}
+        disabled={!hasGames}
+        title="Vai na fé — sortear palpites"
+        style={{
+          position: 'fixed',
+          bottom: fabBottom,
+          right: 16,
+          zIndex: 49,
+          width: 52, height: 52,
+          borderRadius: '50%',
+          border: 'none',
+          background: hasGames ? 'var(--nba-gold)' : 'rgba(200,150,60,0.28)',
+          color: '#0a0a0f',
+          cursor: hasGames ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: hasGames
+            ? '0 4px 20px rgba(200,150,60,0.50), 0 2px 8px rgba(0,0,0,0.3)'
+            : 'none',
+          transition: 'background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease',
+        }}
+        onMouseEnter={(e) => { if (hasGames) e.currentTarget.style.transform = 'scale(1.08)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+      >
+        <Shuffle size={22} />
+        {totalPending > 0 && (
+          <span
+            style={{
+              position: 'absolute', top: -3, right: -3,
+              background: 'var(--nba-danger)',
+              color: '#fff',
+              borderRadius: '50%',
+              width: 20, height: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.62rem', fontWeight: 700,
+              border: '2px solid var(--nba-bg)',
+              lineHeight: 1,
+            }}
+          >
+            {totalPending > 9 ? '9+' : totalPending}
+          </span>
+        )}
+      </button>
+    </>
   )
 }
 
@@ -2368,11 +2529,22 @@ export function Games({ participantId }: Props) {
     setActiveFilter('all')
   }, [activeFilter, filterCounts])
 
-  // Seleciona "hoje" por padrão ao carregar os jogos
+  // Seleciona "hoje" por padrão; se hoje não tiver jogo, seleciona o próximo dia com jogo
   useEffect(() => {
     if (availableDays.length === 0) return
     const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-    if (availableDays.includes(todayKey)) setSelectedDay(todayKey)
+    if (availableDays.includes(todayKey)) {
+      setSelectedDay(todayKey)
+      return
+    }
+    // Próximo dia futuro com jogo (availableDays já está ordenado ascendente)
+    const [dd, mm, yyyy] = todayKey.split('/')
+    const todayTime = new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime()
+    const nextDay = availableDays.find((key) => {
+      const [d, m, y] = key.split('/')
+      return new Date(Number(y), Number(m) - 1, Number(d)).getTime() >= todayTime
+    })
+    setSelectedDay(nextDay ?? availableDays[availableDays.length - 1])
   }, [availableDays])
 
   useEffect(() => {
@@ -2599,10 +2771,6 @@ export function Games({ participantId }: Props) {
         <>
           <CalendarStrip days={availableDays} selected={selectedDay} onChange={setSelectedDay} />
 
-          {selectedDayAutoPickGroup && (
-            <TopAutoPickBar groups={[selectedDayAutoPickGroup]} onOpen={openAutoPick} />
-          )}
-
           {selectedDay == null || selectedDayGames.length === 0 ? (
             <div
               style={{
@@ -2646,7 +2814,6 @@ export function Games({ participantId }: Props) {
       ) : (
         <>
           <PicksFocusCard entries={pickFocusEntries} />
-          <TopAutoPickBar groups={autoPickDayGroups} onOpen={openAutoPick} />
           <FiltersBar active={activeFilter} counts={filterCounts} onChange={setActiveFilter} />
           <DayTabsBar days={availableDays} selected={selectedDay} onChange={setSelectedDay} />
 
@@ -2711,6 +2878,8 @@ export function Games({ participantId }: Props) {
           </div>
         </>
       )}
+
+      <AutoPickFAB groups={autoPickDayGroups} onOpen={openAutoPick} />
 
       {autoPickGroup && (
         <AutoPickModal
