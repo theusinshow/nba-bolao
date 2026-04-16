@@ -7,6 +7,7 @@ import { removeParticipantCompletely } from '../admin/removeParticipant'
 import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
 import { exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
 import { exportDailyReminder } from '../digest/exportDailyReminder'
+import { restoreRows } from '../lib/rollback'
 
 const router = Router()
 
@@ -177,6 +178,12 @@ async function deleteAllRows(table: string): Promise<number> {
   return (data ?? []).length
 }
 
+async function snapshotTable(table: 'series_picks' | 'game_picks' | 'simulation_series_picks' | 'simulation_game_picks') {
+  const { data, error } = await supabase.from(table).select('*')
+  if (error) throw new Error(`Failed snapshotting ${table}: ${error.message}`)
+  return (data ?? []) as Record<string, unknown>[]
+}
+
 router.use(requireAdmin)
 
 // POST /admin/sync — trigger manual NBA sync
@@ -287,6 +294,13 @@ router.post('/daily-reminder', async (req, res) => {
 
 // POST /admin/reset-picks — reset all saved picks before opening the bolao
 router.post('/reset-picks', async (req, res) => {
+  let snapshots: {
+    series_picks: Record<string, unknown>[]
+    game_picks: Record<string, unknown>[]
+    simulation_series_picks: Record<string, unknown>[]
+    simulation_game_picks: Record<string, unknown>[]
+  } | null = null
+
   try {
     const confirmation = typeof req.body?.confirmation === 'string' ? req.body.confirmation.trim() : ''
     if (confirmation !== 'ZERAR PALPITES') {
@@ -298,6 +312,12 @@ router.post('/reset-picks', async (req, res) => {
 
     // Gera backup antes de qualquer deleção
     const backup = await exportOperationalSnapshot()
+    snapshots = {
+      series_picks: await snapshotTable('series_picks'),
+      game_picks: await snapshotTable('game_picks'),
+      simulation_series_picks: await snapshotTable('simulation_series_picks'),
+      simulation_game_picks: await snapshotTable('simulation_game_picks'),
+    }
 
     // Executa deleções em sequência — se qualquer uma falhar, lança exceção
     // e o catch externo retorna erro sem continuar as demais tabelas
@@ -316,6 +336,14 @@ router.post('/reset-picks', async (req, res) => {
       deleted,
     })
   } catch (err: unknown) {
+    try {
+      await restoreRows('series_picks', snapshots?.series_picks ?? [])
+      await restoreRows('game_picks', snapshots?.game_picks ?? [])
+      await restoreRows('simulation_series_picks', snapshots?.simulation_series_picks ?? [])
+      await restoreRows('simulation_game_picks', snapshots?.simulation_game_picks ?? [])
+    } catch (rollbackErr) {
+      console.error('[admin/reset-picks] Rollback failed:', rollbackErr)
+    }
     console.error('[admin/reset-picks] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }

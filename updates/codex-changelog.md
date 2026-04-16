@@ -26,9 +26,34 @@ Entrada focada em corrigir bugs confirmados pela revisão recente, priorizando r
 - Corrida de primeiro login mitigada
 - Se a criação do participante falhar por conflito (`23505`), o hook refaz a leitura do participant e conclui a autenticação normalmente
 
-### Pendências
-- A correção completa de atomicidade em `reset-picks` / remoção admin continua pendente, porque pede transação/RPC no banco e não só ajuste local em TypeScript
-- O build geral do frontend continua bloqueado pelo problema pré-existente de `driver.js` em `OnboardingTour`
+### `frontend/src/driverjs.d.ts`
+- Tipagem local adicionada para `driver.js`, eliminando o bloqueio de TypeScript no tour de onboarding
+
+### Ambiente local do frontend
+- `npm install` executado em `frontend/` para alinhar o `node_modules` com o `package.json` / `package-lock.json`
+- O pacote `driver.js`, que já estava declarado, voltou a existir localmente e o bundle do Vite passou a resolver o import normalmente
+
+### `backend/src/lib/rollback.ts`
+- Novo utilitário para restauração compensatória via `upsert`, usado nas operações admin destrutivas
+
+### `backend/src/routes/admin.ts`
+- `reset-picks` agora cria snapshots das quatro tabelas de palpites antes de deletar
+- Em caso de falha no meio da operação, o backend tenta restaurar os registros apagados para evitar estado parcial
+
+### `backend/src/admin/removeParticipant.ts`
+- Remoção completa de participante agora cria snapshot de:
+  - `participants`
+  - `allowed_emails`
+  - `series_picks`
+  - `game_picks`
+  - `simulation_series_picks`
+  - `simulation_game_picks`
+- Se qualquer etapa falhar, o backend tenta recompor os dados removidos
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `backend`: `npm run test:scoring` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
 
 ## 2026-04-16 - Feature: Visual Upgrade — Animações e micro-interações premium
 

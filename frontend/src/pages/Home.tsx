@@ -409,7 +409,7 @@ function RankingCard({
   ]
 
   return (
-    <div style={{ ...card, minWidth: 0 }}>
+    <div style={{ ...card, minWidth: 0, overflow: 'hidden' }}>
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
 
       {loading ? (
@@ -436,12 +436,15 @@ function RankingCard({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  minWidth: 0,
+                  width: '100%',
                   gap: 10,
                   padding: p ? '10px 10px' : '7px 6px',
                   borderRadius: 8,
                   background: p ? p.bg : isMe ? 'var(--nba-surface-2)' : 'transparent',
                   border: p ? `1px solid ${p.border}` : isMe ? '1px solid rgba(200,150,60,0.18)' : '1px solid transparent',
                   transition: 'background 0.2s',
+                  overflow: 'hidden',
                 }}
               >
                 {/* Posição */}
