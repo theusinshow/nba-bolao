@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Info, Shuffle } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Shuffle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -114,6 +114,8 @@ function getRelativeDateLabel(iso: string): string | null {
   return null
 }
 
+const PICK_GRACE_MS = 5 * 60_000 // palpites aceitos até 5 min antes do tip-off
+
 function isSeriesClosedBeforeGame(game: GameWithTeams): boolean {
   return !!(
     game.series_is_complete &&
@@ -126,7 +128,22 @@ function isGameOpenForPick(game: GameWithTeams): boolean {
   if (isSeriesClosedBeforeGame(game)) return false
   if (game.played) return false
   if (!game.tip_off_at) return false
-  return new Date(game.tip_off_at) > new Date()
+  return new Date(game.tip_off_at).getTime() - PICK_GRACE_MS > Date.now()
+}
+
+function getDayLabel(dateKey: string): string {
+  const now = new Date()
+  const todayKey = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const tomorrow = new Date(now.getTime() + 24 * 3_600_000)
+  const tomorrowKey = tomorrow.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  if (dateKey === todayKey) return 'Hoje'
+  if (dateKey === tomorrowKey) return 'Amanhã'
+  const parts = dateKey.split('/')
+  if (parts.length !== 3) return dateKey
+  const [dd, mm, yyyy] = parts
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+  const weekday = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()
+  return `${weekday} ${dd}/${mm}`
 }
 
 function getUrgency(game: GameWithTeams) {
@@ -153,7 +170,7 @@ function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPending
     return { label: 'Finalizado', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <BadgeCheck size={12} /> }
   }
 
-  if (game.tip_off_at && new Date(game.tip_off_at) <= new Date()) {
+  if (game.tip_off_at && new Date(game.tip_off_at).getTime() - PICK_GRACE_MS <= Date.now()) {
     return { label: 'Bloqueado', color: 'var(--nba-danger)', bg: 'rgba(231,76,60,0.08)', icon: <Lock size={12} /> }
   }
 
@@ -468,96 +485,112 @@ function EmptyState() {
   )
 }
 
-function DailyAutoPickCard({
+function TopAutoPickBar({
   groups,
   onOpen,
 }: {
   groups: AutoPickDayGroup[]
   onOpen: (group: AutoPickDayGroup) => void
 }) {
-  const [showInfo, setShowInfo] = useState(false)
-
   if (groups.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+      <span
+        className="font-condensed"
+        style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}
+      >
+        Vai na fé
+      </span>
+      {groups.map((group) => (
+        <button
+          key={group.key}
+          onClick={() => onOpen(group)}
+          title="Gera palpites aleatórios para os jogos abertos do dia. Você confere antes de confirmar."
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 11px',
+            borderRadius: 999,
+            border: '1px solid rgba(136,136,153,0.22)',
+            background: 'rgba(12,12,18,0.3)',
+            color: 'var(--nba-text-muted)',
+            cursor: 'pointer',
+            fontSize: '0.75rem',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+          }}
+        >
+          <Shuffle size={12} />
+          {group.label}
+          {group.pendingGames.length > 0 && (
+            <span
+              style={{
+                background: 'rgba(136,136,153,0.18)',
+                borderRadius: 4,
+                padding: '1px 5px',
+                fontSize: '0.68rem',
+              }}
+            >
+              {group.pendingGames.length}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function DayTabsBar({
+  days,
+  selected,
+  onChange,
+}: {
+  days: string[]
+  selected: string | null
+  onChange: (day: string | null) => void
+}) {
+  if (days.length <= 1) return null
 
   return (
     <div
       style={{
-        marginTop: 24,
-        borderTop: '1px solid var(--nba-border)',
-        paddingTop: 16,
+        display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
+        marginBottom: 14, scrollbarWidth: 'none',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span
-          className="font-condensed"
-          style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', letterSpacing: '0.07em', textTransform: 'uppercase' }}
-        >
-          Preencher no aleatório
-        </span>
-        <button
-          type="button"
-          onClick={() => setShowInfo((current) => !current)}
-          aria-label="Explicar o botão Vai na fé"
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: '999px',
-            border: '1px solid rgba(136,136,153,0.3)',
-            background: 'transparent',
-            color: 'var(--nba-text-muted)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-        >
-          <Info size={10} />
-        </button>
-        {showInfo && (
-          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.4 }}>
-            — gera palpites aleatórios para os jogos abertos do dia
-          </span>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {groups.map((group) => (
+      <button
+        onClick={() => onChange(null)}
+        style={{
+          padding: '5px 12px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
+          border: `1px solid ${!selected ? 'rgba(200,150,60,0.3)' : 'rgba(200,150,60,0.1)'}`,
+          background: !selected ? 'rgba(200,150,60,0.10)' : 'transparent',
+          color: !selected ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+          fontSize: '0.72rem', fontWeight: 700,
+        }}
+      >
+        Todos os dias
+      </button>
+      {days.map((day) => {
+        const isSelected = selected === day
+        return (
           <button
-            key={group.key}
-            onClick={() => onOpen(group)}
+            key={day}
+            onClick={() => onChange(day)}
             style={{
-              border: '1px solid rgba(136,136,153,0.2)',
-              borderRadius: 8,
-              background: 'transparent',
-              padding: '6px 14px',
-              color: 'var(--nba-text-muted)',
-              cursor: 'pointer',
-              fontSize: '0.78rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
+              padding: '5px 12px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
+              border: `1px solid ${isSelected ? 'rgba(200,150,60,0.3)' : 'rgba(200,150,60,0.1)'}`,
+              background: isSelected ? 'rgba(200,150,60,0.10)' : 'transparent',
+              color: isSelected ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+              fontSize: '0.72rem', fontWeight: 700,
             }}
           >
-            <Shuffle size={12} />
-            <span className="font-condensed">
-              Vai na fé · {group.label}
-            </span>
-            {group.pendingGames.length > 0 && (
-              <span
-                style={{
-                  background: 'rgba(136,136,153,0.15)',
-                  borderRadius: 4,
-                  padding: '1px 5px',
-                  fontSize: '0.7rem',
-                }}
-              >
-                {group.pendingGames.length}
-              </span>
-            )}
+            {getDayLabel(day)}
           </button>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }
@@ -1284,7 +1317,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
     game.game_number > game.series_games_played
 
   // Se não há tip_off_at assumimos que o jogo ainda não foi agendado → não bloqueado
-  const locked     = seriesClosedBeforeGame || (game.tip_off_at ? new Date(game.tip_off_at) <= new Date() : false)
+  const locked     = seriesClosedBeforeGame || (game.tip_off_at ? new Date(game.tip_off_at).getTime() - PICK_GRACE_MS <= Date.now() : false)
   const savedId    = pick?.winner_id ?? null
   const displayId  = pending ?? savedId
   const hasPending = pending !== null && pending !== savedId
@@ -2020,6 +2053,7 @@ export function Games({ participantId }: Props) {
   const [autoPickGameIds, setAutoPickGameIds] = useState<string[]>([])
   const [revealedGame, setRevealedGame] = useState<GameWithTeams | null>(null)
   const [activeFilter, setActiveFilter] = useState<GamesFilter>('pending')
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [recentlySavedGameId, setRecentlySavedGameId] = useState<string | null>(null)
   const { addToast } = useUIStore()
   const { odds: oddsSummary } = useOddsSummary()
@@ -2052,6 +2086,18 @@ export function Games({ participantId }: Props) {
 
   const seriesGroups = useMemo(() => computeSeriesGroups(games, picks), [games, picks])
   const autoPickDayGroups = useMemo(() => buildAutoPickDayGroups(games, picks), [games, picks])
+  const availableDays = useMemo(() => {
+    const days = new Set<string>()
+    for (const game of games) {
+      if (game.tip_off_at) days.add(dateKeyBRT(game.tip_off_at))
+    }
+    return [...days].sort((a, b) => {
+      const [dA, mA, yA] = a.split('/')
+      const [dB, mB, yB] = b.split('/')
+      return new Date(Number(yA), Number(mA) - 1, Number(dA)).getTime() -
+             new Date(Number(yB), Number(mB) - 1, Number(dB)).getTime()
+    })
+  }, [games])
   const pickFocusEntries = useMemo(() => buildPickFocusEntries(games, picks).slice(0, 4), [games, picks])
   const oddsByGameId = useMemo<Record<string, MatchedGameOdds | null>>(
     () => Object.fromEntries(
@@ -2070,6 +2116,12 @@ export function Games({ participantId }: Props) {
     () => seriesGroups.filter((group) => matchesSeriesFilter(group, activeFilter)),
     [seriesGroups, activeFilter]
   )
+  const filteredByDay = useMemo(() => {
+    if (!selectedDay) return filteredSeriesGroups
+    return filteredSeriesGroups.filter((group) =>
+      group.games.some((game) => game.tip_off_at && dateKeyBRT(game.tip_off_at) === selectedDay)
+    )
+  }, [filteredSeriesGroups, selectedDay])
 
   useEffect(() => {
     if (filteredSeriesGroups.length === 0) {
@@ -2094,6 +2146,13 @@ export function Games({ participantId }: Props) {
     }
     setActiveFilter('all')
   }, [activeFilter, filterCounts])
+
+  // Seleciona "hoje" por padrão ao carregar os jogos
+  useEffect(() => {
+    if (availableDays.length === 0) return
+    const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    if (availableDays.includes(todayKey)) setSelectedDay(todayKey)
+  }, [availableDays])
 
   useEffect(() => {
     if (!recentlySavedGameId) return
@@ -2313,7 +2372,9 @@ export function Games({ participantId }: Props) {
         urgentSeries={filterCounts.urgent}
       />
       <PicksFocusCard entries={pickFocusEntries} />
+      <TopAutoPickBar groups={autoPickDayGroups} onOpen={openAutoPick} />
       <FiltersBar active={activeFilter} counts={filterCounts} onChange={setActiveFilter} />
+      <DayTabsBar days={availableDays} selected={selectedDay} onChange={setSelectedDay} />
 
       <div
         style={{
@@ -2354,12 +2415,12 @@ export function Games({ participantId }: Props) {
             padding: '2px 8px',
           }}
         >
-          {filteredSeriesGroups.length} série{filteredSeriesGroups.length !== 1 ? 's' : ''}
+          {filteredByDay.length} série{filteredByDay.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {filteredSeriesGroups.length === 0 && (
+        {filteredByDay.length === 0 && (
           <div
             style={{
               padding: '18px 16px',
@@ -2386,7 +2447,7 @@ export function Games({ participantId }: Props) {
           </div>
         )}
 
-        {filteredSeriesGroups.map((group) => (
+        {filteredByDay.map((group) => (
           <SeriesCard
             key={group.key}
             group={group}
@@ -2402,8 +2463,6 @@ export function Games({ participantId }: Props) {
           />
         ))}
       </div>
-
-      <DailyAutoPickCard groups={autoPickDayGroups} onOpen={openAutoPick} />
 
       {autoPickGroup && (
         <AutoPickModal

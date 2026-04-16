@@ -591,37 +591,9 @@ const navigate = useNavigate()
                   >
                     Classificação
                   </h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
-                      {ranking.length} participante{ranking.length !== 1 ? 's' : ''}
-                    </span>
-                    {hasOpenSeries && (
-                      <button
-                        onClick={() => setSimOpen((v) => !v)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          border: simOpen
-                            ? '1px solid rgba(200,150,60,0.5)'
-                            : '1px solid var(--nba-border)',
-                          background: simOpen
-                            ? 'rgba(200,150,60,0.12)'
-                            : 'rgba(12,12,18,0.4)',
-                          color: simOpen ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <FlaskConical size={12} />
-                        E se...
-                      </button>
-                    )}
-                  </div>
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>
+                    {ranking.length} participante{ranking.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
 
                 <RankingTable
@@ -630,6 +602,59 @@ const navigate = useNavigate()
                   onParticipantClick={handleParticipantClick}
                   dotsById={dotsById}
                 />
+
+                {/* E se... — abaixo da tabela */}
+                {hasOpenSeries && (
+                  <div
+                    style={{
+                      borderTop: '1px solid var(--nba-border)',
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        className="font-condensed font-bold"
+                        style={{ color: 'var(--nba-text)', fontSize: '0.88rem', letterSpacing: '0.04em' }}
+                      >
+                        Simulador de cenários
+                      </div>
+                      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3 }}>
+                        Veja como o ranking mudaria dependendo dos próximos resultados
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSimOpen((v) => !v)}
+                      title="Simule resultados das séries abertas e veja como o ranking seria afetado"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '9px 16px',
+                        borderRadius: 8,
+                        border: simOpen
+                          ? '1px solid rgba(200,150,60,0.5)'
+                          : '1px solid rgba(200,150,60,0.22)',
+                        background: simOpen
+                          ? 'rgba(200,150,60,0.14)'
+                          : 'rgba(200,150,60,0.06)',
+                        color: 'var(--nba-gold)',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <FlaskConical size={14} />
+                      {simOpen ? 'Fechar simulador' : 'E se...'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Simulator panel */}

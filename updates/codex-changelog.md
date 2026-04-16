@@ -1,5 +1,56 @@
 # Codex Changelog
 
+## 2026-04-16 - UX/UI: melhorias de navegação, visual e usabilidade pré-playoffs
+
+### Contexto
+Bateria de melhorias solicitadas antes do início dos playoffs (18/04), cobrindo 9 itens distribuídos em 5 páginas e 2 componentes.
+
+---
+
+### JOGOS — Filtro por dia (`Games.tsx`)
+- Adicionado componente `DayTabsBar` com tabs "Todos os dias / Hoje / Amanhã / Seg 20/04 …"
+- Ao carregar, seleciona automaticamente "Hoje" se houver jogos na data atual
+- `availableDays` calculado via `dateKeyBRT` a partir dos jogos carregados
+- `filteredByDay` aplica filtro de dia sobre `filteredSeriesGroups` (filtra series que têm ao menos um jogo no dia selecionado)
+- Função auxiliar `getDayLabel` formata a data em BRT com labels relativos
+
+### JOGOS — "Vai na fé" movido para o topo (`Games.tsx`)
+- `DailyAutoPickCard` substituído por `TopAutoPickBar` — renderiza acima do `FiltersBar`, como botões compactos em linha
+- Label "Vai na fé" como prefixo estático; cada dia é um botão pill com contador de jogos pendentes
+- Tooltip nativo explica a funcionalidade ao passar o mouse
+- `DailyAutoPickCard` (antigo componente de rodapé) removido
+
+### APP — Grace period de 5 min antes do tip-off (`Games.tsx`)
+- Constante `PICK_GRACE_MS = 5 * 60_000` centraliza o threshold
+- `isGameOpenForPick`, `getGameStateMeta` e `GameCard.locked` usam agora `tipOff - 5min > now` em vez de `tipOff > now`
+- Permite palpitar até 5 minutos antes do início do jogo
+
+### RANKING — Botão "E se..." redesenhado e movido para o fundo (`Ranking.tsx`)
+- Removido do header strip (ao lado do contador de participantes)
+- Movido para uma faixa dedicada abaixo da `<RankingTable>`, com separador visual
+- Novo visual: label "Simulador de cenários" + descrição curta + botão dourado com ícone `FlaskConical`
+- Tooltip explica a funcionalidade ao passar o mouse
+
+### NAV — Profile no menu hambúrguer (`Nav.tsx`)
+- `NavLink` para `/profile` adicionado como primeiro item do menu popup, com ícone `UserCircle`
+- Label "Meu perfil"
+
+### HOME — Mensagem dev removida + logos + scroll automático (`Home.tsx`, `index.css`)
+- Removido o texto "Sem fallback fictício: este espaço só mostra resultados reais…" que aparecia para todos os usuários
+- Carrossel "Jogos da última noite" agora exibe logos dos times (20px, `getTeamLogoUrl`) acima da abreviação
+- Vencedor aparece em `var(--nba-text)`, perdedor em `var(--nba-text-muted)`
+- Animação CSS `@keyframes nba-marquee` (28s linear infinite) rola o carrossel automaticamente; pausa ao hover
+- Conteúdo duplicado (`[...sourceGames, ...sourceGames]`) garante loop contínuo sem salto
+- `prefers-reduced-motion: reduce` desabilita a animação
+
+### ANÁLISE — Pills renomeadas + logos em próximos confrontos (`Analysis.tsx`)
+- `SOURCE_PILLS`: "Ball Don't Lie" → "Dados NBA", "The Odds API" → "Odds ao vivo", "ESPN News" → "Notícias"
+- `NextGamesCard`: confronto em destaque exibe logos 22px + nome abreviado + apelido do time em duas linhas
+- Lista de outros jogos exibe logos 18px antes das abreviações
+- Novo componente `TeamLogoRow` reutilizável dentro da página
+
+---
+
 ## 2026-04-15 - Feature: GamePickDots — histórico visual de palpites de jogos
 
 ### Objetivo

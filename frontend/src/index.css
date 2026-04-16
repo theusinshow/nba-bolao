@@ -162,6 +162,18 @@
   color: var(--nba-text-muted);
 }
 
+/* ─── Carrossel automático (Home — jogos da última noite) ─── */
+@keyframes nba-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.nba-marquee {
+  animation: nba-marquee 28s linear infinite;
+}
+.nba-marquee:hover {
+  animation-play-state: paused;
+}
+
 /* ─── RankingTable: hover via CSS em vez de onMouseEnter imperativo ─── */
 .ranking-row-interactive {
   transition: filter 0.2s ease;
@@ -177,7 +189,8 @@
   .podium-gold,
   .podium-silver,
   .podium-bronze,
-  .skeleton {
+  .skeleton,
+  .nba-marquee {
     animation: none;
   }
 

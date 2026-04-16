@@ -9,6 +9,7 @@ import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
+import { getTeamLogoUrl } from '../data/teams2025'
 
 interface Props {
   participantId: string
@@ -115,12 +116,18 @@ function LastNightRecap({
   const sourceGames = games.map((game) => ({
     home: game.home_team?.abbreviation ?? game.home_team_id,
     away: game.away_team?.abbreviation ?? game.away_team_id,
+    homeAbbr: game.home_team?.abbreviation ?? game.home_team_id,
+    awayAbbr: game.away_team?.abbreviation ?? game.away_team_id,
     homeScore: game.home_score ?? 0,
     awayScore: game.away_score ?? 0,
+    homeWon: game.winner_id === game.home_team_id,
+    awayWon: game.winner_id === game.away_team_id,
     round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
     note: formatShortDateTime(game.tip_off_at),
     gameNumber: game.game_number,
   }))
+  // Duplica para loop contínuo do carrossel
+  const carouselItems = sourceGames.length > 0 ? [...sourceGames, ...sourceGames] : []
   const nextRealGame = upcomingGames[0]
   const countdown = useCountdown(nextRealGame?.tip_off_at)
 
@@ -158,51 +165,72 @@ function LastNightRecap({
           ))}
         </div>
       ) : sourceGames.length > 0 ? (
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            overflowX: 'auto',
-            padding: '0 1rem 0.2rem',
-            scrollSnapType: 'x proximity',
-          }}
-        >
-          {sourceGames.map((game) => {
-            return (
+        <div style={{ overflow: 'hidden', padding: '0 0 0.2rem' }}>
+          <div
+            className="nba-marquee"
+            style={{ display: 'flex', gap: 10, width: 'max-content' }}
+          >
+            {carouselItems.map((game, i) => (
               <div
-                key={`${game.home}-${game.away}`}
+                key={`${game.home}-${game.away}-${i}`}
                 style={{
-                  minWidth: 250,
+                  width: 220,
                   padding: '12px 14px',
                   borderRadius: 10,
                   background: 'rgba(12,12,18,0.42)',
                   border: '1px solid rgba(200,150,60,0.14)',
-                  scrollSnapAlign: 'start',
                   display: 'grid',
                   gap: 8,
+                  flexShrink: 0,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
-                    {game.home} <span style={{ color: 'var(--nba-text-muted)' }}>vs</span> {game.away}
-                  </span>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.65rem', fontWeight: 600 }}>J{game.gameNumber}</span>
+                {/* Times com logos */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                    <img
+                      src={getTeamLogoUrl(game.homeAbbr)}
+                      alt={game.homeAbbr}
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
+                    />
+                    <span
+                      className="font-condensed font-bold"
+                      style={{ color: game.homeWon ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '0.88rem', lineHeight: 1 }}
+                    >
+                      {game.home}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem', fontWeight: 600 }}>J{game.gameNumber}</span>
                     <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.35rem', lineHeight: 1 }}>
-                    {game.homeScore} - {game.awayScore}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                  <img
+                    src={getTeamLogoUrl(game.awayAbbr)}
+                    alt={game.awayAbbr}
+                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                    style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <span
+                    className="font-condensed font-bold"
+                    style={{ color: game.awayWon ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '0.88rem', lineHeight: 1 }}
+                  >
+                    {game.away}
                   </span>
-                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>final</span>
                 </div>
 
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{game.note}</div>
+                {/* Placar */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.25rem', lineHeight: 1 }}>
+                    {game.homeScore} — {game.awayScore}
+                  </span>
+                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>final</span>
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.note}</div>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
       ) : (
         <div style={{ padding: '0 1rem 0.2rem' }}>
@@ -231,11 +259,6 @@ function LastNightRecap({
         </div>
       )}
 
-      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 10, padding: '0 1rem', lineHeight: 1.4 }}>
-        {isRealData
-          ? 'Bloco alimentado por jogos reais vindos do banco sincronizado.'
-          : 'Sem fallback fictício: este espaço só mostra resultados reais da API depois que os jogos forem concluídos.'}
-      </div>
     </section>
   )
 }

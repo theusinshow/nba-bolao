@@ -3,6 +3,7 @@ import { Activity, ChevronRight, Clock, Database, Newspaper, Sparkles, TrendingU
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { type AnalysisNewsItem, type AnalysisOddsItem, useAnalysisInsights } from '../hooks/useAnalysisInsights'
+import { getTeamLogoUrl } from '../data/teams2025'
 
 const ROUND_BADGE_COLOR: Record<string, string> = {
   Finals: 'var(--nba-gold)',
@@ -115,9 +116,9 @@ function truncateText(value: string | null | undefined, maxLength: number) {
 }
 
 const SOURCE_PILLS = [
-  { label: "Ball Don't Lie", color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.10)', border: 'rgba(46,204,113,0.18)' },
-  { label: 'The Odds API',   color: 'var(--nba-east)',    bg: 'rgba(74,144,217,0.10)', border: 'rgba(74,144,217,0.18)' },
-  { label: 'ESPN News',      color: 'var(--nba-gold)',    bg: 'rgba(200,150,60,0.10)', border: 'rgba(200,150,60,0.18)' },
+  { label: 'Dados NBA',    color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.10)', border: 'rgba(46,204,113,0.18)' },
+  { label: 'Odds ao vivo', color: 'var(--nba-east)',    bg: 'rgba(74,144,217,0.10)', border: 'rgba(74,144,217,0.18)' },
+  { label: 'Notícias',     color: 'var(--nba-gold)',    bg: 'rgba(200,150,60,0.10)', border: 'rgba(200,150,60,0.18)' },
 ]
 
 function AnalysisHeroFooter({ sectionsReady, generatedAt }: { sectionsReady: number; generatedAt: string | null }) {
@@ -205,14 +206,33 @@ function AnalysisHero({
   )
 }
 
+function TeamLogoRow({ abbr, name }: { abbr: string; name: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <img
+        src={getTeamLogoUrl(abbr)}
+        alt={abbr}
+        onError={(e) => (e.currentTarget.style.display = 'none')}
+        style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0 }}
+      />
+      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.95rem', lineHeight: 1 }}>
+        {abbr}
+      </span>
+      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>{name}</span>
+    </div>
+  )
+}
+
 function NextGamesCard({
   games,
 }: {
   games: ReturnType<typeof useGameFeed>['upcomingGames']
 }) {
   const sourceGames = games.map((game) => ({
-    home: game.home_team?.abbreviation ?? game.home_team_id,
-    away: game.away_team?.abbreviation ?? game.away_team_id,
+    homeAbbr: game.home_team?.abbreviation ?? game.home_team_id,
+    awayAbbr: game.away_team?.abbreviation ?? game.away_team_id,
+    homeName: game.home_team?.name?.split(' ').pop() ?? game.home_team_id,
+    awayName: game.away_team?.name?.split(' ').pop() ?? game.away_team_id,
     date: formatShortDateTime(game.tip_off_at),
     round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
   }))
@@ -225,16 +245,18 @@ function NextGamesCard({
       {featured ? (
         <>
           <div style={{ background: 'linear-gradient(135deg, rgba(74,144,217,0.16), rgba(200,150,60,0.08))', border: '1px solid rgba(200,150,60,0.14)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
               <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
                 PRÓXIMO FOCO
               </span>
               <Badge label={featured.round} color={ROUND_BADGE_COLOR[featured.round] ?? '#888'} small />
             </div>
-            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.25rem', lineHeight: 1 }}>
-              {featured.home} vs {featured.away}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <TeamLogoRow abbr={featured.homeAbbr} name={featured.homeName} />
+              <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', paddingLeft: 29 }}>vs</span>
+              <TeamLogoRow abbr={featured.awayAbbr} name={featured.awayName} />
             </div>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 10 }}>
               {featured.date}
             </div>
             <Link to="/games" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--nba-gold)', fontSize: '0.78rem', marginTop: 10, textDecoration: 'none' }}>
@@ -248,17 +270,33 @@ function NextGamesCard({
               {sourceGames.slice(1).map((g, i, arr) => {
                 const color = ROUND_BADGE_COLOR[g.round] ?? '#888'
                 return (
-                  <div key={`${g.home}-${g.away}-${g.date}`}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', borderRadius: 6, fontSize: '0.85rem' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.9rem' }}>
-                          {g.home} <span style={{ color: 'var(--nba-text-muted)', fontWeight: 400 }}>vs</span> {g.away}
-                        </div>
-                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
-                          {g.date}
-                        </div>
+                  <div key={`${g.homeAbbr}-${g.awayAbbr}-${g.date}`}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                        <img
+                          src={getTeamLogoUrl(g.homeAbbr)}
+                          alt={g.homeAbbr}
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                          style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }}
+                        />
+                        <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.88rem' }}>
+                          {g.homeAbbr}
+                        </span>
+                        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>vs</span>
+                        <img
+                          src={getTeamLogoUrl(g.awayAbbr)}
+                          alt={g.awayAbbr}
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                          style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }}
+                        />
+                        <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.88rem' }}>
+                          {g.awayAbbr}
+                        </span>
                       </div>
-                      <Badge label={g.round} color={color} small />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{g.date}</span>
+                        <Badge label={g.round} color={color} small />
+                      </div>
                     </div>
                     {i < arr.length - 1 && <Divider />}
                   </div>
