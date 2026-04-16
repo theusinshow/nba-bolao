@@ -8,6 +8,7 @@ import { useUIStore } from '../store/useUIStore'
 import { CountdownTimer } from './CountdownTimer'
 import { LoadingBasketball } from './LoadingBasketball'
 import { normalizeGame } from '../utils/bracket'
+import { supabase } from '../lib/supabase'
 
 interface Props {
   series: Series
@@ -19,6 +20,8 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
   const { games, loading, saveGamePick, getPickForGame, isGameLocked } = useGamePicks(participantId, series.id)
   const { addToast } = useUIStore()
   const [saving, setSaving] = useState<string | null>(null)
+  // Estado local da série — atualizado via realtime enquanto o modal estiver aberto
+  const [liveSeries, setLiveSeries] = useState<Series>(series)
   const dialogRef = useFocusTrap<HTMLDivElement>(true)
   const titleId = 'game-pick-modal-title'
 
@@ -30,8 +33,24 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const teamA = series.home_team ?? getTeam(series.home_team_id)
-  const teamB = series.away_team ?? getTeam(series.away_team_id)
+  // Assina mudanças na série enquanto o modal está aberto para detectar encerramento em tempo real
+  useEffect(() => {
+    const channel = supabase
+      .channel(`game-pick-modal-series-${series.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'series', filter: `id=eq.${series.id}` },
+        (payload) => {
+          setLiveSeries((prev) => ({ ...prev, ...(payload.new as Partial<Series>) }))
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [series.id])
+
+  const teamA = liveSeries.home_team ?? getTeam(liveSeries.home_team_id)
+  const teamB = liveSeries.away_team ?? getTeam(liveSeries.away_team_id)
 
   async function handlePick(gameId: string, winnerId: string) {
     setSaving(gameId)
@@ -61,7 +80,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
         </button>
 
         <p className="text-nba-muted text-xs font-condensed uppercase mb-1">
-          {series.conference} — {['R1', 'R2', 'Conf Finals', 'NBA Finals'][series.round - 1]}
+          {liveSeries.conference} — {['R1', 'R2', 'Conf Finals', 'NBA Finals'][liveSeries.round - 1]}
         </p>
         <div className="flex items-center gap-2 mb-1">
           {teamA && (
@@ -95,12 +114,12 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
         ) : (
           <div className="flex flex-col gap-3">
             {games.map((game) => {
-              const normalizedGame = normalizeGame(game, series.round)
+              const normalizedGame = normalizeGame(game, liveSeries.round)
               const homeId = normalizedGame.home_team_id
               const awayId = normalizedGame.away_team_id
               const seriesClosedBeforeGame =
-                series.is_complete &&
-                normalizedGame.game_number > series.games_played
+                liveSeries.is_complete &&
+                normalizedGame.game_number > liveSeries.games_played
               const locked = seriesClosedBeforeGame || isGameLocked(game)
               const pick = getPickForGame(game.id)
               const correct = normalizedGame.played && pick && pick.winner_id === normalizedGame.winner_id
@@ -173,7 +192,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
 
                   {seriesClosedBeforeGame && (
                     <div className="mt-2 rounded-md border border-nba-east/20 bg-nba-east/10 px-3 py-2 text-xs text-nba-muted">
-                      A série terminou em {series.games_played} jogo{series.games_played !== 1 ? 's' : ''}. Este jogo não recebe mais palpite.
+                      A série terminou em {liveSeries.games_played} jogo{liveSeries.games_played !== 1 ? 's' : ''}. Este jogo não recebe mais palpite.
                     </div>
                   )}
                 </div>

@@ -1,4 +1,4 @@
-import type { Game, RoundNumber, Series } from '../types'
+import type { Game, NormalizedGame, RoundNumber, Series } from '../types'
 
 const SLOT_ALIASES: Record<string, string> = {
   'W-R1-1': 'W1-1',
@@ -37,8 +37,8 @@ export function inferRoundFromSeriesId(seriesId?: string | null): RoundNumber | 
   return undefined
 }
 
-export function normalizeGame(game: Game, round?: RoundNumber): Game {
-  const normalizedRound = round ?? game.round ?? inferRoundFromSeriesId(game.series_id)
+export function normalizeGame(game: Game, round?: RoundNumber): NormalizedGame {
+  const normalizedRound = (round ?? game.round ?? inferRoundFromSeriesId(game.series_id) ?? 1) as RoundNumber
 
   return {
     ...game,

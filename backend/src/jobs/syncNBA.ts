@@ -310,8 +310,14 @@ function propagateBracket(series: SeriesRow[]) {
     const awaySource = byId[feeder.away]
     if (!target) continue
 
-    target.home_team_id = homeSource?.winner_id ?? null
-    target.away_team_id = awaySource?.winner_id ?? null
+    // Só propaga se o feeder já tem vencedor confirmado — nunca sobrescreve com null
+    // para evitar cascata de dados corrompidos quando a API retorna resultado parcial
+    if (homeSource?.winner_id != null) {
+      target.home_team_id = homeSource.winner_id
+    }
+    if (awaySource?.winner_id != null) {
+      target.away_team_id = awaySource.winner_id
+    }
   }
 }
 

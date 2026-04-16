@@ -11,6 +11,7 @@ import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getTeamLogoUrl } from '../data/teams2025'
+import { BRT_TIMEZONE } from '../utils/constants'
 
 interface Props {
   participantId: string
@@ -79,7 +80,7 @@ function formatShortDateTime(dateValue: string | null | undefined) {
     month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
   }).format(new Date(dateValue))
 }
 
@@ -576,7 +577,7 @@ const ROUND_COLOR: Record<number, string> = { 1: '#4a90d9', 2: '#9b59b6', 3: '#e
 
 function getBrtDateKey(date: Date): string {
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' })
+    new Intl.DateTimeFormat('en-CA', { timeZone: BRT_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
       .formatToParts(date).filter((p) => p.type !== 'literal').map((p) => [p.type, p.value])
   )
   return `${parts.year}-${parts.month}-${parts.day}`
@@ -584,7 +585,7 @@ function getBrtDateKey(date: Date): string {
 
 function formatBrtTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: BRT_TIMEZONE, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 }
 
 // Map: seriesId → Map<winnerId, count>

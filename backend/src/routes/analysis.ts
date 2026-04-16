@@ -1,8 +1,27 @@
 import { Router } from 'express'
 import { fetchNBAGameOdds, fetchNBAGameOddsSummary } from '../lib/odds'
 import { fetchNBANews } from '../lib/news'
+import { fetchNBAInjuries } from '../lib/injuries'
 
 const router = Router()
+
+router.get('/injuries', async (_req, res) => {
+  try {
+    const result = await fetchNBAInjuries()
+    res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      provider: result.status,
+      injuries: result.injuries,
+    })
+  } catch (error: unknown) {
+    console.error('[analysis/injuries] Failed:', error)
+    res.status(500).json({
+      ok: false,
+      error: 'Não foi possível carregar o relatório de lesões.',
+    })
+  }
+})
 
 router.get('/insights', async (_req, res) => {
   try {

@@ -43,6 +43,7 @@ export interface Game {
   tip_off_at: string | null
   nba_game_id: number | null
   round?: RoundNumber
+  // Aliases opcionais preenchidos por normalizeGame() — use NormalizedGame quando garantidos
   team_a_id?: string
   team_b_id?: string
   score_a?: number | null
@@ -50,6 +51,16 @@ export interface Game {
   balldontlie_id?: number | null
   team_a?: Team | null
   team_b?: Team | null
+}
+
+/** Resultado de normalizeGame() — aliases e round sempre preenchidos */
+export interface NormalizedGame extends Game {
+  round: RoundNumber
+  team_a_id: string
+  team_b_id: string
+  score_a: number | null
+  score_b: number | null
+  balldontlie_id: number | null
 }
 
 export interface Participant {

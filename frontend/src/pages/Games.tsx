@@ -10,6 +10,7 @@ import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
 import { TEAM_MAP, getTeamLogoUrl } from '../data/teams2025'
 import { teamAbbrStyle } from '../utils/teamColors'
+import { BRT_TIMEZONE } from '../utils/constants'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,32 +83,32 @@ interface MatchedGameOdds {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dateKeyBRT(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
 }
 
 function formatDateHeader(iso: string): string {
   const d = new Date(iso)
-  const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' })
-  const day     = d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: 'America/Sao_Paulo' })
-  const month   = d.toLocaleDateString('pt-BR', { month: 'short', timeZone: 'America/Sao_Paulo' })
+  const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: BRT_TIMEZONE })
+  const day     = d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: BRT_TIMEZONE })
+  const month   = d.toLocaleDateString('pt-BR', { month: 'short', timeZone: BRT_TIMEZONE })
     .replace('.', '').toUpperCase()
   return `${weekday.toUpperCase()} · ${day} ${month}`
 }
 
 function formatTimeBRT(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+    hour: '2-digit', minute: '2-digit', timeZone: BRT_TIMEZONE,
   })
 }
 
 function getRelativeDateLabel(iso: string): string | null {
-  const target = new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const target = new Date(iso).toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
   const now = new Date()
-  const today = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const today = now.toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
 
   const tomorrowDate = new Date(now)
   tomorrowDate.setDate(now.getDate() + 1)
-  const tomorrow = tomorrowDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const tomorrow = tomorrowDate.toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
 
   if (target === today) return 'Hoje'
   if (target === tomorrow) return 'Amanhã'
@@ -133,9 +134,9 @@ function isGameOpenForPick(game: GameWithTeams): boolean {
 
 function getDayLabel(dateKey: string): string {
   const now = new Date()
-  const todayKey = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const todayKey = now.toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
   const tomorrow = new Date(now.getTime() + 24 * 3_600_000)
-  const tomorrowKey = tomorrow.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const tomorrowKey = tomorrow.toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
   if (dateKey === todayKey) return 'Hoje'
   if (dateKey === tomorrowKey) return 'Amanhã'
   const parts = dateKey.split('/')
@@ -2265,7 +2266,7 @@ function CalendarStrip({
     else if (idx >= windowStart + WINDOW) setWindowStart(Math.max(0, idx - WINDOW + 1))
   }, [selected, days, windowStart])
 
-  const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
   const windowDays = days.slice(windowStart, windowStart + WINDOW)
   const canLeft = windowStart > 0
   const canRight = windowStart + WINDOW < days.length
@@ -2532,7 +2533,7 @@ export function Games({ participantId }: Props) {
   // Seleciona "hoje" por padrão; se hoje não tiver jogo, seleciona o próximo dia com jogo
   useEffect(() => {
     if (availableDays.length === 0) return
-    const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
     if (availableDays.includes(todayKey)) {
       setSelectedDay(todayKey)
       return

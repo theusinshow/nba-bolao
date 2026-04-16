@@ -73,7 +73,8 @@ function countDuplicateValues(values: string[]): number {
     counts.set(normalized, (counts.get(normalized) ?? 0) + 1)
   }
 
-  return Array.from(counts.values()).filter((count) => count > 1).length
+  // Soma as entradas extras (count - 1) por grupo — ex: "João" aparecendo 3x = 2 duplicatas
+  return Array.from(counts.values()).reduce((sum, count) => sum + Math.max(0, count - 1), 0)
 }
 
 async function buildAdminOverview() {
@@ -295,12 +296,15 @@ router.post('/reset-picks', async (req, res) => {
       })
     }
 
+    // Gera backup antes de qualquer deleção
     const backup = await exportOperationalSnapshot()
-    const deleted = {
-      series_picks: await deleteAllRows('series_picks'),
-      game_picks: await deleteAllRows('game_picks'),
-      simulation_series_picks: await deleteAllRows('simulation_series_picks'),
-      simulation_game_picks: await deleteAllRows('simulation_game_picks'),
+
+    // Executa deleções em sequência — se qualquer uma falhar, lança exceção
+    // e o catch externo retorna erro sem continuar as demais tabelas
+    const tables = ['series_picks', 'game_picks', 'simulation_series_picks', 'simulation_game_picks']
+    const deleted: Record<string, number> = {}
+    for (const table of tables) {
+      deleted[table] = await deleteAllRows(table)
     }
 
     await recalculateAllScores()

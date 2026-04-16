@@ -6,7 +6,6 @@ export const SCORING_CONFIG = {
   pointsPerGame: { 1: 1, 2: 2, 3: 3, 4: 4 },
   pointsPerSeries: { 1: 3, 2: 6, 3: 9, 4: 12 },
   pointsPerCravada: { 1: 6, 2: 12, 3: 20, 4: 25 },
-  championBonus: 0,
 } as const
 
 // CRÍTICO: Cravada SUBSTITUI série, nunca soma

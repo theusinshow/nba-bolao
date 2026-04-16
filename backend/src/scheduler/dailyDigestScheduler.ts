@@ -1,5 +1,6 @@
 import cron from 'node-cron'
 import { exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
+import { BRT_TIMEZONE } from '../lib/constants'
 
 interface DailyDigestSchedulerSnapshot {
   cron: string
@@ -12,7 +13,7 @@ interface DailyDigestSchedulerSnapshot {
 }
 
 const DIGEST_CRON = process.env.DAILY_DIGEST_CRON ?? '5 9 * * *'
-const DIGEST_TIMEZONE = process.env.DAILY_DIGEST_TIMEZONE ?? 'America/Sao_Paulo'
+const DIGEST_TIMEZONE = process.env.DAILY_DIGEST_TIMEZONE ?? BRT_TIMEZONE
 
 let lastRunAt: Date | null = null
 let lastSuccessAt: Date | null = null

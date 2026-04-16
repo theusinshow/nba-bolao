@@ -156,11 +156,19 @@ async function fetchOddsEvents(markets: string, cacheKey: string): Promise<{ sta
     return { status, events: response.data }
   } catch (error: unknown) {
     const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined
+    const responseBody = axios.isAxiosError(error) ? error.response?.data : undefined
     const reason = statusCode === 401
       ? 'The Odds API rejeitou a chave atual.'
       : statusCode === 429
       ? 'The Odds API atingiu limite de requisições.'
       : 'Falha ao carregar odds na The Odds API.'
+
+    console.error('[odds] API error', {
+      status: statusCode,
+      reason,
+      body: responseBody,
+      message: error instanceof Error ? error.message : String(error),
+    })
 
     return {
       status: {

@@ -7,6 +7,7 @@ import { GamePickModal } from '../components/GamePickModal'
 import { useSeries } from '../hooks/useSeries'
 import type { Series } from '../types'
 import { getSeriesSlot, isSeriesReadyForPick } from '../utils/bracket'
+import { ROUND_LABELS } from '../utils/constants'
 
 interface Props {
   participantId: string
@@ -40,12 +41,6 @@ function MobileBracketSheet({
   focusSection: 'west' | 'finals' | 'east' | 'full'
 }) {
   const pickBySeries = Object.fromEntries(picks.map((pick) => [pick.series_id, pick]))
-  const roundLabels: Record<number, string> = {
-    1: '1ª rodada',
-    2: '2ª rodada',
-    3: 'Final de conferência',
-    4: 'Finais da NBA',
-  }
 
   const filteredSeries = [...series].filter((item) => {
     if (focusSection === 'full') return true
@@ -171,7 +166,7 @@ function MobileBracketSheet({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', letterSpacing: '0.08em' }}>
-                    {roundLabels[item.round]}
+                    {ROUND_LABELS[item.round as keyof typeof ROUND_LABELS]}
                   </span>
                   <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
                     {item.conference ?? 'NBA'} {getSeriesSlot(item)}

@@ -3,6 +3,7 @@ import path from 'path'
 import { supabase } from '../lib/supabase'
 import { inferRoundFromSeriesId } from '../utils/bracket'
 import { calculateGamePickPoints, calculateSeriesPickPoints, compareRankingEntries } from '../scoring/rules'
+import { BRT_TIMEZONE } from '../lib/constants'
 
 interface ParticipantRow {
   id: string
@@ -95,7 +96,7 @@ interface BackupResult {
 
 function formatTimestampParts(date: Date) {
   const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

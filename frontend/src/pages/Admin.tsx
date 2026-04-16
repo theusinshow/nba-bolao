@@ -25,6 +25,7 @@ import { adminGet, adminPost } from '../lib/adminApi'
 import { useUIStore } from '../store/useUIStore'
 import type { Participant } from '../types'
 import { LoadingBasketball } from '../components/LoadingBasketball'
+import { BRT_TIMEZONE } from '../utils/constants'
 
 interface Props {
   participantId: string
@@ -199,7 +200,7 @@ function formatTimestamp(value: string | null) {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',
     timeStyle: 'short',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
   }).format(new Date(value))
 }
 

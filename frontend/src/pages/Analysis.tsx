@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
-import { Activity, ChevronRight, Clock, Database, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
+import { Activity, ChevronRight, Clock, Database, HeartPulse, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { type AnalysisNewsItem, type AnalysisOddsItem, useAnalysisInsights } from '../hooks/useAnalysisInsights'
-import { getTeamLogoUrl } from '../data/teams2025'
+import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
+import { TEAMS_2025, getTeamLogoUrl } from '../data/teams2025'
+import { BRT_TIMEZONE } from '../utils/constants'
 
 const ROUND_BADGE_COLOR: Record<string, string> = {
   Finals: 'var(--nba-gold)',
@@ -62,7 +64,7 @@ function formatShortDateTime(dateValue: string | null | undefined) {
     month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
   }).format(new Date(dateValue))
 }
 
@@ -142,12 +144,14 @@ function AnalysisHero({
   recentResultsCount,
   oddsReady,
   newsReady,
+  injuriesCount,
   generatedAt,
 }: {
   nextGamesCount: number
   recentResultsCount: number
   oddsReady: boolean
   newsReady: boolean
+  injuriesCount: number
   generatedAt: string | null
 }) {
   const sectionsReady = [nextGamesCount > 0 || recentResultsCount > 0, oddsReady, newsReady].filter(Boolean).length
@@ -189,6 +193,7 @@ function AnalysisHero({
               { label: 'Resultados', value: recentResultsCount, tone: 'var(--nba-gold)' },
               { label: 'Odds', value: oddsReady ? 'Prontas' : 'Indisponível', tone: oddsReady ? 'var(--nba-success)' : 'var(--nba-danger)' },
               { label: 'Notícias', value: newsReady ? 'Prontas' : 'Indisponível', tone: newsReady ? 'var(--nba-success)' : 'var(--nba-danger)' },
+              { label: 'Lesionados', value: injuriesCount > 0 ? injuriesCount : '—', tone: injuriesCount > 0 ? 'var(--nba-danger)' : 'var(--nba-text-muted)' },
             ].map((item) => (
               <div key={item.label} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
@@ -588,6 +593,129 @@ function NewsCard({
   )
 }
 
+const INJURY_STATUS_STYLE: Record<string, { color: string; label: string }> = {
+  Out:          { color: 'var(--nba-danger)',  label: 'Fora' },
+  Doubtful:     { color: '#e67e22',            label: 'Duvidoso' },
+  Questionable: { color: '#f1c40f',            label: 'Questionável' },
+  Probable:     { color: 'var(--nba-success)', label: 'Provável' },
+  'Day-To-Day': { color: '#e67e22',            label: 'Dia a dia' },
+}
+
+function getInjuryStyle(status: string) {
+  return INJURY_STATUS_STYLE[status] ?? { color: 'var(--nba-text-muted)', label: status }
+}
+
+function InjuriesCard({
+  injuries,
+  loading,
+  reason,
+}: {
+  injuries: InjuryItem[]
+  loading: boolean
+  reason?: string
+}) {
+  // Ordena: Out → Doubtful → Questionable → Probable → outros
+  const ORDER = ['Out', 'Doubtful', 'Day-To-Day', 'Questionable', 'Probable']
+  const sorted = [...injuries].sort((a, b) => {
+    const ia = ORDER.indexOf(a.status)
+    const ib = ORDER.indexOf(b.status)
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
+
+  return (
+    <div style={card}>
+      <CardTitle icon={<HeartPulse size={14} />}>Relatório de Lesões</CardTitle>
+
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '18px 0' }}>
+          <LoadingBasketball size={20} />
+        </div>
+      ) : sorted.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {sorted.map((item, index) => {
+            const style = getInjuryStyle(item.status)
+            const teamData = TEAMS_2025.find((t) => t.abbreviation === item.team)
+
+            return (
+              <div key={item.id}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '7px 4px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    {item.team && (
+                      <img
+                        src={getTeamLogoUrl(item.team)}
+                        alt={item.team}
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          objectFit: 'contain',
+                          flexShrink: 0,
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
+                        }}
+                      />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        className="font-condensed font-bold"
+                        style={{ color: 'var(--nba-text)', fontSize: '0.88rem', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      >
+                        {item.player_name}
+                      </div>
+                      {item.detail && (
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', lineHeight: 1.3, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.detail}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        background: `${style.color}22`,
+                        color: style.color,
+                        borderRadius: 4,
+                        padding: '1px 7px',
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        border: `1px solid ${style.color}44`,
+                      }}
+                    >
+                      {style.label}
+                    </span>
+                    {item.position && (
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem' }}>
+                        {item.position}
+                        {teamData && (
+                          <span style={{ color: teamData.primary_color, marginLeft: 4 }}>• {item.team}</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {index < sorted.length - 1 && <Divider />}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          {reason ?? 'Nenhum jogador lesionado identificado no momento.'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AnalysisActionsCard() {
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}>
@@ -616,6 +744,7 @@ function AnalysisActionsCard() {
 export function Analysis() {
   const { upcomingGames, recentCompletedGames } = useGameFeed()
   const { loading, error, generatedAt, odds, news, providers } = useAnalysisInsights()
+  const { loading: injuriesLoading, injuries, provider: injuriesProvider, error: injuriesError } = useInjuries()
   const allFeedGames = [...upcomingGames, ...recentCompletedGames]
 
   const relevantTeamNames = new Set(
@@ -686,6 +815,12 @@ export function Analysis() {
     ? 'Nenhuma notícia relevante encontrada para a rodada neste momento.'
     : undefined
 
+  // Filtra lesões para times dos playoffs apenas
+  const playoffTeamAbbrs = new Set(TEAMS_2025.map((t) => t.abbreviation))
+  const injuriesToShow = injuries.filter((item) => !item.team || playoffTeamAbbrs.has(item.team))
+  const injuriesReason = injuriesError
+    ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
+
   return (
     <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
       <AnalysisHero
@@ -693,6 +828,7 @@ export function Analysis() {
         recentResultsCount={recentCompletedGames.length}
         oddsReady={providers.odds.available && oddsToShow.length > 0}
         newsReady={providers.news.available && newsToShow.length > 0}
+        injuriesCount={injuriesToShow.length}
         generatedAt={generatedAt}
       />
 
@@ -704,11 +840,15 @@ export function Analysis() {
           <div className="xl:hidden">
             <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
           </div>
+          <div className="xl:hidden">
+            <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
+          </div>
         </div>
         <div className="flex flex-col gap-4 min-w-0">
           <div className="hidden xl:block">
             <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
           </div>
+          <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
           <AnalysisActionsCard />
         </div>
       </div>

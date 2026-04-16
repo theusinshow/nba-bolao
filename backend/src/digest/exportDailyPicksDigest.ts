@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import { supabase } from '../lib/supabase'
+import { BRT_TIMEZONE } from '../lib/constants'
 
 interface ParticipantRow {
   id: string
@@ -58,7 +59,7 @@ interface DailyDigestResult {
 
 function getBrtFormatter() {
   return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -68,7 +69,7 @@ function getBrtFormatter() {
 function getBrtDateKey(date: Date): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
+      timeZone: BRT_TIMEZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -82,7 +83,7 @@ function getBrtDateKey(date: Date): string {
 
 function formatTimestampParts(date: Date) {
   const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -124,7 +125,7 @@ function teamLabel(teamId: string | null | undefined, teamsById: Record<string, 
 function formatTipOff(value: string | null): string {
   if (!value) return 'Sem horário'
   return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRT_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))

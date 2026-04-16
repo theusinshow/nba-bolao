@@ -8,6 +8,15 @@ import { getNBASyncSchedulerSnapshot, startNBASyncScheduler } from './scheduler/
 import { getDailyDigestSchedulerSnapshot, startDailyDigestScheduler } from './scheduler/dailyDigestScheduler'
 import { SCORING } from './scoring/rules'
 
+// Validação de variáveis de ambiente obrigatórias — encerra o processo com mensagem clara
+const REQUIRED_ENV_VARS = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY'] as const
+const missingVars = REQUIRED_ENV_VARS.filter((v) => !process.env[v])
+if (missingVars.length > 0) {
+  console.error(`[startup] Missing required environment variables: ${missingVars.join(', ')}`)
+  console.error('[startup] Set them in .env or in the deployment environment before starting.')
+  process.exit(1)
+}
+
 const app = express()
 const PORT = Number(process.env.PORT ?? 3001)
 

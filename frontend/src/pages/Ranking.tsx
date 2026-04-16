@@ -9,17 +9,12 @@ import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { useAllGamePickDots } from '../hooks/useAllGamePickDots'
 import { SCORING_CONFIG } from '../utils/scoring'
+import { ROUND_LABELS } from '../utils/constants'
 
 interface Props {
   participantId: string
 }
 
-const ROUND_LABELS = {
-  1: '1ª rodada',
-  2: '2ª rodada',
-  3: 'Final de conferência',
-  4: 'Finais da NBA',
-} as const
 
 function TopThreeCards({
   ranking,

@@ -1,5 +1,94 @@
 # Codex Changelog
 
+## 2026-04-16 - Feature: Relatório de Lesões na página de Análise
+
+### Contexto
+O backend já tinha `fetchNBAInjuries()` (SportsDataIO) totalmente implementado mas sem rota, sem hook e sem UI. A feature foi conectada do zero até a exibição.
+
+### `backend/src/routes/analysis.ts`
+- Novo endpoint `GET /analysis/injuries` — chama `fetchNBAInjuries()` e retorna `{ ok, generatedAt, provider, injuries }`
+- Tratamento de erro com log e status 500 em caso de falha
+
+### `frontend/src/hooks/useInjuries.ts` *(novo)*
+- Hook `useInjuries()` — fetch contra `/analysis/injuries` com cancelamento via flag `active`
+- Retorna: `{ loading, error, generatedAt, injuries, provider }`
+- Mesma convenção do `useAnalysisInsights`
+
+### `frontend/src/pages/Analysis.tsx`
+- **`InjuriesCard`** — novo componente (inserido antes de `AnalysisActionsCard`):
+  - Lista jogadores lesionados com logo do time, nome, detalhe da lesão e posição
+  - Ordenação: Out → Doubtful → Day-To-Day → Questionable → Probable
+  - Badge de status com cor semântica: vermelho (Out), laranja (Doubtful/Day-To-Day), amarelo (Questionable), verde (Probable)
+  - Cor primária do time ao lado da posição
+  - Filtrado para mostrar apenas times dos playoffs (TEAMS_2025)
+- **`AnalysisHero`** — novo stat "Lesionados" no grid de 5 métricas
+- Integrado em ambas as colunas: desktop (coluna direita) e mobile (após notícias)
+- Import de `TEAMS_2025` e `getTeamLogoUrl` consolidados em uma linha
+- Import de `HeartPulse` (ícone) adicionado ao lucide-react
+
+---
+
+## 2026-04-16 - Sprint 2 e 3: Correções de bugs médios e tech debt
+
+### Contexto
+Continuação da auditoria. 6 bugs médios/baixos corrigidos + 2 novos arquivos de constantes criados.
+
+### `frontend/src/components/GamePickModal.tsx`
+- **Fix 7 — Série re-validada em tempo real enquanto modal está aberto**: adicionado `useEffect` que assina `postgres_changes` na série específica (`filter: id=eq.{series.id}`); quando `is_complete` ou `games_played` muda no banco, `liveSeries` é atualizado — `seriesClosedBeforeGame` passa a refletir o estado atual, não o snapshot do momento de abertura do modal
+
+### `frontend/src/utils/constants.ts` *(novo)*
+- **Fix 8 — ROUND_LABELS compartilhado**: constante `ROUND_LABELS` extraída de `BracketEditor.tsx` e `Ranking.tsx` para arquivo central; ambas as páginas agora importam de lá
+- `BRT_TIMEZONE = 'America/Sao_Paulo'` também definida aqui como fonte de verdade para o frontend
+
+### `frontend/src/pages/BracketEditor.tsx`
+- Definição local de `roundLabels` removida; importa `ROUND_LABELS` de `utils/constants`
+
+### `frontend/src/pages/Ranking.tsx`
+- Definição local de `ROUND_LABELS` removida; importa de `utils/constants`
+
+### `frontend/src/pages/Games.tsx`, `Home.tsx`, `Admin.tsx`, `Analysis.tsx`
+- **Fix 12 (frontend) — Timezone**: todas as 13 ocorrências de `'America/Sao_Paulo'` substituídas por `BRT_TIMEZONE` importado de `utils/constants`
+
+### `backend/src/index.ts`
+- **Fix 9 — Validação de env vars no startup**: bloco de validação adicionado antes de qualquer inicialização; lista `SUPABASE_URL` e `SUPABASE_SERVICE_KEY` como obrigatórias; encerra com `process.exit(1)` e mensagem clara se alguma estiver ausente
+
+### `backend/src/lib/odds.ts`
+- **Fix 10 — Log detalhado de erros**: bloco `catch` agora loga `status`, `reason`, `body` (response body da API) e `message` da exceção via `console.error` — erros de autenticação e rate-limit da The Odds API ficam visíveis no log de produção
+
+### `frontend/src/types/index.ts` e `frontend/src/utils/bracket.ts`
+- **Fix 11 — `NormalizedGame` type**: novo tipo `NormalizedGame extends Game` com `round`, `team_a_id`, `team_b_id`, `score_a`, `score_b` e `balldontlie_id` como campos obrigatórios (não-opcionais); `normalizeGame()` em `bracket.ts` agora declara retorno `NormalizedGame`
+
+### `backend/src/lib/constants.ts` *(novo)*
+- **Fix 12 (backend) — Timezone**: `BRT_TIMEZONE = 'America/Sao_Paulo'` definida aqui
+
+### `backend/src/digest/exportDailyPicksDigest.ts`, `exportDailyReminder.ts`
+### `backend/src/backup/exportOperationalSnapshot.ts`
+### `backend/src/scheduler/dailyDigestScheduler.ts`
+- Todas as ocorrências de `'America/Sao_Paulo'` substituídas por `BRT_TIMEZONE` importado de `lib/constants`
+
+---
+
+## 2026-04-16 - Sprint 1: Correções de bugs críticos e altos
+
+### Contexto
+Auditoria completa do projeto identificou 6 bugs críticos/altos. Todos corrigidos nesta entrada.
+
+### `frontend/src/hooks/useRanking.ts`
+- **Fix 1 — Subscription sem error handler**: `.subscribe()` agora recebe callback de status; `CHANNEL_ERROR` e `TIMED_OUT` exibem mensagem de erro e disparam re-fetch manual; `SUBSCRIBED` limpa o erro anterior
+- **Fix 2 — Stale closure em `computeRanking`**: função migrada para `useCallback` com dependências vazias; `computeRankingRef` (ref) mantida sempre atualizada; subscription usa `computeRankingRef.current()` para sempre chamar a versão mais recente sem capturar closure stale
+
+### `frontend/src/utils/scoring.ts`
+- **Fix 3 — `championBonus` fantasma removido**: campo `championBonus: 0` não existia no backend (`rules.ts`) e não era usado em nenhum cálculo; removido para manter os dois arquivos em sync perfeito
+
+### `backend/src/jobs/syncNBA.ts`
+- **Fix 4 — `propagateBracket` não propaga nulls**: antes sobrescrevia `home_team_id`/`away_team_id` da série seguinte com `null` quando o feeder ainda não tinha vencedor, corrompendo o bracket em cascata; agora só propaga se `winner_id != null`, preservando o valor atual
+
+### `backend/src/routes/admin.ts`
+- **Fix 5 — `reset-picks` com proteção contra falha parcial**: as 4 deleções (`series_picks`, `game_picks`, `simulation_series_picks`, `simulation_game_picks`) agora rodam em `for...of` sequencial; se qualquer `deleteAllRows` lançar exceção, o catch externo retorna erro sem continuar as demais tabelas — evita estado corrompido sem precisar de rollback explícito
+- **Fix 6 — `countDuplicateValues` contava grupos ao invés de entradas extras**: lógica anterior retornava `1` para "João" aparecendo 3 vezes; corrigido para somar `(count - 1)` por grupo, retornando `2` (as 2 entradas extras além da primeira)
+
+---
+
 ## 2026-04-16 - Home: Resultados Reais redesenhado + jogos do dia + acertos por série
 
 ### Contexto
@@ -1033,16 +1122,54 @@ USING (
 
 ## 2026-04-14 - Cores por time: primary na letra, secondary na borda (Claude Code)
 
+---
+
+## 2026-04-14 - Secondary color como faixa vertical nos cards de time (Claude Code)
+
+### Objetivo
+- Tornar a secondary color visível e impactante como faixa lateral (left/right border strip) em todos os contextos onde times aparecem
+
+### Arquivos alterados
+- `frontend/src/utils/teamColors.ts` — simplificado: `teamAbbrStyle` retorna só `color: primary_color`; `teamAbbrSVGProps` retorna só `fill: primary_color`; removido todo código de stroke/WebkitTextStroke
+- `frontend/src/components/BracketSVG.tsx`:
+  - Mobile: `borderLeft: 3px solid secA` no div do time A; `borderRight: 3px solid secB` no div do time B; barra de acento removida
+  - SVG desktop: dois `<rect>` de 3×(rowH) px na borda esquerda de cada row do box, um por time, na secondary_color respectiva; texto x ajustado de 10→12 para acomodar strip
+- `frontend/src/components/SeriesModal.tsx` — botão de cada time recebe `borderLeft: 4px solid secondary_color` via inline style (sobrescreve Tailwind no lado esquerdo)
+- `frontend/src/pages/Games.tsx` — TeamPickButton recebe `borderLeft` (side=left) ou `borderRight` (side=right) de 4px na secondary_color do time
+
+---
+
+## 2026-04-14 - Highlight de seleção jogo a jogo reforçado (Claude Code)
+
+### Objetivo
+- Tornar visível qual time foi selecionado no palpite jogo a jogo (estava muito fraco)
+
+### Arquivos alterados
+- `frontend/src/pages/Games.tsx` (TeamPickButton):
+  - `teamTint`: opacidade `22` → `50` (~13% → ~31%)
+  - `teamOutline`: opacidade `88` → `cc` (~53% → ~80%)
+  - `resultBg` quando selecionado: gradiente com `primary38` no topo em vez de `teamTint` diluído
+  - `boxShadow`: substituído por `inset 0 0 18px primary28` + anel externo `0 0 0 2px teamOutline`
+  - `textShadow`: de `teamTint` para `primaryaa` (~67% opacidade)
+
+---
+
+## 2026-04-14 - Cores por time: primary na letra, secondary adicionada (Claude Code)
+
 ### Objetivo
 - Usar `primary_color` do time diretamente como cor da letra (sem auto-clareamento)
-- Adicionar `secondary_color` para cada time, exibida como borda do card
-- Remover dependência de `getTeamTextColor` em BracketSVG e Games
+- Adicionar `secondary_color` para cada time
+- Merge dos dados locais com dados do Supabase para garantir que `secondary_color` chegue aos componentes
 
 ### Arquivos alterados
 - `frontend/src/types/index.ts` — adicionado campo `secondary_color: string` em `Team`
-- `frontend/src/data/teams2025.ts` — adicionado `secondary_color` para todos os 16 times; `primary_color` revisado com cores curadas e legíveis
-- `frontend/src/components/BracketSVG.tsx` — texto usa `primary_color` direto; borda mobile usa CSS gradient border (`padding-box`/`border-box`) com secondary_color split 50/50; SVG usa `<linearGradient>` em `<defs>` para stroke dos slots; barra de acento usa secondary_color; `getTeamTextColor` removido
-- `frontend/src/pages/Games.tsx` — substituído `getTeamTextColor(x.primary_color)` por `x.primary_color` direto em todos os pontos
+- `frontend/src/data/teams2025.ts` — adicionado `secondary_color` para todos os 16 times; `primary_color` revisado com cores curadas e legíveis (ver tabela no entry anterior)
+- `frontend/src/hooks/useSeries.ts` — import de `TEAM_MAP`; teamMap montado com `{ ...dbTeam, ...TEAM_MAP[id] }` para enriquecer dados do Supabase com cores locais
+- `frontend/src/pages/Games.tsx` — mesmo merge de TEAM_MAP no fetch de times; `getTeamTextColor` removido e substituído por `primary_color` direto em todos os pontos; import de `TEAM_MAP` e `teamAbbrStyle`
+
+---
+
+## 2026-04-13 - Contraste de cores de times no Bracket e Jogos (Claude Code)
 
 ### Cores secundárias adicionadas (referência)
 | Time | Primary (letra) | Secondary (borda) |

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Game, GamePick, Participant, ParticipantScoreBreakdown, RankingEntry, Series, SeriesPick, Team } from '../types'
 import { buildRankingState } from '../utils/ranking'
@@ -12,31 +12,10 @@ export function useRanking() {
   const [error, setError] = useState<string | null>(null)
   const previousRankingRef = useRef<RankingEntry[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Ref para evitar stale closure: a subscription sempre chama a versão mais recente
+  const computeRankingRef = useRef<() => Promise<void>>(async () => {})
 
-  useEffect(() => {
-    computeRanking()
-
-    function scheduleCompute() {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(computeRanking, 1500)
-    }
-
-    const sub = supabase
-      .channel('ranking-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, scheduleCompute)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, scheduleCompute)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, scheduleCompute)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, scheduleCompute)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, scheduleCompute)
-      .subscribe()
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      supabase.removeChannel(sub)
-    }
-  }, [])
-
-  async function computeRanking() {
+  const computeRanking = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -88,7 +67,45 @@ export function useRanking() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Mantém a ref sempre atualizada para uso dentro da subscription sem stale closure
+  useEffect(() => {
+    computeRankingRef.current = computeRanking
+  }, [computeRanking])
+
+  useEffect(() => {
+    computeRanking()
+
+    function scheduleCompute() {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => computeRankingRef.current(), 1500)
+    }
+
+    const sub = supabase
+      .channel('ranking-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, scheduleCompute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, scheduleCompute)
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[useRanking] Realtime subscription error:', status)
+          setError('Conexão em tempo real perdida. Atualizando manualmente...')
+          // Tenta buscar dados atualizados e reagendar
+          computeRankingRef.current()
+        } else if (status === 'SUBSCRIBED') {
+          // Limpa erro de conexão se a subscription se reconectar
+          setError(null)
+        }
+      })
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      supabase.removeChannel(sub)
+    }
+  }, [computeRanking])
 
   function getBreakdownForParticipant(participantId: string) {
     return breakdowns[participantId]
