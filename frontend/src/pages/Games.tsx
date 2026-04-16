@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, ChevronDown, ChevronRight, Layers3, Users, X, Shuffle } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Layers3, Users, X, Shuffle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -2037,6 +2037,214 @@ function PicksFocusCard({ entries }: { entries: PickFocusEntry[] }) {
   )
 }
 
+// ─── Series context badge (day view) ─────────────────────────────────────────
+
+function SeriesContextBadge({ game, isFirst }: { game: GameWithTeams; isFirst: boolean }) {
+  const round = game.round as 1 | 2 | 3 | 4
+  const roundColor = ROUND_COLOR[round]
+  const teamA = game.team_a?.abbreviation ?? game.home_team_id
+  const teamB = game.team_b?.abbreviation ?? game.away_team_id
+
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginTop: isFirst ? 0 : 20, marginBottom: 6,
+      }}
+    >
+      <span
+        className="font-condensed font-bold"
+        style={{
+          color: roundColor,
+          background: `${roundColor}20`,
+          border: `1px solid ${roundColor}44`,
+          borderRadius: 999,
+          padding: '2px 8px',
+          fontSize: '0.68rem',
+          letterSpacing: '0.06em',
+          flexShrink: 0,
+        }}
+      >
+        {ROUND_LABEL[round]}
+      </span>
+      <span
+        className="font-condensed"
+        style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', fontWeight: 600 }}
+      >
+        {teamA} × {teamB} — Jogo {game.game_number}
+      </span>
+      <div style={{ flex: 1, height: 1, background: 'var(--nba-border)', minWidth: 16 }} />
+    </div>
+  )
+}
+
+// ─── Calendar strip (day view) ────────────────────────────────────────────────
+
+function CalendarStrip({
+  days,
+  selected,
+  onChange,
+}: {
+  days: string[]
+  selected: string | null
+  onChange: (day: string) => void
+}) {
+  const WINDOW = 5
+  const [windowStart, setWindowStart] = useState(() => {
+    if (!selected) return 0
+    const idx = days.indexOf(selected)
+    return idx >= 0 ? Math.max(0, Math.min(idx, Math.max(0, days.length - WINDOW))) : 0
+  })
+
+  useEffect(() => {
+    if (!selected) return
+    const idx = days.indexOf(selected)
+    if (idx < 0) return
+    if (idx < windowStart) setWindowStart(idx)
+    else if (idx >= windowStart + WINDOW) setWindowStart(Math.max(0, idx - WINDOW + 1))
+  }, [selected, days, windowStart])
+
+  const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const windowDays = days.slice(windowStart, windowStart + WINDOW)
+  const canLeft = windowStart > 0
+  const canRight = windowStart + WINDOW < days.length
+
+  function parseDayKey(key: string) {
+    const [dd, mm, yyyy] = key.split('/')
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+    const weekday = d.toLocaleDateString('pt-BR', { weekday: 'short' })
+      .replace('.', '').toUpperCase().slice(0, 3)
+    const month = d.toLocaleDateString('pt-BR', { month: 'short' })
+      .replace('.', '').toUpperCase().slice(0, 3)
+    return { dd, weekday, month, isToday: key === todayKey }
+  }
+
+  if (days.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+      <button
+        onClick={() => setWindowStart((prev) => Math.max(0, prev - 1))}
+        disabled={!canLeft}
+        style={{
+          width: 32, height: 52, borderRadius: 8, flexShrink: 0,
+          border: '1px solid rgba(200,150,60,0.16)',
+          background: canLeft ? 'rgba(12,12,18,0.5)' : 'transparent',
+          color: canLeft ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+          cursor: canLeft ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: canLeft ? 1 : 0.25,
+        }}
+      >
+        <ChevronLeft size={14} />
+      </button>
+
+      <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+        {windowDays.map((key) => {
+          const { dd, weekday, month, isToday } = parseDayKey(key)
+          const isSelected = key === selected
+          return (
+            <button
+              key={key}
+              onClick={() => onChange(key)}
+              style={{
+                flex: 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 2, padding: '8px 4px',
+                borderRadius: 10,
+                border: `1px solid ${isSelected ? 'rgba(200,150,60,0.4)' : 'rgba(200,150,60,0.1)'}`,
+                background: isSelected ? 'rgba(200,150,60,0.14)' : 'rgba(12,12,18,0.34)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span
+                className="font-condensed"
+                style={{
+                  fontSize: '0.62rem', letterSpacing: '0.06em', fontWeight: 700,
+                  color: isToday
+                    ? (isSelected ? 'var(--nba-gold)' : 'var(--nba-east)')
+                    : (isSelected ? 'var(--nba-gold)' : 'var(--nba-text-muted)'),
+                }}
+              >
+                {isToday ? 'HOJE' : weekday}
+              </span>
+              <span
+                className="font-condensed font-bold"
+                style={{ fontSize: '1.1rem', lineHeight: 1, color: isSelected ? 'var(--nba-gold)' : 'var(--nba-text)' }}
+              >
+                {dd.replace(/^0/, '')}
+              </span>
+              <span style={{ fontSize: '0.58rem', color: isSelected ? 'rgba(200,150,60,0.8)' : 'var(--nba-text-muted)' }}>
+                {month}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        onClick={() => setWindowStart((prev) => Math.min(days.length - WINDOW, prev + 1))}
+        disabled={!canRight}
+        style={{
+          width: 32, height: 52, borderRadius: 8, flexShrink: 0,
+          border: '1px solid rgba(200,150,60,0.16)',
+          background: canRight ? 'rgba(12,12,18,0.5)' : 'transparent',
+          color: canRight ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+          cursor: canRight ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: canRight ? 1 : 0.25,
+        }}
+      >
+        <ChevronRight size={14} />
+      </button>
+    </div>
+  )
+}
+
+// ─── View mode toggle ─────────────────────────────────────────────────────────
+
+function ViewModeToggle({
+  viewMode,
+  onChange,
+}: {
+  viewMode: 'day' | 'series'
+  onChange: (mode: 'day' | 'series') => void
+}) {
+  const items = [
+    { id: 'day' as const, label: 'Por dia', Icon: CalendarDays },
+    { id: 'series' as const, label: 'Por série', Icon: Layers3 },
+  ]
+
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+      {items.map(({ id, label, Icon }) => {
+        const active = viewMode === id
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
+              border: `1px solid ${active ? 'rgba(200,150,60,0.32)' : 'rgba(200,150,60,0.12)'}`,
+              background: active ? 'rgba(200,150,60,0.14)' : 'transparent',
+              color: active ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+              fontWeight: 700, fontSize: '0.78rem',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.04em',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Icon size={14} />
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Games({ participantId }: Props) {
@@ -2055,6 +2263,7 @@ export function Games({ participantId }: Props) {
   const [activeFilter, setActiveFilter] = useState<GamesFilter>('pending')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [recentlySavedGameId, setRecentlySavedGameId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'day' | 'series'>('day')
   const { addToast } = useUIStore()
   const { odds: oddsSummary } = useOddsSummary()
 
@@ -2122,6 +2331,18 @@ export function Games({ participantId }: Props) {
       group.games.some((game) => game.tip_off_at && dateKeyBRT(game.tip_off_at) === selectedDay)
     )
   }, [filteredSeriesGroups, selectedDay])
+
+  const selectedDayGames = useMemo(() => {
+    if (!selectedDay) return []
+    return games
+      .filter((game) => game.tip_off_at && dateKeyBRT(game.tip_off_at) === selectedDay)
+      .sort((a, b) => new Date(a.tip_off_at!).getTime() - new Date(b.tip_off_at!).getTime())
+  }, [games, selectedDay])
+
+  const selectedDayAutoPickGroup = useMemo(
+    () => autoPickDayGroups.find((g) => g.key === selectedDay) ?? null,
+    [autoPickDayGroups, selectedDay]
+  )
 
   useEffect(() => {
     if (filteredSeriesGroups.length === 0) {
@@ -2371,98 +2592,125 @@ export function Games({ participantId }: Props) {
         pendingSeries={filterCounts.pending}
         urgentSeries={filterCounts.urgent}
       />
-      <PicksFocusCard entries={pickFocusEntries} />
-      <TopAutoPickBar groups={autoPickDayGroups} onOpen={openAutoPick} />
-      <FiltersBar active={activeFilter} counts={filterCounts} onChange={setActiveFilter} />
-      <DayTabsBar days={availableDays} selected={selectedDay} onChange={setSelectedDay} />
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          flexWrap: 'wrap',
-          marginBottom: 12,
-        }}
-      >
-        <h2
-          className="title"
-          style={{
-            color: 'var(--nba-gold)',
-            fontSize: '1rem',
-            letterSpacing: '0.14em',
-            lineHeight: 1,
-          }}
-        >
-          SÉRIES
-        </h2>
-        <div
-          style={{
-            height: 1,
-            flex: 1,
-            minWidth: 32,
-            background: 'var(--nba-border)',
-          }}
-        />
-        <span
-          className="font-condensed"
-          style={{
-            color: 'var(--nba-text-muted)',
-            fontSize: '0.72rem',
-            background: 'var(--nba-surface-2)',
-            border: '1px solid var(--nba-border)',
-            borderRadius: 4,
-            padding: '2px 8px',
-          }}
-        >
-          {filteredByDay.length} série{filteredByDay.length !== 1 ? 's' : ''}
-        </span>
-      </div>
+      <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {filteredByDay.length === 0 && (
-          <div
-            style={{
-              padding: '18px 16px',
-              borderRadius: 12,
-              background: 'rgba(12,12,18,0.48)',
-              border: '1px solid var(--nba-border)',
-              color: 'var(--nba-text-muted)',
-            }}
-          >
+      {viewMode === 'day' ? (
+        <>
+          <CalendarStrip days={availableDays} selected={selectedDay} onChange={setSelectedDay} />
+
+          {selectedDayAutoPickGroup && (
+            <TopAutoPickBar groups={[selectedDayAutoPickGroup]} onOpen={openAutoPick} />
+          )}
+
+          {selectedDay == null || selectedDayGames.length === 0 ? (
             <div
-              className="font-condensed font-bold"
               style={{
-                color: 'var(--nba-text)',
-                fontSize: '0.95rem',
-                letterSpacing: '0.08em',
-                marginBottom: 6,
+                padding: '18px 16px', borderRadius: 12,
+                background: 'rgba(12,12,18,0.48)',
+                border: '1px solid var(--nba-border)',
+                color: 'var(--nba-text-muted)',
               }}
             >
-              NENHUMA SÉRIE NESTE FILTRO
+              <div
+                className="font-condensed font-bold"
+                style={{ color: 'var(--nba-text)', fontSize: '0.95rem', letterSpacing: '0.08em', marginBottom: 6 }}
+              >
+                {selectedDay ? 'NENHUM JOGO NESTE DIA' : 'SELECIONE UM DIA'}
+              </div>
+              <p style={{ margin: 0, fontSize: '0.84rem', lineHeight: 1.5 }}>
+                {selectedDay
+                  ? 'Não há jogos agendados para esta data.'
+                  : 'Use o calendário acima para escolher um dia.'}
+              </p>
             </div>
-            <p style={{ margin: 0, fontSize: '0.84rem', lineHeight: 1.5 }}>
-              Troque o filtro acima para voltar a navegar por todas as séries ou focar em outro recorte da rodada.
-            </p>
-          </div>
-        )}
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {selectedDayGames.map((game, idx) => (
+                <div key={game.id}>
+                  <SeriesContextBadge game={game} isFirst={idx === 0} />
+                  <GameCard
+                    game={game}
+                    pick={picks.find((p) => p.game_id === game.id)}
+                    onSave={savePick}
+                    wasAutoPicked={autoPickGameIds.includes(game.id)}
+                    revealedPicks={revealedPicksByGameId[game.id] ?? []}
+                    onOpenRevealedPicks={setRevealedGame}
+                    odds={oddsByGameId[game.id] ?? null}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <PicksFocusCard entries={pickFocusEntries} />
+          <TopAutoPickBar groups={autoPickDayGroups} onOpen={openAutoPick} />
+          <FiltersBar active={activeFilter} counts={filterCounts} onChange={setActiveFilter} />
+          <DayTabsBar days={availableDays} selected={selectedDay} onChange={setSelectedDay} />
 
-        {filteredByDay.map((group) => (
-          <SeriesCard
-            key={group.key}
-            group={group}
-            picks={picks}
-            expanded={expandedSeriesIds.includes(group.seriesId)}
-            isHighlighted={recentlySavedGameId != null && group.games.some((game) => game.id === recentlySavedGameId)}
-            onToggle={() => toggleSeries(group.seriesId)}
-            onSave={savePick}
-            autoPickGameIds={autoPickGameIds}
-            revealedPicksByGameId={revealedPicksByGameId}
-            oddsByGameId={oddsByGameId}
-            onOpenRevealedPicks={setRevealedGame}
-          />
-        ))}
-      </div>
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12,
+            }}
+          >
+            <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', letterSpacing: '0.14em', lineHeight: 1 }}>
+              SÉRIES
+            </h2>
+            <div style={{ height: 1, flex: 1, minWidth: 32, background: 'var(--nba-border)' }} />
+            <span
+              className="font-condensed"
+              style={{
+                color: 'var(--nba-text-muted)', fontSize: '0.72rem',
+                background: 'var(--nba-surface-2)', border: '1px solid var(--nba-border)',
+                borderRadius: 4, padding: '2px 8px',
+              }}
+            >
+              {filteredByDay.length} série{filteredByDay.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {filteredByDay.length === 0 && (
+              <div
+                style={{
+                  padding: '18px 16px', borderRadius: 12,
+                  background: 'rgba(12,12,18,0.48)',
+                  border: '1px solid var(--nba-border)',
+                  color: 'var(--nba-text-muted)',
+                }}
+              >
+                <div
+                  className="font-condensed font-bold"
+                  style={{ color: 'var(--nba-text)', fontSize: '0.95rem', letterSpacing: '0.08em', marginBottom: 6 }}
+                >
+                  NENHUMA SÉRIE NESTE FILTRO
+                </div>
+                <p style={{ margin: 0, fontSize: '0.84rem', lineHeight: 1.5 }}>
+                  Troque o filtro acima para voltar a navegar por todas as séries ou focar em outro recorte da rodada.
+                </p>
+              </div>
+            )}
+
+            {filteredByDay.map((group) => (
+              <SeriesCard
+                key={group.key}
+                group={group}
+                picks={picks}
+                expanded={expandedSeriesIds.includes(group.seriesId)}
+                isHighlighted={recentlySavedGameId != null && group.games.some((game) => game.id === recentlySavedGameId)}
+                onToggle={() => toggleSeries(group.seriesId)}
+                onSave={savePick}
+                autoPickGameIds={autoPickGameIds}
+                revealedPicksByGameId={revealedPicksByGameId}
+                oddsByGameId={oddsByGameId}
+                onOpenRevealedPicks={setRevealedGame}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {autoPickGroup && (
         <AutoPickModal

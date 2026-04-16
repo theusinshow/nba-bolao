@@ -1,5 +1,44 @@
 # Codex Changelog
 
+## 2026-04-16 - JOGOS: visualização por dia (CalendarStrip + ViewModeToggle)
+
+### Contexto
+Redesign da página Jogos para ter como modo primário a visualização por dia (semelhante ao NBA.com), substituindo o accordion de séries que continua disponível como modo secundário.
+
+---
+
+### Novos componentes (`Games.tsx`)
+
+**`ViewModeToggle`**
+- Dois botões pill acima do conteúdo: "Por dia" (`CalendarDays`) e "Por série" (`Layers3`)
+- Estado `viewMode: 'day' | 'series'` com default `'day'`
+- Persiste durante a sessão enquanto o usuário navega entre filtros
+
+**`CalendarStrip`**
+- Janela deslizante de 5 dias com setas esquerda/direita (`ChevronLeft`, `ChevronRight`)
+- Cada célula mostra: dia da semana curto (SEG/TER…), número do dia e mês abreviado
+- "Hoje" substitui o dia da semana na célula do dia atual
+- Auto-scroll da janela ao mudar o dia selecionado externamente (efeito `useEffect`)
+- Setas desabilitadas (opacidade 0.25) quando não há mais dias na direção
+
+**`SeriesContextBadge`**
+- Badge de round colorido + "OKC × IND — Jogo 3" + linha separadora
+- Exibido acima de cada `GameCard` no modo Por Dia
+- `isFirst` prop controla margem superior (sem margem no primeiro card)
+
+### Modo "Por dia"
+- `selectedDayGames` useMemo: filtra `games` pelo `selectedDay` (DD/MM/YYYY BRT) e ordena por `tip_off_at`
+- `selectedDayAutoPickGroup` useMemo: encontra o `AutoPickDayGroup` correspondente ao dia selecionado
+- "Vai na fé" exibido apenas para o dia selecionado (não para todos os dias de uma vez)
+- Jogos listados individualmente com `SeriesContextBadge` + `GameCard` completo
+- Estado vazio tratado com mensagem contextual ("Nenhum jogo neste dia" vs "Selecione um dia")
+
+### Modo "Por série"
+- Comportamento original inteiramente preservado
+- `PicksFocusCard`, `TopAutoPickBar`, `FiltersBar`, `DayTabsBar` e accordion de séries mantidos
+
+---
+
 ## 2026-04-16 - UX/UI: melhorias de navegação, visual e usabilidade pré-playoffs
 
 ### Contexto
