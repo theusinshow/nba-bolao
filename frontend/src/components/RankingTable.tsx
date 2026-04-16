@@ -178,6 +178,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
           >
             <th style={{ padding: '10px 12px', textAlign: 'left',  fontWeight: 600 }}>#</th>
             <th style={{ padding: '10px 12px', textAlign: 'left',  fontWeight: 600 }}>Participante</th>
+            <th style={{ padding: '10px 8px',  textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>Jogos</th>
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>Total</th>
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden md:table-cell">
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
@@ -258,7 +259,8 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        maxWidth: 120,
+                        maxWidth: 140,
+                        lineHeight: 1,
                       }}
                     >
                       {e.participant_name}
@@ -272,13 +274,17 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                     {rankDiff !== null && rankDiff === 0 && (
                       <Minus size={11} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
                     )}
-                    {dotsById && (
-                      <GamePickDots
-                        dots={dotsById.get(e.participant_id) ?? []}
-                        variant="compact"
-                      />
-                    )}
                   </div>
+                </td>
+
+                {/* Dots — coluna própria */}
+                <td style={{ padding: '11px 8px', verticalAlign: 'middle', textAlign: 'center' }}>
+                  {dotsById && (
+                    <GamePickDots
+                      dots={dotsById.get(e.participant_id) ?? []}
+                      variant="compact"
+                    />
+                  )}
                 </td>
 
                 {/* Total */}

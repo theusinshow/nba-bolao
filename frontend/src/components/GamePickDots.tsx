@@ -43,20 +43,20 @@ function CompactDots({ dots }: { dots: DotData[] }) {
     ...recent,
   ]
 
-  // Always render the placeholder row so layout is consistent even with no games yet
+  // Always render so the column has consistent width
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       {padded.map((dot, i) =>
         dot === null ? (
           <span
             key={`empty-${i}`}
             style={{
               display: 'inline-block',
-              width: 8,
-              height: 8,
+              width: 9,
+              height: 9,
               borderRadius: '50%',
-              background: 'transparent',
-              border: '1px solid rgba(136,136,153,0.35)',
+              background: 'rgba(136,136,153,0.08)',
+              border: '1px solid rgba(136,136,153,0.25)',
               flexShrink: 0,
             }}
           />
@@ -66,11 +66,22 @@ function CompactDots({ dots }: { dots: DotData[] }) {
             title={`J${dot.gameNumber} · ${dot.homeAbbr} vs ${dot.awayAbbr} · ${DOT_LABEL[dot.status]}`}
             style={{
               display: 'inline-block',
-              width: 8,
-              height: 8,
+              width: 9,
+              height: 9,
               borderRadius: '50%',
-              background: dot.status === 'no-pick' ? 'transparent' : DOT_COLOR[dot.status],
-              border: dot.status === 'no-pick' ? '1px solid rgba(136,136,153,0.5)' : 'none',
+              background: dot.status === 'no-pick'
+                ? 'rgba(136,136,153,0.08)'
+                : DOT_COLOR[dot.status],
+              border: dot.status === 'no-pick'
+                ? '1px solid rgba(136,136,153,0.4)'
+                : dot.status === 'pending'
+                ? '1px solid rgba(136,136,153,0.3)'
+                : 'none',
+              boxShadow: dot.status === 'correct'
+                ? '0 0 4px rgba(46,204,113,0.5)'
+                : dot.status === 'wrong'
+                ? '0 0 4px rgba(231,76,60,0.4)'
+                : 'none',
               flexShrink: 0,
               cursor: 'default',
             }}
