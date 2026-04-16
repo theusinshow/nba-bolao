@@ -1,8 +1,9 @@
 interface Props {
   onSignIn: () => void
+  onEnterAsGuest: () => void
 }
 
-export function Login({ onSignIn }: Props) {
+export function Login({ onSignIn, onEnterAsGuest }: Props) {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-8"
@@ -87,6 +88,43 @@ export function Login({ onSignIn }: Props) {
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
             </svg>
             Entrar com Google
+          </button>
+
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(200,150,60,0.15)' }} />
+            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>ou</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(200,150,60,0.15)' }} />
+          </div>
+
+          <button
+            onClick={onEnterAsGuest}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%',
+              padding: '11px 16px',
+              borderRadius: 8,
+              border: '1px solid rgba(200,150,60,0.22)',
+              background: 'transparent',
+              color: 'var(--nba-text-muted)',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(200,150,60,0.45)'
+              e.currentTarget.style.color = 'var(--nba-gold)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(200,150,60,0.22)'
+              e.currentTarget.style.color = 'var(--nba-text-muted)'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Ver como visitante
           </button>
         </div>
 

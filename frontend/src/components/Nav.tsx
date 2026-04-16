@@ -17,8 +17,16 @@ const primaryLinks = [
   { to: '/ranking', icon: BarChart2, label: 'Ranking' },
 ]
 
+const guestPrimaryLinks = [
+  { to: '/', icon: Home, label: 'Home' },
+  { to: '/analysis', icon: Activity, label: 'Análise' },
+  { to: '/official', icon: GitBranch, label: 'Bracket' },
+  { to: '/ranking', icon: BarChart2, label: 'Ranking' },
+]
+
 export function Nav({ auth, onSignOut }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const isGuest = auth.status === 'guest'
   const name = auth.status === 'authorized' ? auth.user.user_metadata.full_name ?? '' : ''
   const avatar = auth.status === 'authorized' ? auth.user.user_metadata.avatar_url : null
   const isAdmin = auth.status === 'authorized' ? auth.isAdmin : false
@@ -103,125 +111,116 @@ export function Nav({ auth, onSignOut }: Props) {
             </div>
 
             <div style={{ display: 'grid', gap: 10 }}>
-              <NavLink
-                to="/profile"
-                onClick={() => setMenuOpen(false)}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 12px',
-                  borderRadius: 12,
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
-                  background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
-                  border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
-                })}
-              >
-                <UserCircle size={16} />
-                <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Meu perfil</span>
-              </NavLink>
-
-              <NavLink
-                to="/compare"
-                onClick={() => setMenuOpen(false)}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 12px',
-                  borderRadius: 12,
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
-                  background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
-                  border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
-                })}
-              >
-                <ArrowLeftRight size={16} />
-                <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Comparar brackets</span>
-              </NavLink>
-
-              <NavLink
-                to="/simulacao"
-                onClick={() => setMenuOpen(false)}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 12px',
-                  borderRadius: 12,
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--nba-east)' : 'var(--nba-text)',
-                  background: isActive ? 'rgba(74,144,217,0.12)' : 'rgba(12,12,18,0.34)',
-                  border: `1px solid ${isActive ? 'rgba(74,144,217,0.22)' : 'rgba(200,150,60,0.08)'}`,
-                })}
-              >
-                <TestTube2 size={16} />
-                <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Simulação</span>
-              </NavLink>
-
-              {isAdmin && (
-                <NavLink
-                  to="/admin"
-                  onClick={() => setMenuOpen(false)}
-                  style={({ isActive }) => ({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '12px 12px',
-                    borderRadius: 12,
-                    textDecoration: 'none',
-                    color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
-                    background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
-                    border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
-                  })}
+              {isGuest && (
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: 'rgba(74,144,217,0.08)',
+                    border: '1px solid rgba(74,144,217,0.18)',
+                  }}
                 >
-                  <Shield size={16} />
-                  <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Admin</span>
-                </NavLink>
+                  <div style={{ color: 'var(--nba-east)', fontWeight: 700, fontSize: '0.82rem', marginBottom: 3 }}>
+                    Modo visitante
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', lineHeight: 1.4 }}>
+                    Você está visualizando o bolão sem uma conta. Para palpitar, entre com Google.
+                  </div>
+                </div>
               )}
 
-              <button
-                onClick={() => {
-                  setMenuOpen(false)
-                  restartOnboardingTour()
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 12px',
-                  borderRadius: 12,
-                  border: '1px solid rgba(200,150,60,0.18)',
-                  background: 'rgba(200,150,60,0.08)',
-                  color: 'var(--nba-gold)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '0.86rem',
-                }}
-              >
-                <Sparkles size={16} />
-                Ver tour novamente
-              </button>
+              {!isGuest && (
+                <>
+                  <NavLink
+                    to="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
+                      borderRadius: 12, textDecoration: 'none',
+                      color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
+                      background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+                      border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
+                    })}
+                  >
+                    <UserCircle size={16} />
+                    <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Meu perfil</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/compare"
+                    onClick={() => setMenuOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
+                      borderRadius: 12, textDecoration: 'none',
+                      color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
+                      background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+                      border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
+                    })}
+                  >
+                    <ArrowLeftRight size={16} />
+                    <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Comparar brackets</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/simulacao"
+                    onClick={() => setMenuOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
+                      borderRadius: 12, textDecoration: 'none',
+                      color: isActive ? 'var(--nba-east)' : 'var(--nba-text)',
+                      background: isActive ? 'rgba(74,144,217,0.12)' : 'rgba(12,12,18,0.34)',
+                      border: `1px solid ${isActive ? 'rgba(74,144,217,0.22)' : 'rgba(200,150,60,0.08)'}`,
+                    })}
+                  >
+                    <TestTube2 size={16} />
+                    <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Simulação</span>
+                  </NavLink>
+
+                  {isAdmin && (
+                    <NavLink
+                      to="/admin"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
+                        borderRadius: 12, textDecoration: 'none',
+                        color: isActive ? 'var(--nba-gold)' : 'var(--nba-text)',
+                        background: isActive ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+                        border: `1px solid ${isActive ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.08)'}`,
+                      })}
+                    >
+                      <Shield size={16} />
+                      <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>Admin</span>
+                    </NavLink>
+                  )}
+
+                  <button
+                    onClick={() => { setMenuOpen(false); restartOnboardingTour() }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
+                      borderRadius: 12, border: '1px solid rgba(200,150,60,0.18)',
+                      background: 'rgba(200,150,60,0.08)', color: 'var(--nba-gold)',
+                      cursor: 'pointer', fontWeight: 600, fontSize: '0.86rem',
+                    }}
+                  >
+                    <Sparkles size={16} />
+                    Ver tour novamente
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={onSignOut}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 12px',
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
                   borderRadius: 12,
-                  border: '1px solid rgba(231,76,60,0.18)',
-                  background: 'rgba(231,76,60,0.08)',
-                  color: 'var(--nba-danger)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '0.86rem',
+                  border: `1px solid ${isGuest ? 'rgba(74,144,217,0.22)' : 'rgba(231,76,60,0.18)'}`,
+                  background: isGuest ? 'rgba(74,144,217,0.08)' : 'rgba(231,76,60,0.08)',
+                  color: isGuest ? 'var(--nba-east)' : 'var(--nba-danger)',
+                  cursor: 'pointer', fontWeight: 600, fontSize: '0.86rem',
                 }}
               >
                 <LogOut size={16} />
-                Sair da conta
+                {isGuest ? 'Sair do modo visitante' : 'Sair da conta'}
               </button>
             </div>
           </div>
@@ -252,7 +251,7 @@ export function Nav({ auth, onSignOut }: Props) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
-            {primaryLinks.map(({ to, icon: Icon, label }) => (
+            {(isGuest ? guestPrimaryLinks : primaryLinks).map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}

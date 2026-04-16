@@ -7,6 +7,7 @@ export type AuthState =
   | { status: 'unauthenticated' }
   | { status: 'unauthorized'; email: string }
   | { status: 'authorized'; user: User; participantId: string; isAdmin: boolean }
+  | { status: 'guest' }
 
 export function useAuth() {
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' })
@@ -116,10 +117,18 @@ export function useAuth() {
     })
   }
 
+  function enterAsGuest() {
+    setAuth({ status: 'guest' })
+  }
+
   async function signOut() {
+    if (auth.status === 'guest') {
+      setAuth({ status: 'unauthenticated' })
+      return
+    }
     await supabase.auth.signOut()
     setAuth({ status: 'unauthenticated' })
   }
 
-  return { auth, signInWithGoogle, signOut }
+  return { auth, signInWithGoogle, signOut, enterAsGuest }
 }

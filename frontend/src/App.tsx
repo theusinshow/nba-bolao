@@ -28,7 +28,7 @@ function RouteFallback() {
 }
 
 export default function App() {
-  const { auth, signInWithGoogle, signOut } = useAuth()
+  const { auth, signInWithGoogle, signOut, enterAsGuest } = useAuth()
 
   if (auth.status === 'loading') {
     return (
@@ -42,7 +42,7 @@ export default function App() {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<Login onSignIn={signInWithGoogle} />} />
+          <Route path="/login" element={<Login onSignIn={signInWithGoogle} onEnterAsGuest={enterAsGuest} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
@@ -53,7 +53,8 @@ export default function App() {
     return <Unauthorized email={auth.email} onSignOut={signOut} />
   }
 
-  const { participantId, isAdmin } = auth
+  const participantId = auth.status === 'authorized' ? auth.participantId : ''
+  const isAdmin = auth.status === 'authorized' ? auth.isAdmin : false
 
   return (
     <BrowserRouter>
@@ -79,7 +80,7 @@ export default function App() {
           <Route
             path="/bracket"
             element={
-              <ProtectedRoute auth={auth}>
+              <ProtectedRoute auth={auth} blockGuest>
                 <BracketEditor participantId={participantId} />
               </ProtectedRoute>
             }
@@ -87,7 +88,7 @@ export default function App() {
           <Route
             path="/games"
             element={
-              <ProtectedRoute auth={auth}>
+              <ProtectedRoute auth={auth} blockGuest>
                 <Games participantId={participantId} />
               </ProtectedRoute>
             }
@@ -119,7 +120,7 @@ export default function App() {
           <Route
             path="/simulacao"
             element={
-              <ProtectedRoute auth={auth}>
+              <ProtectedRoute auth={auth} blockGuest>
                 <SimulationLab participantId={participantId} isAdmin={isAdmin} />
               </ProtectedRoute>
             }

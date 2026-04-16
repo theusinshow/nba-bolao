@@ -1,5 +1,38 @@
 # Codex Changelog
 
+## 2026-04-16 - Modo visitante (guest mode)
+
+### Contexto
+Qualquer pessoa pode acessar o bolão em modo leitura, sem precisar de conta Google nem estar na lista `allowed_emails`. Todas as tabelas públicas já permitiam leitura anônima via RLS, tornando a implementação puramente frontend.
+
+### `useAuth.ts`
+- Adicionado `| { status: 'guest' }` ao tipo `AuthState`
+- Nova função `enterAsGuest()` — define estado como guest sem tocar no Supabase Auth
+- `signOut()` adaptado: para guest apenas reseta estado local; para authorized chama `supabase.auth.signOut()`
+- `enterAsGuest` exposto no retorno do hook
+
+### `Login.tsx`
+- Nova prop `onEnterAsGuest`
+- Separador "ou" entre os dois botões
+- Botão "Ver como visitante" (estilo ghost dourado) abaixo do botão Google
+
+### `ProtectedRoute.tsx`
+- Nova prop `blockGuest?: boolean`
+- Guest com `blockGuest` ou `requireAdmin` → redireciona para `/ranking`
+- Guest sem restrição → passa normalmente
+
+### `Nav.tsx`
+- `guestPrimaryLinks`: Home, Análise, Bracket (→ `/official`), Ranking — sem Jogos
+- Guest vê links simplificados na barra inferior
+- Menu hambúrguer para guest: apenas bloco informativo "Modo visitante" + botão "Sair do modo visitante" (azul, sem itens de perfil/tour/admin)
+- Botão de saída muda cor e texto dinamicamente (azul para guest, vermelho para authorized)
+
+### `App.tsx`
+- `enterAsGuest` conectado ao `Login`
+- `participantId` e `isAdmin` derivados condicionalmente: `''` e `false` para guest
+- Rotas bloqueadas para guest (`blockGuest`): `/bracket`, `/games`, `/simulacao`
+- Rotas liberadas: `/`, `/analysis`, `/official`, `/ranking`, `/compare`, `/profile/:id`
+
 ## 2026-04-16 - JOGOS: visualização por dia (CalendarStrip + ViewModeToggle)
 
 ### Contexto
