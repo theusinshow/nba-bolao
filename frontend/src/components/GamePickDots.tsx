@@ -43,8 +43,7 @@ function CompactDots({ dots }: { dots: DotData[] }) {
     ...recent,
   ]
 
-  if (dots.length === 0) return null
-
+  // Always render the placeholder row so layout is consistent even with no games yet
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
       {padded.map((dot, i) =>
@@ -53,11 +52,11 @@ function CompactDots({ dots }: { dots: DotData[] }) {
             key={`empty-${i}`}
             style={{
               display: 'inline-block',
-              width: 7,
-              height: 7,
+              width: 8,
+              height: 8,
               borderRadius: '50%',
               background: 'transparent',
-              border: '1px solid rgba(136,136,153,0.25)',
+              border: '1px solid rgba(136,136,153,0.35)',
               flexShrink: 0,
             }}
           />
@@ -67,11 +66,11 @@ function CompactDots({ dots }: { dots: DotData[] }) {
             title={`J${dot.gameNumber} · ${dot.homeAbbr} vs ${dot.awayAbbr} · ${DOT_LABEL[dot.status]}`}
             style={{
               display: 'inline-block',
-              width: 7,
-              height: 7,
+              width: 8,
+              height: 8,
               borderRadius: '50%',
               background: dot.status === 'no-pick' ? 'transparent' : DOT_COLOR[dot.status],
-              border: dot.status === 'no-pick' ? '1px solid rgba(136,136,153,0.3)' : 'none',
+              border: dot.status === 'no-pick' ? '1px solid rgba(136,136,153,0.5)' : 'none',
               flexShrink: 0,
               cursor: 'default',
             }}
@@ -199,7 +198,9 @@ interface Props {
 }
 
 export function GamePickDots({ dots, variant = 'compact' }: Props) {
-  if (dots.length === 0) return null
-  if (variant === 'grouped') return <GroupedDots dots={dots} />
+  if (variant === 'grouped') {
+    if (dots.length === 0) return null
+    return <GroupedDots dots={dots} />
+  }
   return <CompactDots dots={dots} />
 }

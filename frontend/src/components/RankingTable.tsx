@@ -179,10 +179,6 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
             <th style={{ padding: '10px 12px', textAlign: 'left',  fontWeight: 600 }}>#</th>
             <th style={{ padding: '10px 12px', textAlign: 'left',  fontWeight: 600 }}>Participante</th>
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>Total</th>
-            <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden sm:table-cell">R1</th>
-            <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden sm:table-cell">R2</th>
-            <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden sm:table-cell">CF</th>
-            <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden sm:table-cell">Finals</th>
             <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="hidden md:table-cell">
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                 <Star size={11} style={{ color: 'var(--nba-gold)' }} />
@@ -294,19 +290,6 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                     {e.total_points}
                   </span>
                 </td>
-
-                {/* Round points — sm+ */}
-                {(['round1_points', 'round2_points', 'round3_points', 'round4_points'] as const).map((key) => (
-                  <td
-                    key={key}
-                    className="hidden sm:table-cell"
-                    style={{ padding: '11px 12px', textAlign: 'right', verticalAlign: 'middle' }}
-                  >
-                    <span className="font-condensed" style={{ color: 'var(--nba-text-muted)', fontSize: '0.88rem' }}>
-                      {e[key] ?? 0}
-                    </span>
-                  </td>
-                ))}
 
                 {/* Cravadas — md+ */}
                 <td
