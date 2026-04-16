@@ -173,13 +173,12 @@ function MobileSeriesCard({
   const secA   = tA?.secondary_color ?? 'rgba(200,150,60,0.4)'
   const secB   = tB?.secondary_color ?? 'rgba(200,150,60,0.4)'
 
-  // Gradient border: secondary colors when no pick status, solid when picked/correct/wrong
+  // Background tint + border: team colors only when pick exists
   const hasPick = status !== 'none'
   const cardBackground = hasPick
     ? `linear-gradient(to right, ${colorA}10 0%, var(--nba-surface) 32%, var(--nba-surface) 68%, ${colorB}10 100%) padding-box,
        linear-gradient(${borderColor}, ${borderColor}) border-box`
-    : `linear-gradient(to right, ${colorA}10 0%, var(--nba-surface) 32%, var(--nba-surface) 68%, ${colorB}10 100%) padding-box,
-       linear-gradient(to right, ${secA} 50%, ${secB} 50%) border-box`
+    : `var(--nba-surface) padding-box, linear-gradient(var(--nba-border), var(--nba-border)) border-box`
 
   return (
     <button
@@ -670,7 +669,7 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
           height={BOX_H}
           rx={7}
           fill="#13131a"
-          stroke={status === 'none' && !compareById ? `url(#sec-${def.id})` : borderColor}
+          stroke={borderColor}
           strokeWidth={1.5}
         />
 

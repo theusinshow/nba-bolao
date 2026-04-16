@@ -98,8 +98,23 @@ export function useAuth() {
     }
 
     if (!participant) {
-      setAuth({ status: 'unauthorized', email })
-      return
+      const { data: created, error: createError } = await supabase
+        .from('participants')
+        .insert({
+          user_id: user.id,
+          name: user.user_metadata.full_name ?? email.split('@')[0],
+          email,
+        })
+        .select('id, is_admin')
+        .single()
+
+      if (createError || !created) {
+        console.error('[useAuth] Erro ao criar participante:', createError?.message)
+        setAuth({ status: 'unauthorized', email })
+        return
+      }
+
+      participant = created
     }
 
     setAuth({

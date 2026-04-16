@@ -30,6 +30,7 @@ export function Nav({ auth, onSignOut }: Props) {
   const name = auth.status === 'authorized' ? auth.user.user_metadata.full_name ?? '' : ''
   const avatar = auth.status === 'authorized' ? auth.user.user_metadata.avatar_url : null
   const isAdmin = auth.status === 'authorized' ? auth.isAdmin : false
+  const participantId = auth.status === 'authorized' ? auth.participantId : ''
   const shortName = name.split(' ').filter(Boolean)[0] ?? 'Participante'
   const initials = name
     .split(' ')
@@ -132,7 +133,7 @@ export function Nav({ auth, onSignOut }: Props) {
               {!isGuest && (
                 <>
                   <NavLink
-                    to="/profile"
+                    to={`/profile/${participantId}`}
                     onClick={() => setMenuOpen(false)}
                     style={({ isActive }) => ({
                       display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
