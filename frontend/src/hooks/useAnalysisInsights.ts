@@ -61,16 +61,47 @@ interface AnalysisInsightsResponse {
   news: AnalysisNewsItem[]
 }
 
+const DEFAULT_PROVIDERS: AnalysisInsightsResponse['providers'] = {
+  odds: { provider: 'the-odds-api', configured: false, available: false, reason: 'Ainda não carregado.' },
+  news: { provider: 'espn-rss', configured: false, available: false, reason: 'Ainda não carregado.' },
+}
+
+function sanitizeProviders(value: AnalysisInsightsResponse['providers'] | null | undefined): AnalysisInsightsResponse['providers'] {
+  return {
+    odds: value?.odds
+      ? {
+          provider: 'the-odds-api',
+          configured: Boolean(value.odds.configured),
+          available: Boolean(value.odds.available),
+          reason: typeof value.odds.reason === 'string' ? value.odds.reason : undefined,
+        }
+      : DEFAULT_PROVIDERS.odds,
+    news: value?.news
+      ? {
+          provider: 'espn-rss',
+          configured: Boolean(value.news.configured),
+          available: Boolean(value.news.available),
+          reason: typeof value.news.reason === 'string' ? value.news.reason : undefined,
+        }
+      : DEFAULT_PROVIDERS.news,
+  }
+}
+
+function sanitizeOdds(value: unknown): AnalysisOddsItem[] {
+  return Array.isArray(value) ? value.filter((item): item is AnalysisOddsItem => Boolean(item && typeof item === 'object')) : []
+}
+
+function sanitizeNews(value: unknown): AnalysisNewsItem[] {
+  return Array.isArray(value) ? value.filter((item): item is AnalysisNewsItem => Boolean(item && typeof item === 'object')) : []
+}
+
 export function useAnalysisInsights() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
   const [odds, setOdds] = useState<AnalysisOddsItem[]>([])
   const [news, setNews] = useState<AnalysisNewsItem[]>([])
-  const [providers, setProviders] = useState<AnalysisInsightsResponse['providers']>({
-    odds: { provider: 'the-odds-api', configured: false, available: false, reason: 'Ainda não carregado.' },
-    news: { provider: 'espn-rss', configured: false, available: false, reason: 'Ainda não carregado.' },
-  })
+  const [providers, setProviders] = useState<AnalysisInsightsResponse['providers']>(DEFAULT_PROVIDERS)
 
   useEffect(() => {
     let active = true
@@ -89,13 +120,16 @@ export function useAnalysisInsights() {
 
         if (!active) return
 
-        setGeneratedAt(payload.generatedAt)
-        setProviders(payload.providers)
-        setOdds(payload.odds)
-        setNews(payload.news)
+        setGeneratedAt(typeof payload.generatedAt === 'string' ? payload.generatedAt : null)
+        setProviders(sanitizeProviders(payload.providers))
+        setOdds(sanitizeOdds(payload.odds))
+        setNews(sanitizeNews(payload.news))
       } catch (loadError: unknown) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar análise.')
+        setProviders(DEFAULT_PROVIDERS)
+        setOdds([])
+        setNews([])
       } finally {
         if (active) setLoading(false)
       }

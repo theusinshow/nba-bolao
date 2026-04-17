@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { Suspense, lazy, useEffect, useRef } from 'react'
+import { Suspense, lazy, useEffect, useRef, Component } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -11,6 +11,49 @@ import { Unauthorized } from './pages/Unauthorized'
 import { LoadingBasketball } from './components/LoadingBasketball'
 import { premiumTween } from './lib/motion'
 import { useOnboarding } from './hooks/useOnboarding'
+
+class RouteCrashBoundary extends Component<
+  { routeName: string; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error(`[route] ${this.props.routeName} crashed`, error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen items-start justify-center px-4 pt-6 pb-24">
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 980,
+              background: 'var(--nba-surface)',
+              border: '1px solid rgba(255,138,101,0.24)',
+              borderRadius: 12,
+              padding: '1rem',
+            }}
+          >
+            <div className="font-condensed font-bold" style={{ color: '#ff8a65', fontSize: '1.1rem', lineHeight: 1.05, marginBottom: 8 }}>
+              {this.props.routeName} temporariamente indisponível
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+              Essa tela foi isolada para não derrubar o restante do aplicativo. Você ainda pode navegar pelas outras abas enquanto ajustamos o erro.
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 // Patch <a> clicks inside BrowserRouter to use View Transitions API when available
 function ViewTransitionHandler() {
@@ -102,9 +145,11 @@ function AppRoutes({
           path="/analysis"
           element={
             <ProtectedRoute auth={auth}>
-              <PageTransition>
-                <Analysis />
-              </PageTransition>
+              <RouteCrashBoundary routeName="Análise">
+                <PageTransition>
+                  <Analysis />
+                </PageTransition>
+              </RouteCrashBoundary>
             </ProtectedRoute>
           }
         />

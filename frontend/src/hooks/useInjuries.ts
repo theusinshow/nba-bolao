@@ -26,17 +26,33 @@ interface InjuriesResponse {
   injuries: InjuryItem[]
 }
 
+const DEFAULT_PROVIDER: InjuriesProviderState = {
+  provider: 'balldontlie-nba-injuries',
+  configured: false,
+  available: false,
+  reason: 'Ainda não carregado.',
+}
+
+function sanitizeProvider(value: InjuriesProviderState | null | undefined): InjuriesProviderState {
+  if (!value) return DEFAULT_PROVIDER
+  return {
+    provider: 'balldontlie-nba-injuries',
+    configured: Boolean(value.configured),
+    available: Boolean(value.available),
+    reason: typeof value.reason === 'string' ? value.reason : undefined,
+  }
+}
+
+function sanitizeInjuries(value: unknown): InjuryItem[] {
+  return Array.isArray(value) ? value.filter((item): item is InjuryItem => Boolean(item && typeof item === 'object')) : []
+}
+
 export function useInjuries() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
   const [injuries, setInjuries] = useState<InjuryItem[]>([])
-  const [provider, setProvider] = useState<InjuriesProviderState>({
-    provider: 'balldontlie-nba-injuries',
-    configured: false,
-    available: false,
-    reason: 'Ainda não carregado.',
-  })
+  const [provider, setProvider] = useState<InjuriesProviderState>(DEFAULT_PROVIDER)
 
   useEffect(() => {
     let active = true
@@ -59,12 +75,14 @@ export function useInjuries() {
 
         if (!active) return
 
-        setGeneratedAt(payload.generatedAt)
-        setProvider(payload.provider)
-        setInjuries(payload.injuries)
+        setGeneratedAt(typeof payload.generatedAt === 'string' ? payload.generatedAt : null)
+        setProvider(sanitizeProvider(payload.provider))
+        setInjuries(sanitizeInjuries(payload.injuries))
       } catch (loadError: unknown) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar lesões.')
+        setProvider(DEFAULT_PROVIDER)
+        setInjuries([])
       } finally {
         if (active) setLoading(false)
       }
