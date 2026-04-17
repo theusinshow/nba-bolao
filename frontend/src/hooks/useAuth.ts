@@ -6,13 +6,19 @@ const AUTH_BOOT_TIMEOUT_MS = 10000
 const AUTH_REDIRECT_ENV = import.meta.env.VITE_AUTH_REDIRECT_URL?.trim()
 
 function getAuthRedirectUrl() {
-  if (AUTH_REDIRECT_ENV) return AUTH_REDIRECT_ENV
+  if (AUTH_REDIRECT_ENV) {
+    const url = new URL(AUTH_REDIRECT_ENV)
+    if (url.pathname === '/' || url.pathname === '') {
+      url.pathname = '/auth/callback'
+    }
+    return url.toString()
+  }
 
   const { hostname, origin } = window.location
   const isLoopbackHost = hostname === 'localhost' || hostname === '127.0.0.1'
 
   if (isLoopbackHost) return undefined
-  return origin
+  return `${origin}/auth/callback`
 }
 
 export type AuthState =

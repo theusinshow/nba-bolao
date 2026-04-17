@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
 import { OnboardingTour } from './components/OnboardingTour'
+import { AuthCallback } from './pages/AuthCallback'
 import { Login } from './pages/Login'
 import { Unauthorized } from './pages/Unauthorized'
 import { LoadingBasketball } from './components/LoadingBasketball'
@@ -140,6 +141,10 @@ function AppRoutes({
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route
+          path="/auth/callback"
+          element={<AuthCallback />}
+        />
+        <Route
           path="/"
           element={
             <ProtectedRoute auth={auth}>
@@ -264,6 +269,7 @@ export default function App() {
     return (
       <BrowserRouter>
         <Routes>
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/login" element={<Login onSignIn={signInWithGoogle} onEnterAsGuest={enterAsGuest} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
