@@ -241,14 +241,14 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
   const location = useLocation()
   const driverRef = useRef<ReturnType<typeof driver> | null>(null)
   const actionRef = useRef<'next-route' | 'prev-route' | 'finish' | 'skip' | null>(null)
+  const storedRoute = sessionStorage.getItem(ROUTE_KEY)
 
   const currentRoute = useMemo<TourRoute>(() => {
-    const stored = sessionStorage.getItem(ROUTE_KEY)
-    if (stored && isTourRoute(stored)) return stored
+    if (storedRoute && isTourRoute(storedRoute)) return storedRoute
     if (location.pathname.startsWith('/profile/')) return '/profile'
     if (isTourRoute(location.pathname)) return location.pathname
     return '/'
-  }, [location.pathname])
+  }, [location.pathname, storedRoute])
 
   const routeIndex = TOUR_ROUTES.indexOf(currentRoute)
   const steps = TOUR_STEPS[currentRoute]
@@ -257,6 +257,10 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
     if (!show) return
 
     const routePathname = location.pathname.startsWith('/profile/') ? '/profile' : location.pathname
+
+    // Só inicia automaticamente do zero na Home. As demais rotas só participam
+    // quando o tour já está em progresso via sessionStorage.
+    if (!storedRoute && routePathname !== '/') return
 
     if (!isTourRoute(routePathname)) {
       const fallbackPath = currentRoute === '/profile' ? profilePath : currentRoute
@@ -345,7 +349,7 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
       driverRef.current?.destroy()
       driverRef.current = null
     }
-  }, [currentRoute, location.pathname, navigate, onComplete, routeIndex, show, steps])
+  }, [currentRoute, location.pathname, navigate, onComplete, profilePath, routeIndex, show, steps, storedRoute])
 
   return null
 }

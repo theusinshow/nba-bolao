@@ -352,7 +352,7 @@ function RecentResultsCard({
 
   return (
     <motion.div
-      id="analysis-injuries-tour"
+      id="analysis-results-tour"
       className="card-hover"
       variants={fadeUpItem}
       initial="hidden"
@@ -422,6 +422,7 @@ function OddsCard({
 }) {
   return (
     <motion.div
+      id="analysis-injuries-tour"
       className="card-hover"
       variants={fadeUpItem}
       initial="hidden"
