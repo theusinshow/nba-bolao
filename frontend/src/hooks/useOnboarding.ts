@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'nba_bolao_onboarding_done'
 const ROUTE_KEY = 'nba_bolao_onboarding_route'
@@ -20,15 +20,13 @@ export function useOnboarding() {
     return () => window.removeEventListener(RESTART_EVENT, handleRestartEvent)
   }, [])
 
-  function complete() {
+  const complete = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, 'true')
     sessionStorage.removeItem(ROUTE_KEY)
     setShow(false)
-  }
+  }, [])
 
-  function skip() {
-    complete()
-  }
+  const skip = complete
 
   return { show, complete, skip }
 }
