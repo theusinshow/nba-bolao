@@ -4682,3 +4682,96 @@ USING (
 
 ### Validação
 - `npm --prefix frontend run build`
+## 2026-04-17 01:15:03
+
+### Análise - microinterações refinadas nos cards
+- apliquei motion consistente em `frontend/src/pages/Analysis.tsx` nos cards de resultados, odds, notícias, blocos editoriais e atalhos relacionados;
+- a aba agora responde com hover mais vivo, leve elevação visual e stagger suave entre os atalhos, alinhando melhor com o restante do app;
+- também corrigi os fechamentos JSX que ficaram quebrados durante a conversão dos blocos para `motion.div` e `motion.section`.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 00:46:41
+
+### Home - resultados reais com leitura editorial por série
+- adicionei headlines curtas por confronto na seção `Resultados reais` em `frontend/src/pages/Home.tsx`, para cada card explicar o momento da série em linguagem mais clara;
+- os cards agora mostram uma linha editorial abaixo dos painéis dos times, combinando status da série, agenda do dia e peso dos desfalques;
+- a leitura da chave ficou mais imediata: além do impacto visual, cada confronto passou a “contar a história” do momento sem depender só de badges.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 00:49:20
+
+### Home - painel principal mais orientado a ação
+- evoluí o `HeroPanel` em `frontend/src/pages/Home.tsx` para funcionar como radar do dia, não só como bloco institucional;
+- adicionei um resumo contextual no topo explicando a prioridade atual do usuário: fechar picks, acompanhar jogo ao vivo, olhar agenda do dia ou monitorar alertas de elenco;
+- incluí três novos cards de foco operacional no painel principal:
+  - `Palpites urgentes`
+  - `Jogos de hoje` / `Jogos ao vivo`
+  - `Radar de alerta`
+- conectei esses cards aos dados reais da Home, cruzando jogos do dia, séries prontas sem pick e confrontos sensíveis por lesão.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 00:51:51
+
+### Home - acessos rápidos refinados para a nova coluna esquerda
+- evoluí `HomeQuickDeck` em `frontend/src/pages/Home.tsx` para ficar mais coerente com a coluna esquerda no desktop;
+- converti os atalhos em uma lista configurável, com ícones mais presentes, cards mais altos no modo vertical e melhor hierarquia de texto;
+- adicionei uma linha de contexto no topo do bloco, para os acessos rápidos parecerem parte do painel e não um grid solto;
+- mantive o comportamento responsivo: no desktop `xl` o bloco continua vertical na coluna esquerda, e no mobile segue no fluxo central.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 00:53:21
+
+### Home - ranking com leitura competitiva mais forte
+- evoluí o `RankingCard` em `frontend/src/pages/Home.tsx` com um `Radar competitivo` no topo do bloco;
+- o card agora resume distância para o líder, situação em relação ao top 3 e identifica o rival direto do participante;
+- também passei a destacar visualmente o rival direto dentro da lista quando ele aparece no top 5, melhorando a sensação de disputa.
+
+### Ajuste técnico
+- substituí o uso de `.at(-1)` por uma forma compatível com o target atual do TypeScript do projeto.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 00:55:30
+
+### Home - ranking com camada de momentum
+- complementei o `RankingCard` em `frontend/src/pages/Home.tsx` com uma leitura de momentum no `Radar competitivo`;
+- o bloco agora explica se o participante está subindo, pressionando o top 3 ou se outro jogador virou o nome quente do momento;
+- também adicionei selos visuais discretos na lista para marcar `rival` e entradas que `subiram`, deixando o ranking menos estático.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 00:59:38
+
+### Análise - primeira camada editorial da rodada
+- adicionei um bloco editorial em `frontend/src/pages/Analysis.tsx` logo abaixo do hero da aba `Análise`;
+- a página agora abre com:
+  - `Headline da rodada`
+  - `Confronto em foco`
+  - `Termômetro do mercado`
+  - `Times mais sensíveis`
+- esse bloco cruza agenda, odds, notícias e lesões para dar uma leitura mais premium e menos “lista de cards”.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 01:01:28
+
+### Análise - camada contextual de pressão da rodada
+- adicionei `AnalysisPressureDeck` em `frontend/src/pages/Analysis.tsx` para destacar onde a rodada pesa mais;
+- a aba agora aponta até 3 confrontos sob maior pressão, cruzando agenda, lesões, odds e notícias;
+- cada card dessa nova seção explica por que o duelo está sensível e resume os sinais que puxam essa leitura.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 01:05:34
+
+### UX - estados vazios mais premium em Home e Análise
+- criei `InsightEmptyState` em `frontend/src/pages/Analysis.tsx` para padronizar os estados vazios da aba `Análise`;
+- os blocos de próximos confrontos, resultados, odds, notícias e lesões agora mostram mensagens mais elegantes e orientadas ao contexto da rodada;
+- também refinei o empty state do bloco `Jogos da última noite` em `frontend/src/pages/Home.tsx`, com visual mais alinhado ao restante da Home.
+
+### Validação
+- `npm --prefix frontend run build`

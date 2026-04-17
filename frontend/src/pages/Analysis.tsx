@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { Activity, ChevronRight, Clock, Database, HeartPulse, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { useGameFeed } from '../hooks/useGameFeed'
@@ -7,6 +8,7 @@ import { type AnalysisNewsItem, type AnalysisOddsItem, useAnalysisInsights } fro
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
 import { TEAMS_2025, getTeamLogoUrl } from '../data/teams2025'
 import { BRT_TIMEZONE } from '../utils/constants'
+import { fadeUpItem, premiumTween, pressMotion, softStaggerContainer } from '../lib/motion'
 
 const ROUND_BADGE_COLOR: Record<string, string> = {
   Finals: 'var(--nba-gold)',
@@ -312,9 +314,11 @@ function NextGamesCard({
           )}
         </>
       ) : (
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
-          Nenhum próximo confronto real sincronizado no momento.
-        </div>
+        <InsightEmptyState
+          title="Agenda real ainda sem confrontos sincronizados"
+          description="Quando os próximos jogos entrarem no feed oficial, este bloco passa a destacar automaticamente o duelo em foco da rodada."
+          accent="var(--nba-east)"
+        />
       )}
     </div>
   )
@@ -344,7 +348,15 @@ function RecentResultsCard({
   })
 
   return (
-    <div className="card-hover" style={card}>
+    <motion.div
+      className="card-hover"
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 20px 40px rgba(0,0,0,0.18)' }}
+      transition={premiumTween}
+      style={card}
+    >
       <CardTitle icon={<Database size={14} />}>Resultados Recentes</CardTitle>
 
       {sourceGames.length > 0 ? (
@@ -381,11 +393,13 @@ function RecentResultsCard({
           ))}
         </div>
       ) : (
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
-          Ainda não há resultados finais reais no banco para alimentar este bloco.
-        </div>
+        <InsightEmptyState
+          title="Resultados finais ainda não apareceram"
+          description="Assim que a primeira partida da pós-temporada for encerrada e sincronizada, este bloco passa a mostrar placares reais e contexto recente."
+          accent="var(--nba-gold)"
+        />
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -403,7 +417,15 @@ function OddsCard({
   teamStylesByName: Record<string, TeamOddsStyle>
 }) {
   return (
-    <div className="card-hover" style={card}>
+    <motion.div
+      className="card-hover"
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 20px 40px rgba(0,0,0,0.18)' }}
+      transition={premiumTween}
+      style={card}
+    >
       <CardTitle icon={<TrendingUp size={14} />}>Odds dos Confrontos</CardTitle>
 
       {loading ? (
@@ -523,11 +545,13 @@ function OddsCard({
           })}
         </div>
       ) : (
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
-          {reason ?? 'Nenhuma odd correspondente aos jogos atuais foi encontrada.'}
-        </div>
+        <InsightEmptyState
+          title="Mercado sem leitura útil agora"
+          description={reason ?? 'As odds ainda não retornaram confronto compatível com a agenda atual da rodada.'}
+          accent="var(--nba-east)"
+        />
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -541,7 +565,15 @@ function NewsCard({
   reason?: string
 }) {
   return (
-    <div className="card-hover" style={card}>
+    <motion.div
+      className="card-hover"
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 20px 40px rgba(0,0,0,0.18)' }}
+      transition={premiumTween}
+      style={card}
+    >
       <CardTitle icon={<Newspaper size={14} />}>Notícias da NBA</CardTitle>
 
       {loading ? (
@@ -586,11 +618,13 @@ function NewsCard({
           ))}
         </div>
       ) : (
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
-          {reason ?? 'Nenhuma notícia relevante foi encontrada para a NBA neste momento.'}
-        </div>
+        <InsightEmptyState
+          title="Noticiário sem destaque forte agora"
+          description={reason ?? 'Quando surgirem notícias mais aderentes aos times ativos, a central volta a puxar a narrativa da rodada aqui.'}
+          accent="var(--nba-gold)"
+        />
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -756,6 +790,36 @@ function InjuriesRadar({ injuries }: { injuries: InjuryItem[] }) {
   )
 }
 
+function InsightEmptyState({
+  title,
+  description,
+  accent = 'var(--nba-text-muted)',
+}: {
+  title: string
+  description: string
+  accent?: string
+}) {
+  return (
+    <motion.div
+      style={{
+        borderRadius: 12,
+        padding: '14px 16px',
+        background: 'linear-gradient(135deg, rgba(12,12,18,0.40), rgba(255,255,255,0.02))',
+        border: '1px solid rgba(200,150,60,0.12)',
+        display: 'grid',
+        gap: 6,
+      }}
+    >
+      <div className="font-condensed font-bold" style={{ color: accent, fontSize: '0.94rem', lineHeight: 1 }}>
+        {title}
+      </div>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+        {description}
+      </div>
+    </motion.div>
+  )
+}
+
 function InjuriesCard({
   injuries,
   loading,
@@ -797,7 +861,15 @@ function InjuriesCard({
   })
 
   return (
-    <div className="card-hover" style={card}>
+    <motion.div
+      className="card-hover"
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 20px 40px rgba(0,0,0,0.18)' }}
+      transition={premiumTween}
+      style={card}
+    >
       <CardTitle icon={<HeartPulse size={14} />}>Relatório de Lesões</CardTitle>
 
       {loading ? (
@@ -981,52 +1053,367 @@ function InjuriesCard({
           </div>
 
           {filtered.length === 0 && (
-            <div
-              style={{
-                color: 'var(--nba-text-muted)',
-                fontSize: '0.8rem',
-                lineHeight: 1.5,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'rgba(12,12,18,0.34)',
-                border: '1px solid rgba(200,150,60,0.12)',
-              }}
-            >
-              Nenhuma lesão relevante encontrada para o filtro atual.
-            </div>
+            <InsightEmptyState
+              title="Filtro sem alerta relevante"
+              description="Esse recorte não tem ausências ou dúvidas fortes no momento. Troque o time ou volte para `Todos` para ampliar a leitura."
+              accent="var(--nba-text-muted)"
+            />
           )}
         </div>
       ) : (
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
-          {reason ?? 'Nenhum jogador lesionado identificado no momento.'}
-        </div>
+        <InsightEmptyState
+          title="Radar de lesões limpo"
+          description={reason ?? 'Nenhum jogador entrou no recorte relevante da rodada neste momento.'}
+          accent="var(--nba-danger)"
+        />
       )}
-    </div>
+    </motion.div>
+  )
+}
+
+function AnalysisEditorialDeck({
+  upcomingGames,
+  odds,
+  news,
+  injuries,
+}: {
+  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
+  odds: AnalysisOddsItem[]
+  news: AnalysisNewsItem[]
+  injuries: InjuryItem[]
+}) {
+  const activeInjuries = injuries.filter((item) => item.impact === 'high' || item.impact === 'medium')
+
+  const topLine = useMemo(() => {
+    if (activeInjuries.filter((item) => item.impact === 'high').length > 0) {
+      const count = activeInjuries.filter((item) => item.impact === 'high').length
+      return {
+        eyebrow: 'Headline da rodada',
+        title: `${count} alerta${count !== 1 ? 's' : ''} pesados mexem com a leitura dos confrontos`,
+        detail: 'A central priorizou ausências de alto impacto antes de qualquer outra camada da rodada.',
+      }
+    }
+
+    if (news.length > 0) {
+      return {
+        eyebrow: 'Headline da rodada',
+        title: truncateText(news[0].title, 88) ?? 'Noticiário movimenta a rodada',
+        detail: 'O noticiário já começa a puxar a narrativa dos confrontos ativos.',
+      }
+    }
+
+    if (odds.length > 0) {
+      const first = odds[0]
+      const homeFavored = first.moneyline.home !== null && first.moneyline.away !== null && first.moneyline.home < first.moneyline.away
+      const favorite = homeFavored ? first.home_team_name : first.away_team_name
+      return {
+        eyebrow: 'Headline da rodada',
+        title: `${favorite} abre a rodada com leitura mais forte no mercado`,
+        detail: 'As odds já começam a desenhar os confrontos com maior pressão competitiva.',
+      }
+    }
+
+    return {
+      eyebrow: 'Headline da rodada',
+      title: 'A rodada está montada para leitura cruzada de agenda, mercado e elenco',
+      detail: 'Use a central para entender rapidamente onde a chave pode balançar.',
+    }
+  }, [activeInjuries, news, odds])
+
+  const focusMatchup = useMemo(() => {
+    const scoredGames = upcomingGames.map((game) => {
+      const homeAbbr = game.home_team?.abbreviation ?? game.home_team_id
+      const awayAbbr = game.away_team?.abbreviation ?? game.away_team_id
+      const pressure = injuries.reduce((acc, item) => {
+        if (item.team !== homeAbbr && item.team !== awayAbbr) return acc
+        return acc + (item.impact === 'high' ? 3 : item.impact === 'medium' ? 1 : 0)
+      }, 0)
+
+      return { game, homeAbbr, awayAbbr, pressure }
+    }).sort((a, b) => b.pressure - a.pressure)
+
+    return scoredGames[0]
+  }, [injuries, upcomingGames])
+
+  const watchTeams = useMemo(() => {
+    return Object.entries(
+      injuries.reduce<Record<string, number>>((acc, item) => {
+        if (!item.team || item.impact === 'low') return acc
+        acc[item.team] = (acc[item.team] ?? 0) + (item.impact === 'high' ? 2 : 1)
+        return acc
+      }, {})
+    )
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
+      .slice(0, 3)
+  }, [injuries])
+
+  return (
+    <motion.section
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -2, boxShadow: '0 18px 34px rgba(0,0,0,0.16)' }}
+      transition={premiumTween}
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 52%, rgba(200,150,60,0.08) 100%)',
+        borderRadius: 12,
+        display: 'grid',
+        gap: 12,
+      }}
+    >
+      <div style={{ display: 'grid', gap: 8 }}>
+        <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {topLine.eyebrow}
+        </span>
+        <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.24rem', lineHeight: 1.05 }}>
+          {topLine.title}
+        </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+          {topLine.detail}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 10 }} className="md:grid-cols-3">
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Confronto em foco
+          </div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', lineHeight: 1 }}>
+            {focusMatchup ? `${focusMatchup.homeAbbr} x ${focusMatchup.awayAbbr}` : 'Aguardando agenda'}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 6, lineHeight: 1.4 }}>
+            {focusMatchup
+              ? focusMatchup.pressure > 0
+                ? 'É o duelo que mais concentra pressão de elenco agora.'
+                : 'É o próximo duelo que ancora a leitura da rodada.'
+              : 'Sem confronto destacado no feed atual.'}
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(74,144,217,0.16)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Termômetro do mercado
+          </div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-east)', fontSize: '1.1rem', lineHeight: 1 }}>
+            {odds.length > 0 ? `${odds.length} leitura${odds.length !== 1 ? 's' : ''} ativa${odds.length !== 1 ? 's' : ''}` : 'Sem odds'}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 6, lineHeight: 1.4 }}>
+            {odds.length > 0 ? 'As odds já estão ajudando a separar favoritos e pontos de tensão.' : 'O mercado ainda não entregou leitura útil para os jogos atuais.'}
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(255,138,101,0.16)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Times mais sensíveis
+          </div>
+          <div className="font-condensed font-bold" style={{ color: '#ff8a65', fontSize: '1.1rem', lineHeight: 1 }}>
+            {watchTeams.length > 0 ? watchTeams.map(([team]) => team).join(' · ') : 'Sem pressão extra'}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 6, lineHeight: 1.4 }}>
+            {watchTeams.length > 0 ? 'Esses times concentram hoje o maior peso de elenco na central.' : 'Nenhuma franquia se destaca como foco de alerta neste momento.'}
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  )
+}
+
+function AnalysisPressureDeck({
+  upcomingGames,
+  odds,
+  news,
+  injuries,
+}: {
+  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
+  odds: AnalysisOddsItem[]
+  news: AnalysisNewsItem[]
+  injuries: InjuryItem[]
+}) {
+  const pressureCards = useMemo(() => {
+    const cards = upcomingGames.map((game) => {
+      const homeAbbr = game.home_team?.abbreviation ?? game.home_team_id
+      const awayAbbr = game.away_team?.abbreviation ?? game.away_team_id
+      const teams = [homeAbbr, awayAbbr].filter((team): team is string => !!team)
+
+      const teamInjuries = injuries.filter((item) => item.team != null && teams.includes(item.team))
+      const highImpact = teamInjuries.filter((item) => item.impact === 'high')
+      const mediumImpact = teamInjuries.filter((item) => item.impact === 'medium')
+      const allNames = normalizeName(`${game.home_team?.name ?? ''} ${game.away_team?.name ?? ''} ${homeAbbr ?? ''} ${awayAbbr ?? ''}`)
+      const relatedNews = news.filter((item) => {
+        const haystack = normalizeName(`${item.title} ${item.summary ?? ''}`)
+        return !!haystack && teams.some((team) => haystack.includes(normalizeName(team))) || haystack.includes(allNames)
+      })
+
+      const relatedOdd = odds.find((item) => {
+        const homeName = normalizeName(item.home_team_name)
+        const awayName = normalizeName(item.away_team_name)
+        return (
+          (homeAbbr != null && (homeName.includes(normalizeName(homeAbbr)) || normalizeName(game.home_team?.name).includes(homeName))) &&
+          (awayAbbr != null && (awayName.includes(normalizeName(awayAbbr)) || normalizeName(game.away_team?.name).includes(awayName)))
+        )
+      })
+
+      const pressureScore = highImpact.length * 3 + mediumImpact.length + (relatedNews.length > 0 ? 1 : 0) + (relatedOdd ? 1 : 0)
+
+      let title = `${homeAbbr} x ${awayAbbr} em leitura estável`
+      let detail = 'Confronto sem grande ruído externo neste momento.'
+      let accent = 'var(--nba-text-muted)'
+      let border = 'rgba(136,136,153,0.18)'
+      let background = 'rgba(12,12,18,0.34)'
+
+      if (highImpact.length >= 2) {
+        title = `${homeAbbr} x ${awayAbbr} chega com alto nível de pressão`
+        detail = 'Os dois lados carregam ausências que podem deslocar bastante a leitura do jogo.'
+        accent = '#ff8a65'
+        border = 'rgba(255,138,101,0.22)'
+        background = 'rgba(255,138,101,0.08)'
+      } else if (highImpact.length === 1) {
+        title = `${homeAbbr} x ${awayAbbr} gira em torno de um nome pesado fora`
+        detail = `${highImpact[0].player_name} virou o principal ponto de atenção do confronto.`
+        accent = '#ff8a65'
+        border = 'rgba(255,138,101,0.22)'
+        background = 'rgba(255,138,101,0.08)'
+      } else if (mediumImpact.length >= 2 || (mediumImpact.length >= 1 && relatedNews.length > 0)) {
+        title = `${homeAbbr} x ${awayAbbr} pede monitoramento pré-jogo`
+        detail = 'Elenco e noticiário deixam esse duelo mais sensível do que parece à primeira vista.'
+        accent = 'var(--nba-gold)'
+        border = 'rgba(200,150,60,0.22)'
+        background = 'rgba(200,150,60,0.08)'
+      } else if (relatedOdd && relatedNews.length > 0) {
+        title = `${homeAbbr} x ${awayAbbr} já tem narrativa formada`
+        detail = 'Mercado e noticiário estão apontando juntos para esse confronto.'
+        accent = 'var(--nba-east)'
+        border = 'rgba(74,144,217,0.22)'
+        background = 'rgba(74,144,217,0.08)'
+      }
+
+      return {
+        id: game.id,
+        title,
+        detail,
+        accent,
+        border,
+        background,
+        pressureScore,
+        tipOff: formatShortDateTime(game.tip_off_at),
+        labels: [
+          highImpact.length > 0 ? `${highImpact.length} alerta${highImpact.length !== 1 ? 's' : ''} alto${highImpact.length !== 1 ? 's' : ''}` : null,
+          mediumImpact.length > 0 ? `${mediumImpact.length} em monitoramento` : null,
+          relatedNews.length > 0 ? `${relatedNews.length} notícia${relatedNews.length !== 1 ? 's' : ''}` : null,
+        ].filter((label): label is string => !!label).slice(0, 2),
+      }
+    })
+
+    return cards
+      .sort((a, b) => b.pressureScore - a.pressureScore)
+      .slice(0, 3)
+  }, [injuries, news, odds, upcomingGames])
+
+  if (pressureCards.length === 0) return null
+
+  return (
+    <motion.section
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -2, boxShadow: '0 18px 34px rgba(0,0,0,0.16)' }}
+      transition={premiumTween}
+      style={{ ...card, display: 'grid', gap: 12, borderRadius: 12 }}
+    >
+      <CardTitle icon={<Sparkles size={14} />}>Onde a rodada pesa</CardTitle>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+        Os confrontos abaixo concentram hoje o maior peso de elenco, mercado ou noticiário.
+      </div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {pressureCards.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              padding: '13px 14px',
+              borderRadius: 12,
+              background: item.background,
+              border: `1px solid ${item.border}`,
+              display: 'grid',
+              gap: 7,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <div className="font-condensed font-bold" style={{ color: item.accent, fontSize: '1rem', lineHeight: 1.05 }}>
+                {item.title}
+              </div>
+              <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>
+                {item.tipOff}
+              </span>
+            </div>
+            <div style={{ color: 'var(--nba-text)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+            {item.labels.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {item.labels.map((label) => (
+                  <span
+                    key={label}
+                    style={{
+                      display: 'inline-flex',
+                      padding: '3px 8px',
+                      borderRadius: 999,
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      color: item.accent,
+                      background: 'rgba(12,12,18,0.30)',
+                      border: `1px solid ${item.border}`,
+                    }}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </motion.section>
   )
 }
 
 function AnalysisActionsCard() {
   return (
-    <div style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}>
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -2, boxShadow: '0 18px 34px rgba(0,0,0,0.16)' }}
+      transition={premiumTween}
+      style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}
+    >
       <CardTitle icon={<Sparkles size={14} />}>Atalhos Relacionados</CardTitle>
-      <div style={{ display: 'grid', gap: 10 }}>
+      <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 10 }}>
         {[
           { to: '/games', label: 'Abrir Jogos', description: 'Voltar para a área de palpites e agenda operacional.' },
           { to: '/official', label: 'Ver chave oficial', description: 'Conferir o andamento real dos playoffs.' },
           { to: '/', label: 'Voltar para Home', description: 'Retornar ao painel principal do bolão.' },
         ].map((action) => (
-          <Link key={action.to} to={action.to} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, textDecoration: 'none', background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', color: 'var(--nba-text)' }}>
-            <span style={{ minWidth: 0, flex: 1 }}>
-              <span style={{ display: 'block', fontWeight: 600, fontSize: '0.86rem' }}>{action.label}</span>
-              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
-                {action.description}
+          <motion.div
+            key={action.to}
+            variants={fadeUpItem}
+            whileHover={{ x: 4, y: -2 }}
+            whileTap={pressMotion.tap}
+            transition={premiumTween}
+          >
+            <Link to={action.to} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, textDecoration: 'none', background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', color: 'var(--nba-text)' }}>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: 'block', fontWeight: 600, fontSize: '0.86rem' }}>{action.label}</span>
+                <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 1 }}>
+                  {action.description}
+                </span>
               </span>
-            </span>
-            <ChevronRight size={16} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
-          </Link>
+              <ChevronRight size={16} style={{ color: 'var(--nba-text-muted)', flexShrink: 0 }} />
+            </Link>
+          </motion.div>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -1132,6 +1519,20 @@ export function Analysis() {
         newsReady={providers.news.available && newsToShow.length > 0}
         injuriesCount={injuriesToShow.length}
         generatedAt={generatedAt}
+      />
+
+      <AnalysisEditorialDeck
+        upcomingGames={upcomingGames}
+        odds={oddsToShow}
+        news={newsToShow}
+        injuries={injuriesToShow}
+      />
+
+      <AnalysisPressureDeck
+        upcomingGames={upcomingGames}
+        odds={oddsToShow}
+        news={newsToShow}
+        injuries={injuriesToShow}
       />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">

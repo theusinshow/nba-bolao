@@ -303,22 +303,22 @@ function LastNightRecap({
         <div style={{ padding: '0 1rem 0.2rem' }}>
           <div
             style={{
-              borderRadius: 10,
-              padding: '14px 16px',
-              background: 'rgba(12,12,18,0.42)',
-              border: '1px solid rgba(200,150,60,0.14)',
+              borderRadius: 12,
+              padding: '16px 18px',
+              background: 'linear-gradient(135deg, rgba(12,12,18,0.42), rgba(74,144,217,0.05))',
+              border: '1px solid rgba(200,150,60,0.16)',
               display: 'grid',
-              gap: 8,
+              gap: 10,
             }}
           >
-            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.92rem', lineHeight: 1 }}>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.98rem', lineHeight: 1 }}>
               Ainda não há jogos finalizados nesta pós-temporada
             </div>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.55 }}>
               A Home agora mostra só placares reais. Quando o primeiro jogo terminar, este bloco será atualizado automaticamente pelo feed sincronizado do Supabase.
             </div>
             {nextRealGame && (
-              <div style={{ color: 'var(--nba-gold)', fontSize: '0.76rem' }}>
+              <div style={{ color: 'var(--nba-east)', fontSize: '0.76rem', lineHeight: 1.45 }}>
                 Próximo jogo confirmado: {nextRealGame.home_team?.abbreviation ?? nextRealGame.home_team_id} vs {nextRealGame.away_team?.abbreviation ?? nextRealGame.away_team_id} em {formatShortDateTime(nextRealGame.tip_off_at)}
               </div>
             )}
@@ -336,12 +336,20 @@ function HeroPanel({
   readySeries,
   totalSeries,
   leaderPoints,
+  urgentPicks,
+  todayGamesCount,
+  liveGamesCount,
+  alertSeriesCount,
 }: {
   myEntry?: { rank: number; total_points: number; participant_name: string }
   pickedSeries: number
   readySeries: number
   totalSeries: number
   leaderPoints: number
+  urgentPicks: number
+  todayGamesCount: number
+  liveGamesCount: number
+  alertSeriesCount: number
 }) {
   const progress = readySeries > 0 ? Math.round((pickedSeries / readySeries) * 100) : 0
   const missingReady = Math.max(readySeries - pickedSeries, 0)
@@ -353,6 +361,17 @@ function HeroPanel({
       : myEntry && myEntry.rank > 1
       ? { to: '/ranking', label: 'Caçar o líder', description: `${gapToLeader ?? 0} ponto${gapToLeader === 1 ? '' : 's'} para empatar`, tone: 'var(--nba-east)' }
       : { to: '/games', label: 'Ver jogos do dia', description: 'Acompanhar os próximos movimentos do bolão', tone: 'var(--nba-success)' }
+
+  const focusSummary =
+    urgentPicks > 0
+      ? `Hoje a prioridade é fechar ${urgentPicks} série${urgentPicks !== 1 ? 's' : ''} pronta${urgentPicks !== 1 ? 's' : ''} antes do lock.`
+      : liveGamesCount > 0
+      ? `${liveGamesCount} jogo${liveGamesCount !== 1 ? 's' : ''} ao vivo mexendo na chave real agora.`
+      : todayGamesCount > 0
+      ? `${todayGamesCount} confronto${todayGamesCount !== 1 ? 's' : ''} agitado${todayGamesCount !== 1 ? 's' : ''} na agenda real de hoje.`
+      : alertSeriesCount > 0
+      ? `${alertSeriesCount} série${alertSeriesCount !== 1 ? 's' : ''} seguem em alerta por contexto de elenco.`
+      : 'Seu painel está limpo e pronto para acompanhar o próximo movimento da rodada.'
 
   return (
     <motion.section
@@ -389,7 +408,61 @@ function HeroPanel({
           <p style={{ color: 'var(--nba-text)', fontSize: '0.95rem', margin: '8px 0 0' }}>
             {myEntry ? `${myEntry.participant_name.split(' ')[0]}, você está no jogo.` : 'Seu painel está pronto para os playoffs.'}
           </p>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', margin: '8px 0 0', lineHeight: 1.45, maxWidth: 620 }}>
+            {focusSummary}
+          </p>
         </div>
+
+        <motion.div
+          variants={softStaggerContainer}
+          initial="hidden"
+          animate="show"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}
+        >
+          {[
+            {
+              label: 'Palpites urgentes',
+              value: urgentPicks,
+              helper: urgentPicks > 0 ? 'séries prontas sem pick' : 'nenhum lock pendente',
+              color: urgentPicks > 0 ? 'var(--nba-gold)' : 'var(--nba-success)',
+              background: urgentPicks > 0 ? 'rgba(200,150,60,0.10)' : 'rgba(46,204,113,0.08)',
+              border: urgentPicks > 0 ? 'rgba(200,150,60,0.18)' : 'rgba(46,204,113,0.16)',
+            },
+            {
+              label: liveGamesCount > 0 ? 'Jogos ao vivo' : 'Jogos de hoje',
+              value: liveGamesCount > 0 ? liveGamesCount : todayGamesCount,
+              helper: liveGamesCount > 0 ? 'mexendo na chave agora' : todayGamesCount > 0 ? 'na agenda real da NBA' : 'sem jogo confirmado hoje',
+              color: liveGamesCount > 0 ? 'var(--nba-success)' : 'var(--nba-east)',
+              background: liveGamesCount > 0 ? 'rgba(46,204,113,0.08)' : 'rgba(74,144,217,0.08)',
+              border: liveGamesCount > 0 ? 'rgba(46,204,113,0.16)' : 'rgba(74,144,217,0.16)',
+            },
+            {
+              label: 'Radar de alerta',
+              value: alertSeriesCount,
+              helper: alertSeriesCount > 0 ? 'séries com contexto sensível' : 'sem sinal de pressão extra',
+              color: alertSeriesCount > 0 ? '#ff8c72' : 'var(--nba-text-muted)',
+              background: alertSeriesCount > 0 ? 'rgba(255,140,114,0.09)' : 'rgba(255,255,255,0.03)',
+              border: alertSeriesCount > 0 ? 'rgba(255,140,114,0.16)' : 'rgba(255,255,255,0.06)',
+            },
+          ].map(({ label, value, helper, color, background, border }) => (
+            <motion.div
+              key={label}
+              variants={scaleInItem}
+              whileHover={{ y: -2, scale: 1.015 }}
+              style={{ background, border: `1px solid ${border}`, borderRadius: 12, padding: '11px 12px' }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 5, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                {label}
+              </div>
+              <div className="font-condensed font-bold" style={{ color, fontSize: '1.55rem', lineHeight: 1 }}>
+                {value}
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginTop: 5, lineHeight: 1.35 }}>
+                {helper}
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* 3 stat chips */}
         <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -472,6 +545,28 @@ function RankingCard({
   highlightId: string
 }) {
   const top5 = ranking.slice(0, 5)
+  const myEntry = ranking.find((entry) => entry.participant_id === highlightId)
+  const leader = ranking[0]
+  const topThree = ranking.slice(0, 3)
+  const topThreeCutoff = topThree.length > 0 ? topThree[topThree.length - 1] : undefined
+  const directRival = myEntry
+    ? ranking.find((entry) => entry.rank === Math.max(myEntry.rank - 1, 1) && entry.participant_id !== myEntry.participant_id)
+      ?? ranking.find((entry) => entry.rank === myEntry.rank + 1)
+    : undefined
+  const gapToLeader = myEntry && leader ? Math.max(leader.total_points - myEntry.total_points, 0) : null
+  const gapToTop3 = myEntry && topThreeCutoff ? Math.max(topThreeCutoff.total_points - myEntry.total_points, 0) : null
+  const myMomentum = myEntry?.prev_rank != null ? myEntry.prev_rank - myEntry.rank : null
+  const hottestEntry = ranking
+    .filter((entry) => entry.prev_rank != null && entry.prev_rank - entry.rank > 0)
+    .sort((left, right) => (right.prev_rank! - right.rank) - (left.prev_rank! - left.rank))[0]
+  const momentumSummary =
+    myMomentum != null && myMomentum > 0
+      ? `Você subiu ${myMomentum} posição${myMomentum === 1 ? '' : 'ões'} e encostou mais no pelotão da frente.`
+      : directRival && gapToTop3 != null && gapToTop3 <= 3
+      ? `Seu rival direto está ao alcance e o top 3 ficou bem perto.`
+      : hottestEntry
+      ? `${hottestEntry.participant_name.split(' ')[0]} é quem mais sobe agora no ranking.`
+      : 'A disputa segue apertada e qualquer série pode mexer no topo.'
 
   const podium = [
     { medal: '🥇', color: '#ffd166', bg: 'rgba(255,209,102,0.08)', border: 'rgba(255,209,102,0.22)' },
@@ -489,6 +584,40 @@ function RankingCard({
     >
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
 
+      {!loading && myEntry && (
+        <div
+          style={{
+            display: 'grid',
+            gap: 8,
+            marginBottom: 12,
+            padding: '12px 13px',
+            borderRadius: 12,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(74,144,217,0.05))',
+            border: '1px solid rgba(200,150,60,0.12)',
+          }}
+        >
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.92rem', lineHeight: 1 }}>
+            Radar competitivo
+          </div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', lineHeight: 1.4 }}>
+              {myEntry.rank <= 3
+                ? `Você está no top 3 e a ${gapToLeader ?? 0} ponto${gapToLeader === 1 ? '' : 's'} da liderança.`
+                : `Você está a ${gapToTop3 ?? 0} ponto${gapToTop3 === 1 ? '' : 's'} do top 3 e a ${gapToLeader ?? 0} da liderança.`}
+            </div>
+            {directRival && (
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', lineHeight: 1.4 }}>
+                Rival direto: <span style={{ color: 'var(--nba-text)', fontWeight: 700 }}>{directRival.participant_name}</span>{' '}
+                ({directRival.total_points} pts)
+              </div>
+            )}
+            <div style={{ color: 'var(--nba-east)', fontSize: '0.72rem', lineHeight: 1.4, fontWeight: 600 }}>
+              {momentumSummary}
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ display: 'grid', gap: 8 }}>
           {Array.from({ length: 5 }).map((_, index) => (
@@ -503,6 +632,7 @@ function RankingCard({
         <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 6 }}>
           {top5.map((e, i) => {
             const isMe = e.participant_id === highlightId
+            const isRival = directRival?.participant_id === e.participant_id
             const diff = e.prev_rank != null ? e.prev_rank - e.rank : null
             const p = i < 3 ? podium[i] : null
 
@@ -510,7 +640,7 @@ function RankingCard({
               <motion.div
                 key={e.participant_id}
                 variants={fadeUpItem}
-                whileHover={{ x: 4, backgroundColor: p ? p.bg : isMe ? 'var(--nba-surface-2)' : 'rgba(255,255,255,0.02)' }}
+                whileHover={{ x: 4, backgroundColor: p ? p.bg : isMe ? 'var(--nba-surface-2)' : isRival ? 'rgba(74,144,217,0.08)' : 'rgba(255,255,255,0.02)' }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -519,8 +649,8 @@ function RankingCard({
                   gap: 10,
                   padding: p ? '10px 10px' : '7px 6px',
                   borderRadius: 8,
-                  background: p ? p.bg : isMe ? 'var(--nba-surface-2)' : 'transparent',
-                  border: p ? `1px solid ${p.border}` : isMe ? '1px solid rgba(200,150,60,0.18)' : '1px solid transparent',
+                  background: p ? p.bg : isMe ? 'var(--nba-surface-2)' : isRival ? 'rgba(74,144,217,0.06)' : 'transparent',
+                  border: p ? `1px solid ${p.border}` : isMe ? '1px solid rgba(200,150,60,0.18)' : isRival ? '1px solid rgba(74,144,217,0.18)' : '1px solid transparent',
                   transition: 'background 0.2s',
                   overflow: 'hidden',
                 }}
@@ -541,7 +671,7 @@ function RankingCard({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  color: p ? p.color : isMe ? 'var(--nba-gold)' : 'var(--nba-text)',
+                  color: p ? p.color : isMe ? 'var(--nba-gold)' : isRival ? 'var(--nba-east)' : 'var(--nba-text)',
                   fontWeight: p || isMe ? 700 : 400,
                   fontSize: p ? '0.9rem' : '0.85rem',
                 }}>
@@ -550,6 +680,16 @@ function RankingCard({
 
                 {/* Seta + pontos */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                  {isRival && !p && (
+                    <span style={{ fontSize: '0.58rem', fontWeight: 700, padding: '2px 5px', borderRadius: 999, color: 'var(--nba-east)', background: 'rgba(74,144,217,0.12)', border: '1px solid rgba(74,144,217,0.18)' }}>
+                      rival
+                    </span>
+                  )}
+                  {!isRival && diff !== null && diff > 0 && !p && (
+                    <span style={{ fontSize: '0.58rem', fontWeight: 700, padding: '2px 5px', borderRadius: 999, color: 'var(--nba-success)', background: 'rgba(46,204,113,0.12)', border: '1px solid rgba(46,204,113,0.18)' }}>
+                      subiu
+                    </span>
+                  )}
                   {diff !== null && <RankArrow diff={diff} />}
                   <span className="font-condensed font-bold" style={{
                     color: p ? p.color : 'var(--nba-text-muted)',
@@ -1057,6 +1197,16 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                     const seriesPickMap = pickStats.get(s.id)
                     const correctCount = s.winner_id && seriesPickMap ? (seriesPickMap.get(s.winner_id) ?? 0) : 0
                     const totalPicked = seriesPickMap ? Array.from(seriesPickMap.values()).reduce((a, b) => a + b, 0) : 0
+                    const headline = getSeriesHeadline({
+                      homeAbbr,
+                      awayAbbr,
+                      homeInjury,
+                      awayInjury,
+                      hasTodayGame,
+                      inProgress,
+                      isComplete: s.is_complete,
+                      impactLabel: impact.label,
+                    })
 
                     return (
                       <div
@@ -1139,6 +1289,24 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             dimmed={homeWon}
                             injury={!s.is_complete ? awayInjury : undefined}
                           />
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'grid',
+                            gap: 5,
+                            padding: '12px 14px',
+                            borderRadius: 14,
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem', lineHeight: 1.1 }}>
+                            {headline.title}
+                          </div>
+                          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                            {headline.detail}
+                          </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
@@ -1291,129 +1459,113 @@ function NewsAlertPill() {
 }
 
 function HomeQuickDeck({ vertical = false }: { vertical?: boolean }) {
+  const quickActions = [
+    {
+      id: 'bracket-highlight',
+      to: '/bracket',
+      title: 'Abrir Bracket',
+      description: 'palpite série por série',
+      icon: <Target size={vertical ? 17 : 15} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />,
+      border: '1px solid rgba(200,150,60,0.2)',
+      background: 'rgba(200,150,60,0.08)',
+    },
+    {
+      to: '/games',
+      title: 'Ir para Jogos',
+      description: 'travar picks e acompanhar o dia',
+      icon: <Clock size={vertical ? 17 : 15} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />,
+      border: '1px solid rgba(46,204,113,0.18)',
+      background: 'rgba(46,204,113,0.06)',
+    },
+    {
+      to: '/analysis',
+      title: 'Abrir Análise',
+      description: 'odds, notícias e radar da rodada',
+      icon: <AlertTriangle size={vertical ? 17 : 15} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />,
+      border: '1px solid rgba(200,150,60,0.18)',
+      background: 'rgba(28,28,38,0.9)',
+    },
+    {
+      to: '/compare',
+      title: 'Comparar brackets',
+      description: 'veja lado a lado os palpites da galera',
+      icon: <ArrowLeftRight size={vertical ? 17 : 15} style={{ color: 'var(--nba-east)', flexShrink: 0 }} />,
+      border: '1px solid rgba(74,144,217,0.2)',
+      background: 'rgba(74,144,217,0.08)',
+    },
+  ]
+
   return (
     <motion.div
       variants={fadeUpItem}
       initial="hidden"
       animate="show"
       whileHover={{ y: -3, boxShadow: '0 20px 44px rgba(0,0,0,0.2)' }}
-      style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)',
+        padding: vertical ? '1.05rem' : card.padding,
+        borderRadius: vertical ? 12 : 8,
+      }}
     >
       <CardTitle icon={<Sparkles size={14} />}>Acessos Rápidos</CardTitle>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: vertical ? '0.78rem' : '0.74rem', lineHeight: 1.45, marginBottom: 12 }}>
+        {vertical ? 'Atalhos principais do bolão para agir rápido sem sair da Home.' : 'Entradas rápidas para navegar pelo bolão e acompanhar a rodada.'}
+      </div>
       <motion.div
         variants={staggerContainer}
         initial="hidden"
         animate="show"
-        style={{ display: 'grid', gap: 10 }}
+        style={{ display: 'grid', gap: vertical ? 12 : 10 }}
         className={vertical ? undefined : 'sm:grid-cols-2 lg:grid-cols-4'}
       >
-        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
-        <Link
-          id="bracket-highlight"
-          to="/bracket"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 10,
-            textDecoration: 'none',
-            color: 'var(--nba-text)',
-            border: '1px solid rgba(200,150,60,0.2)',
-            background: 'rgba(200,150,60,0.08)',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <Target size={15} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Abrir Bracket</span>
-              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>palpite série por série</span>
-            </span>
-          </span>
-          <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
-        </Link>
-        </motion.div>
-
-        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
-        <Link
-          to="/games"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 10,
-            textDecoration: 'none',
-            color: 'var(--nba-text)',
-            border: '1px solid rgba(46,204,113,0.18)',
-            background: 'rgba(46,204,113,0.06)',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <Clock size={15} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Ir para Jogos</span>
-              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>travar picks e acompanhar o dia</span>
-            </span>
-          </span>
-          <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
-        </Link>
-        </motion.div>
-
-        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
-        <Link
-          to="/analysis"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 10,
-            textDecoration: 'none',
-            color: 'var(--nba-text)',
-            border: '1px solid rgba(200,150,60,0.18)',
-            background: 'rgba(28,28,38,0.9)',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <AlertTriangle size={15} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Abrir Análise</span>
-              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>odds, notícias e radar da rodada</span>
-            </span>
-          </span>
-          <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
-        </Link>
-        </motion.div>
-        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
-        <Link
-          to="/compare"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 10,
-            textDecoration: 'none',
-            color: 'var(--nba-text)',
-            border: '1px solid rgba(74,144,217,0.2)',
-            background: 'rgba(74,144,217,0.08)',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <ArrowLeftRight size={15} style={{ color: 'var(--nba-east)', flexShrink: 0 }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>Comparar brackets</span>
-              <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>veja lado a lado os palpites da galera</span>
-            </span>
-          </span>
-          <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
-        </Link>
-        </motion.div>
+        {quickActions.map((action) => (
+          <motion.div key={action.to} variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
+            <Link
+              id={action.id}
+              to={action.to}
+              style={{
+                display: 'flex',
+                alignItems: vertical ? 'flex-start' : 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: vertical ? '14px 15px' : '11px 14px',
+                borderRadius: vertical ? 12 : 10,
+                textDecoration: 'none',
+                color: 'var(--nba-text)',
+                border: action.border,
+                background: action.background,
+                minHeight: vertical ? 88 : undefined,
+                boxShadow: vertical ? 'inset 0 1px 0 rgba(255,255,255,0.03)' : 'none',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                <span
+                  style={{
+                    width: vertical ? 34 : 'auto',
+                    height: vertical ? 34 : 'auto',
+                    borderRadius: vertical ? 10 : 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: vertical ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    flexShrink: 0,
+                  }}
+                >
+                  {action.icon}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: vertical ? '0.88rem' : '0.8rem', lineHeight: 1.2 }}>
+                    {action.title}
+                  </span>
+                  <span style={{ display: 'block', color: 'var(--nba-text-muted)', fontSize: vertical ? '0.73rem' : '0.68rem', lineHeight: 1.45, marginTop: vertical ? 5 : 2 }}>
+                    {action.description}
+                  </span>
+                </span>
+              </span>
+              <ChevronRight size={vertical ? 16 : 15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)', marginTop: vertical ? 2 : 0 }} />
+            </Link>
+          </motion.div>
+        ))}
       </motion.div>
     </motion.div>
   )
@@ -1442,6 +1594,30 @@ export function Home({ participantId }: Props) {
     () => injuries.filter((item) => item.team != null && homeRelevantTeams.has(item.team)),
     [injuries, homeRelevantTeams]
   )
+  const todayKey = getBrtDateKey(new Date())
+  const todayGamesCount = useMemo(
+    () => upcomingGames.filter((game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey).length,
+    [todayKey, upcomingGames]
+  )
+  const liveGamesCount = useMemo(
+    () => upcomingGames.filter((game) => game.tip_off_at && new Date(game.tip_off_at).getTime() <= Date.now() && !game.played).length,
+    [upcomingGames]
+  )
+  const alertSeriesCount = useMemo(() => {
+    const teamAlerts = new Set(
+      homeInjuries
+        .filter((item) => item.impact === 'high' || item.impact === 'medium')
+        .map((item) => item.team)
+        .filter((team): team is string => !!team)
+    )
+
+    return series.filter(
+      (item) =>
+        !item.is_complete &&
+        ((item.home_team_id != null && teamAlerts.has(item.home_team_id)) ||
+          (item.away_team_id != null && teamAlerts.has(item.away_team_id)))
+    ).length
+  }, [homeInjuries, series])
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
   const leader = ranking[0]
@@ -1478,7 +1654,19 @@ export function Home({ participantId }: Props) {
             highlightsAvailable={highlightsProvider.available}
           />
         </motion.div>
-        <motion.div variants={scaleInItem}><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></motion.div>
+        <motion.div variants={scaleInItem}>
+          <HeroPanel
+            myEntry={myEntry}
+            pickedSeries={pickedSeries}
+            readySeries={readySeries.length}
+            totalSeries={series.length}
+            leaderPoints={leader?.total_points ?? 0}
+            urgentPicks={readySeries.length - pickedSeries}
+            todayGamesCount={todayGamesCount}
+            liveGamesCount={liveGamesCount}
+            alertSeriesCount={alertSeriesCount}
+          />
+        </motion.div>
         <motion.div variants={fadeInItem}><NewsAlertPill /></motion.div>
         <motion.div className="xl:hidden" variants={fadeUpItem}><HomeQuickDeck /></motion.div>
 
@@ -1522,4 +1710,77 @@ function getSeriesImpactLabel(homeInjury?: InjuryItem, awayInjury?: InjuryItem) 
   if (keyAlerts === 1 || mediumAlerts >= 2) return { label: 'Impacto moderado', color: '#ffd166', background: 'rgba(255,209,102,0.10)', border: 'rgba(255,209,102,0.20)' }
   if (mediumAlerts === 1) return { label: 'Monitorar', color: '#4a90d9', background: 'rgba(74,144,217,0.10)', border: 'rgba(74,144,217,0.20)' }
   return { label: 'Elencos íntegros', color: 'var(--nba-text-muted)', background: 'rgba(136,136,153,0.08)', border: 'rgba(136,136,153,0.16)' }
+}
+
+function getSeriesHeadline({
+  homeAbbr,
+  awayAbbr,
+  homeInjury,
+  awayInjury,
+  hasTodayGame,
+  inProgress,
+  isComplete,
+  impactLabel,
+}: {
+  homeAbbr: string
+  awayAbbr: string
+  homeInjury?: InjuryItem
+  awayInjury?: InjuryItem
+  hasTodayGame: boolean
+  inProgress: boolean
+  isComplete: boolean
+  impactLabel: string
+}) {
+  if (isComplete) {
+    return {
+      title: `${homeAbbr} x ${awayAbbr} já teve vencedor definido`,
+      detail: 'Série fechada na chave oficial da NBA.',
+    }
+  }
+
+  if (homeInjury?.impact === 'high' && awayInjury?.impact === 'high') {
+    return {
+      title: `${homeAbbr} e ${awayAbbr} chegam com baixas pesadas`,
+      detail: 'Os dois lados carregam ausências que mudam bastante a leitura do confronto.',
+    }
+  }
+
+  if (homeInjury?.impact === 'high') {
+    return {
+      title: `${homeAbbr} chega pressionado por desfalque importante`,
+      detail: `${homeInjury.player_name} está ${getInjuryTone(homeInjury.status).label} para a série.`,
+    }
+  }
+
+  if (awayInjury?.impact === 'high') {
+    return {
+      title: `${awayAbbr} chega pressionado por desfalque importante`,
+      detail: `${awayInjury.player_name} está ${getInjuryTone(awayInjury.status).label} para a série.`,
+    }
+  }
+
+  if (hasTodayGame) {
+    return {
+      title: `${homeAbbr} x ${awayAbbr} movimenta a chave hoje`,
+      detail: impactLabel === 'Elencos íntegros'
+        ? 'Confronto do dia sem alerta relevante de elenco.'
+        : 'Vale monitorar a rotação antes da bola subir.',
+    }
+  }
+
+  if (inProgress) {
+    return {
+      title: `${homeAbbr} x ${awayAbbr} já entrou em rota de colisão`,
+      detail: impactLabel === 'Elencos íntegros'
+        ? 'Série em andamento com leitura relativamente limpa.'
+        : 'O contexto do elenco ainda pesa no andamento da série.',
+    }
+  }
+
+  return {
+    title: `${homeAbbr} x ${awayAbbr} aguarda a abertura oficial`,
+    detail: impactLabel === 'Elencos íntegros'
+      ? 'Nenhum alerta importante antes do começo da série.'
+      : 'O radar do confronto já aponta pontos de atenção antes do jogo 1.',
+  }
 }
