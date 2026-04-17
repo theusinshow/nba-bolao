@@ -454,7 +454,7 @@ function OddsCard({
 }) {
   return (
     <motion.div
-      id="analysis-injuries-tour"
+      id="analysis-odds-tour"
       className="card-hover"
       variants={fadeUpItem}
       initial="hidden"
@@ -603,6 +603,7 @@ function NewsCard({
 }) {
   return (
     <motion.div
+      id="analysis-injuries-tour"
       className="card-hover"
       variants={fadeUpItem}
       initial="hidden"

@@ -10,6 +10,7 @@ interface OnboardingTourProps {
 }
 
 const ROUTE_KEY = 'nba_bolao_onboarding_route'
+const TOUR_START_TIMEOUT_MS = 4000
 
 const TOUR_ROUTES = ['/', '/games', '/ranking', '/analysis', '/compare', '/profile'] as const
 type TourRoute = (typeof TOUR_ROUTES)[number]
@@ -236,6 +237,37 @@ function isTourRoute(value: string): value is TourRoute {
   return TOUR_ROUTES.includes(value as TourRoute)
 }
 
+function getStepSelectors(steps: DriveStep[]) {
+  return steps
+    .map((step) => (typeof step.element === 'string' ? step.element : null))
+    .filter((selector): selector is string => Boolean(selector))
+}
+
+function waitForTourTargets(selectors: string[], timeoutMs: number) {
+  if (selectors.length === 0) return Promise.resolve(true)
+
+  return new Promise<boolean>((resolve) => {
+    const startedAt = window.performance.now()
+
+    const check = () => {
+      const allPresent = selectors.every((selector) => document.querySelector(selector))
+      if (allPresent) {
+        resolve(true)
+        return
+      }
+
+      if (window.performance.now() - startedAt >= timeoutMs) {
+        resolve(false)
+        return
+      }
+
+      window.requestAnimationFrame(check)
+    }
+
+    check()
+  })
+}
+
 export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTourProps) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -272,7 +304,12 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
 
     sessionStorage.setItem(ROUTE_KEY, currentRoute)
 
-    const timeout = window.setTimeout(() => {
+    let cancelled = false
+    const selectors = getStepSelectors(steps)
+
+    void waitForTourTargets(selectors, TOUR_START_TIMEOUT_MS).then(() => {
+      if (cancelled) return
+
       const instance = driver({
         animate: true,
         showProgress: true,
@@ -344,10 +381,10 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
 
       driverRef.current = instance
       instance.drive()
-    }, 350)
+    })
 
     return () => {
-      window.clearTimeout(timeout)
+      cancelled = true
       driverRef.current?.destroy()
       driverRef.current = null
     }
