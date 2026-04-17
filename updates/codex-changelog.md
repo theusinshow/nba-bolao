@@ -1,5 +1,55 @@
 # Codex Changelog
 
+## 2026-04-16 - Fix: Relatório de lesões passa a focar só nos times ativos da rodada
+
+### Contexto
+Depois da migração para a Ball Don't Lie, o feed de `player_injuries` passou a trazer a liga inteira. A seção da aba `Análise` já estava curada por relevância, mas ainda precisava ser recortada para os times realmente envolvidos no feed atual do app.
+
+### `frontend/src/pages/Analysis.tsx`
+- O filtro de lesões deixou de usar todos os times da base `TEAMS_2025` como critério principal
+- A seção agora monta o recorte a partir dos times realmente presentes no feed atual de jogos e séries
+- Entram no conjunto relevante:
+  - `home_team`
+  - `away_team`
+  - `series.home_team_id`
+  - `series.away_team_id`
+- Quando não houver times suficientes no feed, a tela ainda faz fallback para os times do bracket conhecido
+- Se o provider trouxer lesões mas nenhuma delas pertencer aos times ativos da rodada, a UI agora mostra uma mensagem honesta em vez de parecer vazia por erro
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso
+
+## 2026-04-16 - Feature: Injuries migram da RapidAPI para Ball Don't Lie
+
+### Contexto
+Depois de validar que a RapidAPI estava bloqueada por quota mensal e de você ativar o endpoint `Player Injuries` no plano `ALL-STAR`, a trilha de lesões foi consolidada na própria Ball Don't Lie, que já era o provedor principal do app para dados NBA.
+
+### `backend/src/lib/injuries.ts`
+- A integração de injuries deixou de usar RapidAPI e passou a usar `GET /v1/player_injuries` da Ball Don't Lie
+- A autenticação passou a reaproveitar `BALLDONTLIE_API_KEY`, sem exigir chave separada para lesões
+- Entrou suporte a paginação por `cursor`, com `per_page=100`, para evitar truncar o relatório
+- O backend agora mapeia `team_id` da Ball Don't Lie para as siglas do app (`BOS`, `LAL`, `OKC`, etc.)
+- `position` do jogador passou a ser preservada quando vier no payload
+- O status passou a ser inferido também pelo texto da `description`, porque o feed pode trazer exemplos em que a descrição cita `doubtful/questionable` com `status` simplificado
+- A curadoria editorial existente foi mantida:
+  - só entram `Out`, `Questionable` e `Doubtful`
+  - razões operacionais como `G League`, `Two-Way` e `Not With Team` continuam excluídas
+  - jogadores-chave por time seguem priorizados
+  - o payload final mantém `impact` para a UI
+- As mensagens operacionais de erro foram adaptadas para a Ball Don't Lie, incluindo falta de acesso ao endpoint e limite do provedor
+
+### `frontend/src/hooks/useInjuries.ts`
+- Tipagem do provider atualizada de `rapidapi-nba-injuries` para `balldontlie-nba-injuries`
+
+### `backend/.env.example`
+- `RAPIDAPI_NBA_INJURIES_KEY` removida do exemplo
+- `BALLDONTLIE_API_KEY` passou a ser a única chave necessária para a trilha de injuries
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
+- `GET /analysis/injuries` validado localmente com a chave `ALL-STAR` ativa, retornando `provider: balldontlie-nba-injuries` e lista real de lesões
+
 ## 2026-04-16 - Feature: Radar editorial no topo do relatório de injuries
 
 ### Contexto

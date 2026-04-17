@@ -1,8 +1,7 @@
 import axios from 'axios'
-import { BRT_TIMEZONE } from './constants'
 
 export interface InjuriesProviderStatus {
-  provider: 'rapidapi-nba-injuries'
+  provider: 'balldontlie-nba-injuries'
   configured: boolean
   available: boolean
   reason?: string
@@ -18,59 +17,71 @@ export interface AnalysisInjuryItem {
   impact: 'high' | 'medium' | 'low'
 }
 
-interface RapidApiInjuryItem {
-  date?: string
-  team?: string | null
-  player?: string | null
+interface BDLInjuryPlayer {
+  id: number
+  first_name?: string | null
+  last_name?: string | null
+  position?: string | null
+  team_id?: number | null
+}
+
+interface BDLInjuryItem {
+  player?: BDLInjuryPlayer | null
+  return_date?: string | null
+  description?: string | null
   status?: string | null
-  reason?: string | null
-  reportTime?: string | null
+}
+
+interface BDLInjuriesResponse {
+  data: BDLInjuryItem[]
+  meta?: {
+    next_cursor?: number | null
+    per_page?: number
+  }
 }
 
 interface RankedInjuryItem extends AnalysisInjuryItem {
   is_key_player: boolean
   key_rank: number | null
-  impact: 'high' | 'medium' | 'low'
   severity: number
 }
 
-const rapidApiInjuries = axios.create({
-  baseURL: 'https://nba-injuries-reports.p.rapidapi.com',
+const ballDontLieApi = axios.create({
+  baseURL: 'https://api.balldontlie.io/v1',
   timeout: 10000,
 })
 
-const TEAM_ABBREVIATION_BY_NAME: Record<string, string> = {
-  'Atlanta Hawks': 'ATL',
-  'Boston Celtics': 'BOS',
-  'Brooklyn Nets': 'BKN',
-  'Charlotte Hornets': 'CHA',
-  'Chicago Bulls': 'CHI',
-  'Cleveland Cavaliers': 'CLE',
-  'Dallas Mavericks': 'DAL',
-  'Denver Nuggets': 'DEN',
-  'Detroit Pistons': 'DET',
-  'Golden State Warriors': 'GSW',
-  'Houston Rockets': 'HOU',
-  'Indiana Pacers': 'IND',
-  'LA Clippers': 'LAC',
-  'Los Angeles Clippers': 'LAC',
-  'Los Angeles Lakers': 'LAL',
-  'Memphis Grizzlies': 'MEM',
-  'Miami Heat': 'MIA',
-  'Milwaukee Bucks': 'MIL',
-  'Minnesota Timberwolves': 'MIN',
-  'New Orleans Pelicans': 'NOP',
-  'New York Knicks': 'NYK',
-  'Oklahoma City Thunder': 'OKC',
-  'Orlando Magic': 'ORL',
-  'Philadelphia 76ers': 'PHI',
-  'Phoenix Suns': 'PHX',
-  'Portland Trail Blazers': 'POR',
-  'Sacramento Kings': 'SAC',
-  'San Antonio Spurs': 'SAS',
-  'Toronto Raptors': 'TOR',
-  'Utah Jazz': 'UTA',
-  'Washington Wizards': 'WAS',
+const TEAM_ABBREVIATION_BY_ID: Record<number, string> = {
+  1: 'ATL',
+  2: 'BOS',
+  3: 'BKN',
+  4: 'CHA',
+  5: 'CHI',
+  6: 'CLE',
+  7: 'DAL',
+  8: 'DEN',
+  9: 'DET',
+  10: 'GSW',
+  11: 'HOU',
+  12: 'IND',
+  13: 'LAC',
+  14: 'LAL',
+  15: 'MEM',
+  16: 'MIA',
+  17: 'MIL',
+  18: 'MIN',
+  19: 'NOP',
+  20: 'NYK',
+  21: 'OKC',
+  22: 'ORL',
+  23: 'PHI',
+  24: 'PHX',
+  25: 'POR',
+  26: 'SAC',
+  27: 'SAS',
+  28: 'TOR',
+  29: 'UTA',
+  30: 'WAS',
 }
 
 const KEY_PLAYERS_BY_TEAM: Record<string, string[]> = {
@@ -96,54 +107,45 @@ const KEY_PLAYERS_BY_TEAM: Record<string, string[]> = {
   TOR: ['Scottie Barnes', 'RJ Barrett', 'Immanuel Quickley', 'Jakob Poeltl', 'Gradey Dick'],
 }
 
-const RELEVANT_STATUSES = new Set(['Out', 'Questionable', 'Doubtful'])
-const EXCLUDED_REASON_PATTERNS = [
-  'g league',
-  'two-way',
-  'two way',
-  'not with team',
-]
+const RELEVANT_STATUSES = ['Out', 'Questionable', 'Doubtful'] as const
+const EXCLUDED_REASON_PATTERNS = ['g league', 'two-way', 'two way', 'not with team']
+const IMPACT_ORDER = { high: 0, medium: 1, low: 2 }
 
-function getRapidApiKey(): string | null {
-  const apiKey = process.env.RAPIDAPI_NBA_INJURIES_KEY?.trim()
+function getBallDontLieApiKey(): string | null {
+  const apiKey = process.env.BALLDONTLIE_API_KEY?.trim()
   return apiKey ? apiKey : null
 }
 
-function getTodayBrtIsoDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: BRT_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-
-  const year = parts.find((part) => part.type === 'year')?.value ?? '1970'
-  const month = parts.find((part) => part.type === 'month')?.value ?? '01'
-  const day = parts.find((part) => part.type === 'day')?.value ?? '01'
-  return `${year}-${month}-${day}`
-}
-
-function normalizeStatus(value?: string | null): string | null {
-  const normalized = value?.trim()
-  if (!normalized) return null
-  if (!RELEVANT_STATUSES.has(normalized)) return null
-  return normalized
-}
-
-function normalizeReason(value?: string | null): string | null {
+function normalizeWhitespace(value?: string | null) {
   const normalized = value?.replace(/\s+/g, ' ').trim()
   return normalized ? normalized : null
 }
 
-function shouldExcludeReason(reason: string | null) {
-  if (!reason) return false
-  const normalized = reason.toLowerCase()
+function inferStatus(rawStatus?: string | null, description?: string | null): string | null {
+  const normalizedStatus = normalizeWhitespace(rawStatus)?.toLowerCase()
+  const normalizedDescription = normalizeWhitespace(description)?.toLowerCase()
+  const haystack = `${normalizedStatus ?? ''} ${normalizedDescription ?? ''}`.trim()
+
+  if (!haystack) return null
+  if (haystack.includes('questionable')) return 'Questionable'
+  if (haystack.includes('doubtful')) return 'Doubtful'
+  if (haystack.includes(' out') || haystack.startsWith('out') || haystack.includes(' listed as out')) return 'Out'
+  return null
+}
+
+function isRelevantStatus(status: string): status is typeof RELEVANT_STATUSES[number] {
+  return (RELEVANT_STATUSES as readonly string[]).includes(status)
+}
+
+function shouldExcludeDetail(detail: string | null) {
+  if (!detail) return false
+  const normalized = detail.toLowerCase()
   return EXCLUDED_REASON_PATTERNS.some((pattern) => normalized.includes(pattern))
 }
 
-function getTeamAbbreviation(teamName?: string | null) {
-  if (!teamName) return null
-  return TEAM_ABBREVIATION_BY_NAME[teamName.trim()] ?? null
+function getTeamAbbreviation(teamId?: number | null) {
+  if (!teamId) return null
+  return TEAM_ABBREVIATION_BY_ID[teamId] ?? null
 }
 
 function getSeverity(status: string) {
@@ -153,15 +155,19 @@ function getSeverity(status: string) {
   return 9
 }
 
-function isKeyPlayer(team: string | null, playerName: string) {
-  if (!team) return false
-  return (KEY_PLAYERS_BY_TEAM[team] ?? []).includes(playerName)
+function getPlayerName(player?: BDLInjuryPlayer | null) {
+  const parts = [normalizeWhitespace(player?.first_name), normalizeWhitespace(player?.last_name)].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : null
 }
 
 function getKeyRank(team: string | null, playerName: string) {
   if (!team) return null
   const rank = (KEY_PLAYERS_BY_TEAM[team] ?? []).indexOf(playerName)
   return rank === -1 ? null : rank
+}
+
+function isKeyPlayer(team: string | null, playerName: string) {
+  return getKeyRank(team, playerName) != null
 }
 
 function getImpact(status: string, keyRank: number | null): 'high' | 'medium' | 'low' {
@@ -172,54 +178,78 @@ function getImpact(status: string, keyRank: number | null): 'high' | 'medium' | 
   return 'low'
 }
 
-function buildDetail(item: RapidApiInjuryItem) {
-  const parts = [normalizeReason(item.reason), item.reportTime?.trim()].filter(Boolean)
-  return parts.length > 0 ? parts.join(' - ') : null
+function buildDetail(item: BDLInjuryItem) {
+  const description = normalizeWhitespace(item.description)
+  const returnDate = normalizeWhitespace(item.return_date)
+  if (description && returnDate && !description.toLowerCase().includes(returnDate.toLowerCase())) {
+    return `${description} - Return date: ${returnDate}`
+  }
+  return description ?? (returnDate ? `Return date: ${returnDate}` : null)
+}
+
+async function fetchAllInjuries(apiKey: string): Promise<BDLInjuryItem[]> {
+  const allInjuries: BDLInjuryItem[] = []
+  let cursor: number | null = null
+
+  while (true) {
+    const params: Record<string, unknown> = { per_page: 100 }
+    if (cursor != null) params.cursor = cursor
+
+    const { data } = await ballDontLieApi.get<BDLInjuriesResponse>('/player_injuries', {
+      params,
+      headers: {
+        Authorization: apiKey,
+      },
+    })
+
+    allInjuries.push(...(data.data ?? []))
+
+    if (!data.meta?.next_cursor) break
+    cursor = data.meta.next_cursor
+  }
+
+  return allInjuries
 }
 
 export async function fetchNBAInjuries(): Promise<{ status: InjuriesProviderStatus; injuries: AnalysisInjuryItem[] }> {
-  const apiKey = getRapidApiKey()
+  const apiKey = getBallDontLieApiKey()
   if (!apiKey) {
     return {
       status: {
-        provider: 'rapidapi-nba-injuries',
+        provider: 'balldontlie-nba-injuries',
         configured: false,
         available: false,
-        reason: 'RAPIDAPI_NBA_INJURIES_KEY não configurada.',
+        reason: 'BALLDONTLIE_API_KEY não configurada.',
       },
       injuries: [],
     }
   }
 
   try {
-    const targetDate = getTodayBrtIsoDate()
-    const response = await rapidApiInjuries.get<RapidApiInjuryItem[]>(`/injuries/nba/${targetDate}`, {
-      headers: {
-        'x-rapidapi-host': 'nba-injuries-reports.p.rapidapi.com',
-        'x-rapidapi-key': apiKey,
-      },
-    })
+    const responseItems = await fetchAllInjuries(apiKey)
 
-    const normalized = response.data
+    const normalized = responseItems
       .map<RankedInjuryItem | null>((item) => {
-        const playerName = item.player?.trim()
-        const status = normalizeStatus(item.status)
-        const reason = normalizeReason(item.reason)
-        const team = getTeamAbbreviation(item.team)
+        const playerName = getPlayerName(item.player)
+        const team = getTeamAbbreviation(item.player?.team_id)
+        const detail = buildDetail(item)
+        const status = inferStatus(item.status, detail)
 
-        if (!playerName || !status) return null
-        if (shouldExcludeReason(reason)) return null
+        if (!playerName || !status || !isRelevantStatus(status)) return null
+        if (shouldExcludeDetail(detail)) return null
+
+        const keyRank = getKeyRank(team, playerName)
 
         return {
-          id: `${team ?? item.team ?? 'NBA'}-${playerName}`,
+          id: `${team ?? item.player?.team_id ?? 'NBA'}-${item.player?.id ?? playerName}`,
           player_name: playerName,
           team,
           status,
-          detail: buildDetail(item),
-          position: null,
-          impact: getImpact(status, getKeyRank(team, playerName)),
+          detail,
+          position: normalizeWhitespace(item.player?.position),
+          impact: getImpact(status, keyRank),
           is_key_player: isKeyPlayer(team, playerName),
-          key_rank: getKeyRank(team, playerName),
+          key_rank: keyRank,
           severity: getSeverity(status),
         }
       })
@@ -242,10 +272,7 @@ export async function fetchNBAInjuries(): Promise<{ status: InjuriesProviderStat
             const rankB = b.key_rank ?? 999
             if (rankA !== rankB) return rankA - rankB
             if (a.severity !== b.severity) return a.severity - b.severity
-            if (a.impact !== b.impact) {
-              const impactOrder = { high: 0, medium: 1, low: 2 }
-              return impactOrder[a.impact] - impactOrder[b.impact]
-            }
+            if (a.impact !== b.impact) return IMPACT_ORDER[a.impact] - IMPACT_ORDER[b.impact]
             return a.player_name.localeCompare(b.player_name, 'pt-BR')
           })
           .filter((item, index, current) => {
@@ -265,7 +292,7 @@ export async function fetchNBAInjuries(): Promise<{ status: InjuriesProviderStat
 
     return {
       status: {
-        provider: 'rapidapi-nba-injuries',
+        provider: 'balldontlie-nba-injuries',
         configured: true,
         available: true,
       },
@@ -273,17 +300,26 @@ export async function fetchNBAInjuries(): Promise<{ status: InjuriesProviderStat
     }
   } catch (error: unknown) {
     const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined
+    const responseBody = axios.isAxiosError(error) ? error.response?.data : undefined
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    console.error('[injuries] BallDontLie request failed', {
+      statusCode,
+      message: errorMessage,
+      body: responseBody,
+    })
+
     const reason = statusCode === 401
-      ? 'RapidAPI rejeitou a chave atual de injuries.'
-      : statusCode === 403
-      ? 'Plano atual da RapidAPI não tem acesso ao endpoint de injuries.'
+      ? 'Plano atual da Ball Don\'t Lie não tem acesso ao endpoint de player injuries.'
       : statusCode === 404
-      ? 'Endpoint de injuries não foi encontrado na RapidAPI.'
-      : 'Falha ao carregar lesões na RapidAPI.'
+      ? 'Endpoint de player injuries não foi encontrado na Ball Don\'t Lie.'
+      : statusCode === 429
+      ? 'Limite do provedor Ball Don\'t Lie atingido para player injuries.'
+      : 'Falha ao carregar lesões na Ball Don\'t Lie.'
 
     return {
       status: {
-        provider: 'rapidapi-nba-injuries',
+        provider: 'balldontlie-nba-injuries',
         configured: true,
         available: false,
         reason,

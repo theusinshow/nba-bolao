@@ -1031,10 +1031,10 @@ function AnalysisActionsCard() {
 }
 
 export function Analysis() {
-  const { upcomingGames, recentCompletedGames } = useGameFeed()
+  const { games, upcomingGames, recentCompletedGames } = useGameFeed()
   const { loading, error, generatedAt, odds, news, providers } = useAnalysisInsights()
   const { loading: injuriesLoading, injuries, provider: injuriesProvider, error: injuriesError } = useInjuries()
-  const allFeedGames = [...upcomingGames, ...recentCompletedGames]
+  const allFeedGames = games.length > 0 ? games : [...upcomingGames, ...recentCompletedGames]
 
   const relevantTeamNames = new Set(
     upcomingGames.flatMap((game) => [
@@ -1104,11 +1104,24 @@ export function Analysis() {
     ? 'Nenhuma notícia relevante encontrada para a rodada neste momento.'
     : undefined
 
-  // Filtra lesões para times dos playoffs apenas
-  const playoffTeamAbbrs = new Set(TEAMS_2025.map((t) => t.abbreviation))
-  const injuriesToShow = injuries.filter((item) => !item.team || playoffTeamAbbrs.has(item.team))
+  const relevantInjuryTeams = new Set(
+    allFeedGames.flatMap((game) => [
+      game.home_team?.abbreviation ?? game.home_team_id,
+      game.away_team?.abbreviation ?? game.away_team_id,
+      game.series?.home_team_id,
+      game.series?.away_team_id,
+    ]).filter((team): team is string => !!team)
+  )
+
+  const fallbackPlayoffTeams = new Set(TEAMS_2025.map((t) => t.abbreviation))
+  const injuriesToShow = injuries.filter((item) => {
+    if (!item.team) return true
+    if (relevantInjuryTeams.size > 0) return relevantInjuryTeams.has(item.team)
+    return fallbackPlayoffTeams.has(item.team)
+  })
   const injuriesReason = injuriesError
     ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
+    ?? (injuries.length > 0 && injuriesToShow.length === 0 ? 'Nenhuma lesão relevante encontrada para os times ativos da rodada.' : undefined)
 
   return (
     <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
