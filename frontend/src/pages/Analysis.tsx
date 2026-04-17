@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { Activity, ChevronRight, Clock, Database, HeartPulse, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
-import { useAuth } from '../hooks/useAuth'
+import type { AuthState } from '../hooks/useAuth'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { type AnalysisNewsItem, type AnalysisOddsItem, useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
@@ -1540,9 +1540,8 @@ function AnalysisActionsCard() {
   )
 }
 
-export function Analysis() {
+export function Analysis({ auth }: { auth: AuthState }) {
   const { games, upcomingGames, recentCompletedGames } = useGameFeed()
-  const { auth } = useAuth()
   const { loading, error, generatedAt, odds, news, providers } = useAnalysisInsights()
   const { loading: injuriesLoading, injuries, provider: injuriesProvider, error: injuriesError } = useInjuries()
   const participantId = auth.status === 'authorized' ? auth.participantId : undefined

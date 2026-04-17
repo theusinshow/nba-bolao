@@ -155,7 +155,7 @@ function AppRoutes({
             <ProtectedRoute auth={auth}>
               <RouteCrashBoundary routeName="Análise">
                 <PageTransition>
-                  <Analysis />
+                  <Analysis auth={auth} />
                 </PageTransition>
               </RouteCrashBoundary>
             </ProtectedRoute>
