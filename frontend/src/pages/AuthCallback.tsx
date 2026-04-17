@@ -2,21 +2,18 @@ import { useEffect, useState } from 'react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { supabase } from '../lib/supabase'
 
-const AUTH_RESULT_WAIT_MS = 5000
-const AUTH_RESULT_POLL_MS = 250
+const TIMEOUT_MS = 12_000
 
-function getUrlParams(url: URL) {
+function getProviderError(): string | null {
+  const url = new URL(window.location.href)
   const hash = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash)
-
-  return {
-    code: url.searchParams.get('code'),
-    accessToken: hash.get('access_token'),
-    refreshToken: hash.get('refresh_token'),
-    providerError: url.searchParams.get('error_description')
-      ?? url.searchParams.get('error')
-      ?? hash.get('error_description')
-      ?? hash.get('error'),
-  }
+  return (
+    url.searchParams.get('error_description') ??
+    url.searchParams.get('error') ??
+    hash.get('error_description') ??
+    hash.get('error') ??
+    null
+  )
 }
 
 export function AuthCallback() {
@@ -25,60 +22,42 @@ export function AuthCallback() {
   useEffect(() => {
     let active = true
 
-    async function completeAuth() {
-      const currentUrl = new URL(window.location.href)
-      const { code, accessToken, refreshToken, providerError } = getUrlParams(currentUrl)
-
-      if (providerError) {
-        if (active) setError(providerError)
-        return
-      }
-
-      try {
-        const hasAuthPayload = Boolean(code || accessToken || refreshToken)
-
-        if (!hasAuthPayload) {
-          window.location.replace('/login')
-          return
-        }
-
-        const waitForSession = async () => {
-          const startedAt = Date.now()
-
-          while (Date.now() - startedAt < AUTH_RESULT_WAIT_MS) {
-            const { data, error: sessionError } = await supabase.auth.getSession()
-            if (sessionError) throw sessionError
-            if (data.session) return data.session
-            await new Promise((resolve) => window.setTimeout(resolve, AUTH_RESULT_POLL_MS))
-          }
-
-          return null
-        }
-
-        let session = await waitForSession()
-
-        if (!session && code) {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) throw exchangeError
-          session = data.session ?? (await waitForSession())
-        }
-
-        if (!session) {
-          throw new Error('O retorno do login chegou sem uma sessão válida.')
-        }
-
-        window.location.replace('/')
-      } catch (authError) {
-        console.error('[auth/callback] failed to finish OAuth flow', authError)
-        if (!active) return
-        setError(authError instanceof Error ? authError.message : 'Não foi possível concluir o login com Google.')
-      }
+    // Fail fast if Google returned an error
+    const providerError = getProviderError()
+    if (providerError) {
+      setError(providerError)
+      return
     }
 
-    void completeAuth()
+    // The Supabase SDK (detectSessionInUrl: true) exchanges the PKCE code automatically on
+    // client init. useAuth's onAuthStateChange picks up SIGNED_IN and re-renders the app.
+    // We must NOT call exchangeCodeForSession manually — the code is single-use and a double
+    // exchange (SDK + manual) causes the second call to fail, especially on slow mobile networks.
+
+    // Redirect as soon as the session is confirmed.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        window.location.replace('/')
+      }
+    })
+
+    // Session might already be set if the SDK exchanged the code before this component mounted.
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return
+      if (data.session) window.location.replace('/')
+    })
+
+    // Timeout fallback — if nothing happens in TIMEOUT_MS, something went wrong.
+    const timeout = window.setTimeout(() => {
+      if (!active) return
+      setError('O retorno do login demorou demais. Tente novamente.')
+    }, TIMEOUT_MS)
 
     return () => {
       active = false
+      window.clearTimeout(timeout)
+      listener.subscription.unsubscribe()
     }
   }, [])
 
