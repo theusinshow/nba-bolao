@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Game, Series, Team } from '../types'
+import { isGameLive } from '../utils/gameStatus'
 
 export interface EnrichedGameFeedItem extends Game {
   home_team: Team | null
@@ -69,10 +70,18 @@ export function useGameFeed() {
     [games]
   )
 
+  const liveGames = useMemo(
+    () =>
+      games
+        .filter((game) => isGameLive(game))
+        .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime()),
+    [games]
+  )
+
   const upcomingGames = useMemo(
     () =>
       games
-        .filter((game) => !game.played && !!game.tip_off_at && new Date(game.tip_off_at).getTime() > Date.now())
+        .filter((game) => !game.played && !isGameLive(game) && !!game.tip_off_at && new Date(game.tip_off_at).getTime() > Date.now())
         .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime())
         .slice(0, 6),
     [games]
@@ -81,6 +90,7 @@ export function useGameFeed() {
   return {
     games,
     recentCompletedGames,
+    liveGames,
     upcomingGames,
     loading,
     hasRealGames: games.length > 0,

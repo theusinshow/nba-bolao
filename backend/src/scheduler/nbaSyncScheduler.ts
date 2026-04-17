@@ -15,7 +15,7 @@ interface SchedulerSnapshot {
   isRunning: boolean
 }
 
-const LIVE_INTERVAL_MINUTES = Number(process.env.NBA_SYNC_INTERVAL_LIVE_MINUTES ?? 2)
+const LIVE_INTERVAL_MINUTES = Number(process.env.NBA_SYNC_INTERVAL_LIVE_MINUTES ?? 1)
 const PREGAME_INTERVAL_MINUTES = Number(process.env.NBA_SYNC_INTERVAL_PREGAME_MINUTES ?? 5)
 const DAILY_INTERVAL_MINUTES = Number(process.env.NBA_SYNC_INTERVAL_DAILY_MINUTES ?? 15)
 const IDLE_INTERVAL_MINUTES = Number(process.env.NBA_SYNC_INTERVAL_IDLE_MINUTES ?? 60)

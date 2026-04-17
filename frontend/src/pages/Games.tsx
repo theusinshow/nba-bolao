@@ -8,6 +8,7 @@ import { type OddsSummaryItem, useOddsSummary } from '../hooks/useOddsSummary'
 import type { Game, GamePick, Participant, Team } from '../types'
 import { normalizeGame } from '../utils/bracket'
 import { calculateGamePickPoints } from '../utils/scoring'
+import { getGameStatusMeta as getLiveGameStatusMeta } from '../utils/gameStatus'
 import { TEAM_MAP, getTeamLogoUrl } from '../data/teams2025'
 import { teamAbbrStyle } from '../utils/teamColors'
 import { BRT_TIMEZONE } from '../utils/constants'
@@ -167,8 +168,18 @@ function getGameStateMeta(game: GameWithTeams, hasSavedPick: boolean, hasPending
     return { label: 'Série já encerrada', color: 'var(--nba-east)', bg: 'rgba(74,144,217,0.12)', icon: <CircleOff size={12} /> }
   }
 
-  if (game.played) {
+  const gameStatus = getLiveGameStatusMeta(game)
+
+  if (gameStatus.state === 'final') {
     return { label: 'Finalizado', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.1)', icon: <BadgeCheck size={12} /> }
+  }
+
+  if (gameStatus.state === 'halftime') {
+    return { label: 'Intervalo', color: 'var(--nba-gold)', bg: 'rgba(200,150,60,0.12)', icon: <Clock3 size={12} /> }
+  }
+
+  if (gameStatus.state === 'live') {
+    return { label: 'Ao vivo', color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.12)', icon: <Flame size={12} /> }
   }
 
   if (game.tip_off_at && new Date(game.tip_off_at).getTime() - PICK_GRACE_MS <= Date.now()) {
@@ -1406,7 +1417,8 @@ function TeamSide({
 // ─── Center panel ─────────────────────────────────────────────────────────────
 
 function CenterPanel({ game, locked }: { game: GameWithTeams; locked: boolean }) {
-  const hasScore = game.played && game.score_a != null && game.score_b != null
+  const statusMeta = getLiveGameStatusMeta(game)
+  const hasScore = statusMeta.showScore && game.score_a != null && game.score_b != null
 
   return (
     <div
@@ -1436,7 +1448,7 @@ function CenterPanel({ game, locked }: { game: GameWithTeams; locked: boolean })
         </>
       ) : (
         <>
-          {game.tip_off_at && !locked && (
+          {game.tip_off_at && !locked && !statusMeta.isLive && (
             <span
               className="font-condensed font-bold"
               style={{ color: 'var(--nba-text)', fontSize: '1rem', lineHeight: 1 }}
@@ -1448,11 +1460,15 @@ function CenterPanel({ game, locked }: { game: GameWithTeams; locked: boolean })
             className="title"
             style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem', letterSpacing: '0.05em' }}
           >
-            {locked && !game.played ? <Lock size={16} /> : 'VS'}
+            {statusMeta.isLive ? statusMeta.centerLabel : locked && !game.played ? <Lock size={16} /> : 'VS'}
           </span>
-          {game.tip_off_at && !locked && (
+          {statusMeta.isLive && statusMeta.detail ? (
+            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem', textAlign: 'center' }}>{statusMeta.detail}</span>
+          ) : game.tip_off_at && !locked && !statusMeta.isLive ? (
             <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem' }}>BRT</span>
-          )}
+          ) : statusMeta.state === 'final' ? (
+            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem' }}>Encerrado</span>
+          ) : null}
         </>
       )}
     </div>
@@ -1520,6 +1536,8 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
   const round = game.round as 1 | 2 | 3 | 4
   const roundColor = ROUND_COLOR[round]
   const urgency = getUrgency(game)
+  const liveStatus = getLiveGameStatusMeta(game)
+  const isLiveNow = liveStatus.isLive
   const stateMeta = getGameStateMeta(game, !!savedId, hasPending)
   const canRevealPicks = isGameRevealed(game)
 
@@ -1535,7 +1553,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
         borderRadius: 8,
         overflow: 'hidden',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-        boxShadow: urgency.label && !game.played && !seriesClosedBeforeGame ? '0 10px 24px rgba(0,0,0,0.16)' : 'none',
+        boxShadow: urgency.label && !game.played && !isLiveNow && !seriesClosedBeforeGame ? '0 10px 24px rgba(0,0,0,0.16)' : 'none',
       }}
       onMouseEnter={(e) => {
         if (!displayId) {
@@ -1596,7 +1614,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
           </span>
         </div>
 
-        {game.tip_off_at && !game.played && !seriesClosedBeforeGame && (
+        {game.tip_off_at && !game.played && !isLiveNow && !seriesClosedBeforeGame && (
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', flexShrink: 0 }}>
             <Clock3 size={11} style={{ display: 'inline-flex', verticalAlign: 'text-bottom', marginRight: 4 }} />
             {formatTimeBRT(game.tip_off_at)}
@@ -1604,7 +1622,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
         )}
       </div>
 
-      {odds && !game.played && !seriesClosedBeforeGame && (
+      {odds && !game.played && !isLiveNow && !seriesClosedBeforeGame && (
         <div
           style={{
             display: 'flex',
@@ -1633,7 +1651,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
       )}
 
       {/* ── Teams row ── */}
-      {urgency.label && !game.played && !seriesClosedBeforeGame && (
+      {urgency.label && !game.played && !isLiveNow && !seriesClosedBeforeGame && (
         <div
           style={{
             display: 'flex',
@@ -1747,6 +1765,16 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
             >
               <CircleOff size={11} />
               Série encerrada
+            </span>
+          ) : isLiveNow ? (
+            <span
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                color: 'var(--nba-success)', fontSize: '0.72rem',
+              }}
+            >
+              <Flame size={11} />
+              {liveStatus.detail ?? liveStatus.badgeLabel}
             </span>
           ) : locked ? (
             /* Locked */
@@ -2559,6 +2587,19 @@ export function Games({ participantId }: Props) {
 
   useEffect(() => {
     fetchAll()
+  }, [])
+
+  useEffect(() => {
+    const sub = supabase
+      .channel('games-live-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, fetchAll)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(sub)
+    }
   }, [])
 
   useEffect(() => {

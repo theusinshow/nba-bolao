@@ -64,6 +64,19 @@ interface TeamSeedRow {
   primary_color?: string
 }
 
+type PersistedGameState = 'scheduled' | 'live' | 'halftime' | 'final'
+
+interface LiveGameFields {
+  game_state: PersistedGameState
+  status_text: string
+  current_period: number | null
+  clock: string | null
+}
+
+const LIVE_GAME_FIELD_KEYS = ['game_state', 'status_text', 'current_period', 'clock'] as const
+
+let supportsLiveGameColumns: boolean | null = null
+
 function mapAbbr(abbr: string): string {
   return ABBREV_MAP[abbr] ?? abbr
 }
@@ -75,6 +88,65 @@ function getDefaultSeason(): number {
 
 function isFinalStatus(status: string): boolean {
   return /^final/i.test(status.trim())
+}
+
+function inferGameState(status: string, period: number): PersistedGameState {
+  const normalized = status.trim().toLowerCase()
+
+  if (isFinalStatus(status)) return 'final'
+  if (normalized.includes('half')) return 'halftime'
+  if (normalized.startsWith('q') || normalized.includes('ot') || period > 0) return 'live'
+  return 'scheduled'
+}
+
+function extractClock(status: string): string | null {
+  const match = status.trim().match(/(\d{1,2}:\d{2})/)
+  return match ? match[1] : null
+}
+
+function buildLiveGameFields(game: BDLGame): LiveGameFields {
+  return {
+    game_state: inferGameState(game.status, game.period),
+    status_text: game.status.trim(),
+    current_period: Number.isFinite(game.period) && game.period > 0 ? game.period : null,
+    clock: extractClock(game.status),
+  }
+}
+
+function stripLiveGameFields<T extends Record<string, unknown>>(payload: T): Omit<T, (typeof LIVE_GAME_FIELD_KEYS)[number]> {
+  const next = { ...payload }
+  for (const key of LIVE_GAME_FIELD_KEYS) {
+    delete next[key]
+  }
+  return next
+}
+
+function isMissingLiveGameColumnError(error: { message?: string } | null): boolean {
+  const message = error?.message?.toLowerCase() ?? ''
+  return LIVE_GAME_FIELD_KEYS.some((key) => message.includes(key))
+}
+
+async function writeGamePayload(mode: 'insert' | 'update', payload: Record<string, unknown>, gameId?: string) {
+  const tryPayload = supportsLiveGameColumns === false ? stripLiveGameFields(payload) : payload
+  const initialResult = mode === 'insert'
+    ? await supabase.from('games').insert(tryPayload)
+    : await supabase.from('games').update(tryPayload).eq('id', gameId!)
+
+  let error = initialResult.error
+
+  if (error && isMissingLiveGameColumnError(error)) {
+    supportsLiveGameColumns = false
+    const fallbackPayload = stripLiveGameFields(payload)
+    const fallbackResult = mode === 'insert'
+      ? await supabase.from('games').insert(fallbackPayload)
+      : await supabase.from('games').update(fallbackPayload).eq('id', gameId!)
+
+    error = fallbackResult.error
+  } else if (!error && supportsLiveGameColumns == null) {
+    supportsLiveGameColumns = true
+  }
+
+  if (error) throw error
 }
 
 function isIsoDateTime(value?: string | null): boolean {
@@ -462,14 +534,13 @@ export async function syncNBA(): Promise<void> {
         played,
         tip_off_at: parseTipOffAt(bdlGame.date, bdlGame.status, bdlGame.datetime),
         nba_game_id: bdlGame.id,
+        ...buildLiveGameFields(bdlGame),
       }
 
       if (existingGame) {
-        const { error } = await supabase.from('games').update(payload).eq('id', existingGame.id)
-        if (error) throw error
+        await writeGamePayload('update', payload, existingGame.id)
       } else {
-        const { error } = await supabase.from('games').insert(payload)
-        if (error) throw error
+        await writeGamePayload('insert', payload)
       }
     }
 

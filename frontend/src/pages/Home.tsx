@@ -11,6 +11,7 @@ import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { type GameHighlightItem, useGameHighlights } from '../hooks/useGameHighlights'
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
 import { isSeriesReadyForPick } from '../utils/bracket'
+import { getGameStatusMeta } from '../utils/gameStatus'
 import { getTeamLogoUrl } from '../data/teams2025'
 import { BRT_TIMEZONE } from '../utils/constants'
 import { fadeInItem, fadeUpItem, premiumTween, pressMotion, scaleInItem, softStaggerContainer, staggerContainer } from '../lib/motion'
@@ -1025,9 +1026,10 @@ function useSeriesPickStats() {
   return bySeriesId
 }
 
-function OfficialBracketCard({ series, upcomingGames, participantCount, injuries, injuriesLoading, injuriesAvailable }: {
+function OfficialBracketCard({ series, upcomingGames, liveGames, participantCount, injuries, injuriesLoading, injuriesAvailable }: {
   series: ReturnType<typeof useSeries>['series']
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
+  liveGames: ReturnType<typeof useGameFeed>['liveGames']
   participantCount: number
   injuries: InjuryItem[]
   injuriesLoading: boolean
@@ -1041,12 +1043,9 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
   const championLabel = champion?.abbreviation ?? (finals?.is_complete ? finals.winner_id ?? 'Definido' : 'Em disputa')
 
   const today = getBrtDateKey(new Date())
-  const todayGames = upcomingGames.filter(
-    (g) => g.tip_off_at && getBrtDateKey(new Date(g.tip_off_at)) === today
-  )
-  const liveGames = upcomingGames.filter(
-    (g) => g.tip_off_at && new Date(g.tip_off_at).getTime() <= Date.now() && !g.played
-  )
+  const todayGames = [...liveGames, ...upcomingGames]
+    .filter((g) => g.tip_off_at && getBrtDateKey(new Date(g.tip_off_at)) === today)
+    .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime())
   const liveIds = new Set(liveGames.map((g) => g.id))
 
   const roundGroups = ([4, 3, 2, 1] as const)
@@ -1216,6 +1215,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
           <div style={{ display: 'grid', gap: 5 }}>
             {todayGames.map((g) => {
               const isLive = liveIds.has(g.id)
+              const statusMeta = getGameStatusMeta(g)
               const homeColor = g.home_team?.primary_color ?? 'var(--nba-text)'
               const awayColor = g.away_team?.primary_color ?? 'var(--nba-text)'
               return (
@@ -1228,7 +1228,11 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                     <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
                     <div className="grid justify-items-center gap-1 px-1">
                       <span className="font-condensed" style={{ textAlign: 'center', fontSize: '0.82rem', color: isLive ? '#2ecc71' : 'var(--nba-text-muted)', letterSpacing: '0.08em', lineHeight: 1 }}>
-                        {isLive ? '● agora' : formatBrtTime(g.tip_off_at)}
+                        {statusMeta.showScore
+                          ? `${g.home_score ?? 0} x ${g.away_score ?? 0}`
+                          : isLive
+                          ? statusMeta.detail ?? '● agora'
+                          : formatBrtTime(g.tip_off_at)}
                       </span>
                       <span style={{
                         fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 999, flexShrink: 0,
@@ -1237,7 +1241,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                         border: `1px solid ${isLive ? 'rgba(46,204,113,0.3)' : 'rgba(200,150,60,0.2)'}`,
                         whiteSpace: 'nowrap',
                       }}>
-                        {isLive ? 'AO VIVO' : `J${g.game_number}`}
+                        {isLive ? (statusMeta.detail ? `AO VIVO · ${statusMeta.detail}` : 'AO VIVO') : `J${g.game_number}`}
                       </span>
                     </div>
                     <TeamMark abbr={g.away_team?.abbreviation ?? g.away_team_id} color={awayColor} align="right" />
@@ -1910,7 +1914,7 @@ function AdvantageInsightsCard({
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
-  const { recentCompletedGames, upcomingGames, hasRealGames } = useGameFeed()
+  const { recentCompletedGames, liveGames, upcomingGames, hasRealGames } = useGameFeed()
   const recentGameIds = useMemo(
     () => recentCompletedGames.map((game) => game.nba_game_id).filter((id): id is number => !!id),
     [recentCompletedGames]
@@ -1931,12 +1935,12 @@ export function Home({ participantId }: Props) {
   )
   const todayKey = getBrtDateKey(new Date())
   const todayGamesCount = useMemo(
-    () => upcomingGames.filter((game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey).length,
-    [todayKey, upcomingGames]
+    () => [...liveGames, ...upcomingGames].filter((game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey).length,
+    [todayKey, liveGames, upcomingGames]
   )
   const liveGamesCount = useMemo(
-    () => upcomingGames.filter((game) => game.tip_off_at && new Date(game.tip_off_at).getTime() <= Date.now() && !game.played).length,
-    [upcomingGames]
+    () => liveGames.length,
+    [liveGames]
   )
   const alertSeriesCount = useMemo(() => {
     const teamAlerts = new Set(
@@ -1968,7 +1972,7 @@ export function Home({ participantId }: Props) {
     return homeAlert || awayAlert
   })
   const trackedUpcomingSeries = series.find((item) =>
-    !item.is_complete && upcomingGames.some((game) => game.series_id === item.id && game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey)
+    !item.is_complete && [...liveGames, ...upcomingGames].some((game) => game.series_id === item.id && game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey)
   )
   const directHunter = myEntry && myEntry.rank > 1 ? ranking[myEntry.rank - 2] : null
   const socialClimber = ranking
@@ -2219,6 +2223,7 @@ export function Home({ participantId }: Props) {
           <OfficialBracketCard
             series={series}
             upcomingGames={upcomingGames}
+            liveGames={liveGames}
             participantCount={ranking.length}
             injuries={homeInjuries}
             injuriesLoading={injuriesLoading}

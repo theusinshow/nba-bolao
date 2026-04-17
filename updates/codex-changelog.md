@@ -4854,6 +4854,21 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 
+## 2026-04-17 13:35:00
+
+### Live scoring - fase 1 e 2 de atualização de placar e resultado
+- reduzi o ritmo padrão do sync ao vivo para `1` minuto em `backend/src/scheduler/nbaSyncScheduler.ts` e alinhei `backend/.env.example`;
+- o sync da NBA em `backend/src/jobs/syncNBA.ts` agora tenta persistir também `game_state`, `status_text`, `current_period` e `clock`, com fallback automático caso a SQL nova ainda não tenha sido aplicada;
+- adicionei a migração `supabase/live-game-status.sql` para criar os campos de jogo ao vivo no banco;
+- `frontend/src/hooks/useGameFeed.ts` passou a separar `liveGames` de `upcomingGames`, corrigindo a leitura da Home para jogos realmente em andamento;
+- `frontend/src/pages/Home.tsx` agora mostra melhor jogos ao vivo nos `Resultados reais`, incluindo placar parcial e contexto do status do jogo;
+- `frontend/src/pages/Games.tsx` agora exibe placar parcial durante a partida, troca o estado para `Ao vivo/Intervalo` quando aplicável e esconde sinais de pré-jogo como odds/horário seco quando a bola já subiu;
+- a aba `Jogos` também ganhou subscribe realtime para `games`, `series` e `teams`, melhorando a atualização visual de placar sem depender de reload manual.
+
+### Validação
+- `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 - UI: polimento final de Resultados reais + pendência do backup automático
 
 ### Home - Resultados reais mais alinhados

@@ -1,5 +1,6 @@
 export type Conference = 'West' | 'East'
 export type RoundNumber = 1 | 2 | 3 | 4
+export type GameState = 'scheduled' | 'live' | 'halftime' | 'final'
 
 export interface Team {
   id: string
@@ -42,6 +43,10 @@ export interface Game {
   played: boolean
   tip_off_at: string | null
   nba_game_id: number | null
+  game_state?: GameState | null
+  status_text?: string | null
+  current_period?: number | null
+  clock?: string | null
   round?: RoundNumber
   // Aliases opcionais preenchidos por normalizeGame() — use NormalizedGame quando garantidos
   team_a_id?: string
