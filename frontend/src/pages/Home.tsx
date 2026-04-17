@@ -697,8 +697,8 @@ function TeamMark({
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: isRight ? 'flex-end' : 'flex-start',
-        gap: 6,
-        minWidth: 58,
+        gap: 8,
+        minWidth: 82,
         opacity: dimmed ? 0.4 : 1,
         flexDirection: isRight ? 'row-reverse' : 'row',
       }}
@@ -707,13 +707,13 @@ function TeamMark({
         src={getTeamLogoUrl(abbr)}
         alt={abbr}
         onError={(e) => (e.currentTarget.style.display = 'none')}
-        style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }}
+        style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.25))' }}
       />
       <span
         className="font-condensed font-bold"
         style={{
           color,
-          fontSize: '0.92rem',
+          fontSize: '1.02rem',
           lineHeight: 1,
           minWidth: 32,
           textAlign: isRight ? 'right' : 'left',
@@ -722,6 +722,101 @@ function TeamMark({
         {abbr}
       </span>
     </span>
+  )
+}
+
+function TeamShowcase({
+  abbr,
+  color,
+  align = 'left',
+  dimmed = false,
+  injury,
+}: {
+  abbr: string
+  color: string
+  align?: 'left' | 'right'
+  dimmed?: boolean
+  injury?: InjuryItem
+}) {
+  const isRight = align === 'right'
+  const tone = injury ? getInjuryTone(injury.status) : null
+
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        display: 'grid',
+        gap: 10,
+        padding: '14px 16px',
+        borderRadius: 16,
+        background: injury ? 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(231,76,60,0.06))' : 'rgba(255,255,255,0.035)',
+        border: `1px solid ${injury ? 'rgba(231,76,60,0.18)' : 'rgba(200,150,60,0.10)'}`,
+        opacity: dimmed ? 0.52 : 1,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isRight ? 'flex-end' : 'flex-start',
+          gap: 12,
+          flexDirection: isRight ? 'row-reverse' : 'row',
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            display: 'grid',
+            placeItems: 'center',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03))',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 10px 24px rgba(0,0,0,0.18)',
+            flexShrink: 0,
+          }}
+        >
+          <img
+            src={getTeamLogoUrl(abbr)}
+            alt={abbr}
+            onError={(e) => (e.currentTarget.style.display = 'none')}
+            style={{ width: 30, height: 30, objectFit: 'contain', filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}
+          />
+        </div>
+
+        <div style={{ minWidth: 0, textAlign: isRight ? 'right' : 'left' }}>
+          <div
+            className="font-condensed font-bold"
+            style={{
+              color,
+              fontSize: '1.48rem',
+              lineHeight: 0.95,
+              letterSpacing: '0.03em',
+            }}
+          >
+            {abbr}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {injury ? 'alerta no elenco' : 'elenco principal ok'}
+          </div>
+        </div>
+      </div>
+
+      {injury ? (
+        <div style={{ minWidth: 0, textAlign: isRight ? 'right' : 'left' }}>
+          <div style={{ color: tone?.color ?? 'var(--nba-text)', fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.2 }}>
+            {injury.player_name}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4, lineHeight: 1.35 }}>
+            {tone?.label} • impacto {injury.impact === 'high' ? 'alto' : injury.impact === 'medium' ? 'moderado' : 'baixo'}
+          </div>
+        </div>
+      ) : (
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.35, textAlign: isRight ? 'right' : 'left' }}>
+          Sem baixa relevante destacada para esta série.
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -857,36 +952,36 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
   }, [enhancedRoundGroups])
 
   return (
-    <div style={{ ...card, background: 'linear-gradient(135deg, rgba(224,92,58,0.12), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
+    <div style={{ ...card, padding: '1.35rem', background: 'linear-gradient(145deg, rgba(224,92,58,0.16), rgba(200,150,60,0.10) 42%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 18, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 42px rgba(0,0,0,0.16)' }}>
       <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
 
       <div
         style={{
-          marginBottom: 14,
-          padding: '10px 12px',
-          borderRadius: 10,
-          background: 'rgba(12,12,18,0.34)',
-          border: '1px solid rgba(200,150,60,0.12)',
+          marginBottom: 16,
+          padding: '18px 18px',
+          borderRadius: 18,
+          background: 'linear-gradient(135deg, rgba(12,12,18,0.56), rgba(74,144,217,0.08))',
+          border: '1px solid rgba(200,150,60,0.18)',
         }}
       >
-        <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.9rem', lineHeight: 1 }}>
+        <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.14rem', lineHeight: 1, letterSpacing: '0.04em' }}>
           Radar da chave
         </div>
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 5, lineHeight: 1.45 }}>
+        <div style={{ color: 'var(--nba-text)', fontSize: '0.95rem', marginTop: 10, lineHeight: 1.5, maxWidth: 760 }}>
           {sectionHeadline}
         </div>
       </div>
 
       {/* 3 chips */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Concluídas', value: `${completedSeries}/${series.length}`, color: completedSeries > 0 ? 'var(--nba-success)' : 'var(--nba-text-muted)' },
           { label: 'Em aberto', value: String(openSeries), color: openSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)' },
           { label: 'Campeão', value: championLabel, color: champion ? (champion.primary_color ?? 'var(--nba-gold)') : 'var(--nba-text-muted)' },
         ].map(({ label, value, color }) => (
-          <div key={label} style={{ padding: '8px 10px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.12)' }}>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-            <div className="font-condensed font-bold" style={{ color, fontSize: '1.1rem', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+          <div key={label} style={{ padding: '14px 16px', borderRadius: 16, background: 'rgba(12,12,18,0.42)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
+            <div className="font-condensed font-bold" style={{ color, fontSize: '1.6rem', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -907,9 +1002,9 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
               const homeColor = g.home_team?.primary_color ?? 'var(--nba-text)'
               const awayColor = g.away_team?.primary_color ?? 'var(--nba-text)'
               return (
-                <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}>
+                <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}>
                   <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
-                  <span className="font-condensed" style={{ flex: 1, textAlign: 'center', fontSize: '0.72rem', color: 'var(--nba-text-muted)', letterSpacing: '0.04em' }}>
+                  <span className="font-condensed" style={{ flex: 1, textAlign: 'center', fontSize: '0.82rem', color: 'var(--nba-text-muted)', letterSpacing: '0.08em' }}>
                     {isLive ? '●' : formatBrtTime(g.tip_off_at)}
                   </span>
                   <TeamMark abbr={g.away_team?.abbreviation ?? g.away_team_id} color={awayColor} align="right" />
@@ -947,7 +1042,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                   <div style={{ height: 1, flex: 1, background: `${color}28` }} />
                 </div>
 
-                <div style={{ display: 'grid', gap: 5 }}>
+                <div style={{ display: 'grid', gap: 10 }}>
                   {items.map(({ seriesItem: s, homeInjury, awayInjury, hasTodayGame, impact }) => {
                     const homeAbbr = s.home_team?.abbreviation ?? s.home_team_id ?? '—'
                     const awayAbbr = s.away_team?.abbreviation ?? s.away_team_id ?? '—'
@@ -968,14 +1063,14 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                         key={s.id}
                         style={{
                           display: 'grid',
-                          gap: 6,
-                          padding: '8px 10px',
-                          borderRadius: 8,
+                          gap: 14,
+                          padding: '18px',
+                          borderRadius: 18,
                           background: hasTodayGame
-                            ? 'linear-gradient(135deg, rgba(46,204,113,0.08), rgba(12,12,18,0.42))'
+                            ? 'linear-gradient(135deg, rgba(46,204,113,0.10), rgba(12,12,18,0.44))'
                             : s.is_complete
-                            ? 'rgba(12,12,18,0.28)'
-                            : 'rgba(12,12,18,0.42)',
+                            ? 'rgba(12,12,18,0.30)'
+                            : 'rgba(12,12,18,0.46)',
                           border: `1px solid ${
                             hasTodayGame
                               ? 'rgba(46,204,113,0.24)'
@@ -985,105 +1080,96 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                               ? 'rgba(200,150,60,0.18)'
                               : 'rgba(200,150,60,0.08)'
                           }`,
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <TeamMark
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'stretch', gap: 14 }}>
+                          <TeamShowcase
                             abbr={homeAbbr}
                             color={homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor}
                             dimmed={awayWon}
+                            injury={!s.is_complete ? homeInjury : undefined}
                           />
 
-                          <span
-                            className="font-condensed font-bold"
-                            style={{
-                              flex: 1,
-                              textAlign: 'center',
-                              fontSize: s.is_complete ? '0.88rem' : '0.72rem',
-                              color: s.is_complete ? 'var(--nba-text)' : 'var(--nba-text-muted)',
-                              letterSpacing: '0.04em',
-                            }}
-                          >
-                            {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'vs'}
-                          </span>
+                          <div style={{ display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 8, minWidth: 96 }}>
+                            <span
+                              className="font-condensed font-bold"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: 78,
+                                padding: s.is_complete ? '8px 14px' : '7px 13px',
+                                borderRadius: 999,
+                                background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+                                color: s.is_complete ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+                                fontSize: s.is_complete ? '1.18rem' : '0.9rem',
+                                letterSpacing: '0.1em',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                              }}
+                            >
+                              {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'VS'}
+                            </span>
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', textAlign: 'center', lineHeight: 1.25 }}>
+                              {s.is_complete ? 'série fechada' : hasTodayGame ? 'abertura hoje' : inProgress ? 'série ativa' : 'aguardando'}
+                            </span>
+                            {s.is_complete ? (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
+                                {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
+                              </span>
+                            ) : hasTodayGame ? (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(46,204,113,0.16)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.26)', whiteSpace: 'nowrap' }}>
+                                hoje
+                              </span>
+                            ) : inProgress ? (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
+                                {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
+                                {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'pendente'}
+                              </span>
+                            )}
+                          </div>
 
-                          <TeamMark
+                          <TeamShowcase
                             abbr={awayAbbr}
                             color={awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : awayColor}
                             align="right"
                             dimmed={homeWon}
+                            injury={!s.is_complete ? awayInjury : undefined}
                           />
-
-                          {s.is_complete ? (
-                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
-                              {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
-                            </span>
-                          ) : hasTodayGame ? (
-                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.16)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.26)', whiteSpace: 'nowrap' }}>
-                              hoje
-                            </span>
-                          ) : inProgress ? (
-                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
-                              {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
-                              {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'pendente'}
-                            </span>
-                          )}
                         </div>
 
-                        {!s.is_complete && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                padding: '3px 8px',
-                                borderRadius: 999,
-                                fontSize: '0.64rem',
-                                fontWeight: 700,
-                                color: impact.color,
-                                background: impact.background,
-                                border: `1px solid ${impact.border}`,
-                              }}
-                            >
-                              {impact.label}
-                            </span>
-                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
-                              {hasTodayGame ? 'Confronto ativo na agenda de hoje' : inProgress ? 'Série em andamento' : 'Aguardando abertura'}
-                            </span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '7px 12px',
+                              borderRadius: 999,
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              color: impact.color,
+                              background: impact.background,
+                              border: `1px solid ${impact.border}`,
+                            }}
+                          >
+                            {impact.label}
+                          </span>
+                          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.35 }}>
+                            {hasTodayGame ? 'Confronto real ativo na agenda de hoje' : inProgress ? 'Série real já começou' : 'Aguardando a bola subir na chave oficial'}
+                          </span>
+                        </div>
+
+                        {!s.is_complete && !homeInjury && !awayInjury && injuriesLoading && (
+                          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem' }}>
+                            Carregando radar de lesões...
                           </div>
                         )}
-
-                        {!s.is_complete && (homeInjury || awayInjury || injuriesLoading || !injuriesAvailable) && (
-                          <div style={{ display: 'grid', gap: 4 }}>
-                            {homeInjury && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ color: homeColor, fontSize: '0.66rem', fontWeight: 700, minWidth: 26 }}>{homeAbbr}</span>
-                                <span style={{ color: getInjuryTone(homeInjury.status).color, fontSize: '0.68rem', fontWeight: 700, minWidth: 0 }}>
-                                  {homeInjury.player_name} {getInjuryTone(homeInjury.status).label}
-                                </span>
-                              </div>
-                            )}
-                            {awayInjury && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ color: awayColor, fontSize: '0.66rem', fontWeight: 700, minWidth: 26 }}>{awayAbbr}</span>
-                                <span style={{ color: getInjuryTone(awayInjury.status).color, fontSize: '0.68rem', fontWeight: 700, minWidth: 0 }}>
-                                  {awayInjury.player_name} {getInjuryTone(awayInjury.status).label}
-                                </span>
-                              </div>
-                            )}
-                            {!homeInjury && !awayInjury && injuriesLoading && (
-                              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.67rem' }}>
-                                Carregando radar de lesões...
-                              </div>
-                            )}
-                            {!homeInjury && !awayInjury && !injuriesLoading && !injuriesAvailable && (
-                              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.67rem' }}>
-                                Radar de lesões indisponível.
-                              </div>
-                            )}
+                        {!s.is_complete && !homeInjury && !awayInjury && !injuriesLoading && !injuriesAvailable && (
+                          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem' }}>
+                            Radar de lesões indisponível.
                           </div>
                         )}
                       </div>
@@ -1096,8 +1182,28 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
         </div>
       )}
 
-      <Link to="/official" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 14, padding: '10px 14px', borderRadius: 10, textDecoration: 'none', background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', color: 'var(--nba-gold)', fontWeight: 700, fontSize: '0.82rem' }}>
-        Acompanhar playoffs
+      <Link
+        to="/official"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          marginTop: 18,
+          padding: '16px 22px',
+          minHeight: 56,
+          borderRadius: 14,
+          textDecoration: 'none',
+          background: 'linear-gradient(135deg, rgba(200,150,60,0.20), rgba(224,92,58,0.10))',
+          border: '1px solid rgba(200,150,60,0.24)',
+          color: 'var(--nba-gold)',
+          fontWeight: 700,
+          fontSize: '1rem',
+          fontFamily: "'Barlow Condensed', sans-serif",
+          letterSpacing: '0.05em',
+        }}
+      >
+        Ver playoff real da NBA
         <ChevronRight size={15} />
       </Link>
     </div>

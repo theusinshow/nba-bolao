@@ -4672,3 +4672,13 @@ USING (
 
 ### Pendências
 - Se você quiser depois, dá para fazer uma versão ainda mais refinada com duas alturas de quique conforme o tamanho do loader.
+## 2026-04-17 00:30:19
+
+### Home - repaginação premium da seção Resultados reais
+- redesenhei a seção `Resultados reais` em `frontend/src/pages/Home.tsx` com uma hierarquia visual nova, menos microtexto e mais presença de marca;
+- transformei cada lado do confronto em um painel próprio com logo ampliado, sigla maior e contexto de lesão embutido no bloco do time;
+- aumentei tipografia, espaçamento, cartões-resumo e CTA do playoff real para a seção ficar mais editorial e menos “apertada”;
+- mantive a lógica existente de radar da chave, impacto do confronto e estados de série, mas com distribuição visual mais premium.
+
+### Validação
+- `npm --prefix frontend run build`
