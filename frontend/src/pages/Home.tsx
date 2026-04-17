@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
@@ -9,6 +9,7 @@ import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
+import { type GameHighlightItem, useGameHighlights } from '../hooks/useGameHighlights'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getTeamLogoUrl } from '../data/teams2025'
@@ -111,13 +112,20 @@ function LastNightRecap({
   upcomingGames,
   isRealData,
   loading,
+  highlightsByGameId,
+  highlightsLoading,
+  highlightsAvailable,
 }: {
   games: ReturnType<typeof useGameFeed>['recentCompletedGames']
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
   isRealData: boolean
   loading: boolean
+  highlightsByGameId: Record<number, GameHighlightItem>
+  highlightsLoading: boolean
+  highlightsAvailable: boolean
 }) {
   const sourceGames = games.map((game) => ({
+    nbaGameId: game.nba_game_id ?? null,
     home: game.home_team?.abbreviation ?? game.home_team_id,
     away: game.away_team?.abbreviation ?? game.away_team_id,
     homeAbbr: game.home_team?.abbreviation ?? game.home_team_id,
@@ -185,7 +193,7 @@ function LastNightRecap({
               <div
                 key={`${game.home}-${game.away}-${i}`}
                 style={{
-                  width: 220,
+                  width: 252,
                   padding: '12px 14px',
                   borderRadius: 10,
                   background: 'rgba(12,12,18,0.42)',
@@ -239,6 +247,53 @@ function LastNightRecap({
                   <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>final</span>
                 </div>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.note}</div>
+
+                {game.nbaGameId && highlightsByGameId[game.nbaGameId] && (
+                  <div
+                    style={{
+                      marginTop: 2,
+                      paddingTop: 8,
+                      borderTop: '1px solid rgba(200,150,60,0.12)',
+                      display: 'grid',
+                      gap: 6,
+                    }}
+                  >
+                    {highlightsByGameId[game.nbaGameId].headline && (
+                      <div style={{ color: 'var(--nba-text)', fontSize: '0.72rem', lineHeight: 1.35, fontWeight: 600 }}>
+                        {highlightsByGameId[game.nbaGameId].headline}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      {[
+                        { label: 'PTS', leader: highlightsByGameId[game.nbaGameId].leaders.points },
+                        { label: 'REB', leader: highlightsByGameId[game.nbaGameId].leaders.rebounds },
+                        { label: 'AST', leader: highlightsByGameId[game.nbaGameId].leaders.assists },
+                      ].map(({ label, leader }) => (
+                        leader ? (
+                          <div key={`${game.nbaGameId}-${label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem', fontWeight: 700 }}>{label}</span>
+                            <span style={{ color: 'var(--nba-text)', fontSize: '0.68rem', minWidth: 0, flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {leader.player_name}{leader.team ? ` (${leader.team})` : ''} — {leader.value}
+                            </span>
+                          </div>
+                        ) : null
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {game.nbaGameId && !highlightsByGameId[game.nbaGameId] && highlightsLoading && (
+                  <div style={{ marginTop: 2, paddingTop: 8, borderTop: '1px solid rgba(200,150,60,0.12)', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                    Carregando destaques individuais...
+                  </div>
+                )}
+
+                {game.nbaGameId && !highlightsByGameId[game.nbaGameId] && !highlightsLoading && !highlightsAvailable && (
+                  <div style={{ marginTop: 2, paddingTop: 8, borderTop: '1px solid rgba(200,150,60,0.12)', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                    Destaques individuais indisponíveis no momento.
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1056,7 +1111,16 @@ export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
   const { recentCompletedGames, upcomingGames, hasRealGames } = useGameFeed()
+  const recentGameIds = useMemo(
+    () => recentCompletedGames.map((game) => game.nba_game_id).filter((id): id is number => !!id),
+    [recentCompletedGames]
+  )
+  const { highlights, loading: highlightsLoading, provider: highlightsProvider } = useGameHighlights(recentGameIds)
   const { show, complete } = useOnboarding()
+  const highlightsByGameId = useMemo(
+    () => Object.fromEntries(highlights.map((item) => [item.game_id, item])),
+    [highlights]
+  )
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
   const leader = ranking[0]
@@ -1081,7 +1145,17 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
-        <motion.div variants={fadeUpItem}><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} loading={seriesLoading} /></motion.div>
+        <motion.div variants={fadeUpItem}>
+          <LastNightRecap
+            games={recentCompletedGames}
+            upcomingGames={upcomingGames}
+            isRealData={hasRealGames && recentCompletedGames.length > 0}
+            loading={seriesLoading}
+            highlightsByGameId={highlightsByGameId}
+            highlightsLoading={highlightsLoading}
+            highlightsAvailable={highlightsProvider.available}
+          />
+        </motion.div>
         <motion.div variants={scaleInItem}><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></motion.div>
         <motion.div variants={fadeInItem}><NewsAlertPill /></motion.div>
         <motion.div variants={fadeUpItem}><HomeQuickDeck /></motion.div>

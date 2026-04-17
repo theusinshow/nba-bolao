@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { fetchNBAGameOdds, fetchNBAGameOddsSummary } from '../lib/odds'
 import { fetchNBANews } from '../lib/news'
 import { fetchNBAInjuries } from '../lib/injuries'
+import { fetchNBAGameHighlights } from '../lib/gameHighlights'
 
 const router = Router()
 
@@ -19,6 +20,39 @@ router.get('/injuries', async (_req, res) => {
     res.status(500).json({
       ok: false,
       error: 'Não foi possível carregar o relatório de lesões.',
+    })
+  }
+})
+
+router.get('/game-highlights', async (req, res) => {
+  try {
+    const rawGameIds = Array.isArray(req.query.gameIds)
+      ? req.query.gameIds
+      : Array.isArray(req.query['gameIds[]'])
+      ? req.query['gameIds[]']
+      : typeof req.query.gameIds === 'string'
+      ? req.query.gameIds.split(',')
+      : typeof req.query['gameIds[]'] === 'string'
+      ? String(req.query['gameIds[]']).split(',')
+      : []
+
+    const gameIds = rawGameIds
+      .map((value) => Number(String(value).trim()))
+      .filter((value) => Number.isFinite(value) && value > 0)
+
+    const result = await fetchNBAGameHighlights(gameIds)
+
+    res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      provider: result.status,
+      highlights: result.highlights,
+    })
+  } catch (error: unknown) {
+    console.error('[analysis/game-highlights] Failed:', error)
+    res.status(500).json({
+      ok: false,
+      error: 'Não foi possível carregar os destaques reais dos jogos.',
     })
   }
 })

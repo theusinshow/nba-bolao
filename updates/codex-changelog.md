@@ -1,5 +1,43 @@
 # Codex Changelog
 
+## 2026-04-16 - Feature: Jogos Reais da Home ganham destaques individuais via Ball Don't Lie
+
+### Contexto
+Com o plano `ALL-STAR` ativo, a seção `Jogos Reais` da Home passou a aproveitar o endpoint de `Game Player Stats` da Ball Don't Lie. O objetivo foi enriquecer apenas esse bloco com contexto pós-jogo, sem mexer no restante da Home.
+
+### `backend/src/lib/gameHighlights.ts`
+- Novo adaptador para `GET /v1/stats` da Ball Don't Lie com filtro por `game_ids`
+- Adicionado suporte a paginação por `cursor` e `per_page=100`
+- O backend agora resume cada jogo finalizado em:
+  - `headline`
+  - `best_line`
+  - líderes de `points`, `rebounds` e `assists`
+- Entrou cache em memória por `game_id` para evitar chamadas repetidas desnecessárias nos mesmos jogos finalizados
+- O provider foi padronizado como `balldontlie-game-player-stats`
+
+### `backend/src/routes/analysis.ts`
+- Nova rota pública `GET /analysis/game-highlights`
+- A rota aceita múltiplos `gameIds` e devolve destaques por jogo
+
+### `frontend/src/hooks/useGameHighlights.ts`
+- Nova hook para buscar os destaques individuais dos jogos finalizados da Home
+- A carga é disparada apenas para `nba_game_id` válidos dos jogos reais recentes
+
+### `frontend/src/pages/Home.tsx`
+- A seção `Jogos da última noite` foi enriquecida sem alterar o restante da Home
+- Cada card finalizado agora pode mostrar:
+  - headline curta da partida
+  - líder em pontos
+  - líder em rebotes
+  - líder em assistências
+- O bloco continua preservando o comportamento anterior de placar real e o restante da página segue intacto
+- O botão do chaveamento real não foi alterado e continua no fluxo atual da Home
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
+- Teste direto da rota `/analysis/game-highlights` ficou pendente porque o backend local não estava ativo no momento da validação final
+
 ## 2026-04-16 - Fix: Relatório de lesões passa a focar só nos times ativos da rodada
 
 ### Contexto
