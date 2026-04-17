@@ -14,9 +14,9 @@ import { useOnboarding } from './hooks/useOnboarding'
 
 class RouteCrashBoundary extends Component<
   { routeName: string; children: React.ReactNode },
-  { hasError: boolean }
+  { hasError: boolean; errorMessage: string | null }
 > {
-  state = { hasError: false }
+  state = { hasError: false, errorMessage: null }
 
   static getDerivedStateFromError() {
     return { hasError: true }
@@ -24,6 +24,9 @@ class RouteCrashBoundary extends Component<
 
   componentDidCatch(error: unknown) {
     console.error(`[route] ${this.props.routeName} crashed`, error)
+    this.setState({
+      errorMessage: error instanceof Error ? error.message : 'Erro desconhecido ao montar a rota.',
+    })
   }
 
   render() {
@@ -46,6 +49,11 @@ class RouteCrashBoundary extends Component<
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
               Essa tela foi isolada para não derrubar o restante do aplicativo. Você ainda pode navegar pelas outras abas enquanto ajustamos o erro.
             </div>
+            {this.state.errorMessage && (
+              <div style={{ color: '#ffb4a2', fontSize: '0.78rem', lineHeight: 1.45, marginTop: 10 }}>
+                Detalhe técnico: {this.state.errorMessage}
+              </div>
+            )}
           </div>
         </div>
       )

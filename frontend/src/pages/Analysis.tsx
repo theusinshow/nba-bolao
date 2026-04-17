@@ -1547,8 +1547,13 @@ export function Analysis() {
   const { loading: injuriesLoading, injuries, provider: injuriesProvider, error: injuriesError } = useInjuries()
   const participantId = auth.status === 'authorized' ? auth.participantId : undefined
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
-  const allFeedGames = games.length > 0 ? games : [...upcomingGames, ...recentCompletedGames]
-  let injuriesToShow: InjuryItem[] = injuries
+  const safeGames = Array.isArray(games) ? games.filter((game): game is typeof games[number] => Boolean(game)) : []
+  const safeUpcomingGames = Array.isArray(upcomingGames) ? upcomingGames.filter((game): game is typeof upcomingGames[number] => Boolean(game)) : []
+  const safeRecentCompletedGames = Array.isArray(recentCompletedGames) ? recentCompletedGames.filter((game): game is typeof recentCompletedGames[number] => Boolean(game)) : []
+  const safeSeries = Array.isArray(series) ? series.filter((item): item is typeof series[number] => Boolean(item)) : []
+  const safePicks = Array.isArray(picks) ? picks.filter((item): item is typeof picks[number] => Boolean(item)) : []
+  const allFeedGames = safeGames.length > 0 ? safeGames : [...safeUpcomingGames, ...safeRecentCompletedGames]
+  let injuriesToShow: InjuryItem[] = Array.isArray(injuries) ? injuries.filter((item): item is InjuryItem => Boolean(item)) : []
   let injuriesReason =
     injuriesError ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
 
@@ -1563,7 +1568,7 @@ export function Analysis() {
     )
 
     const fallbackPlayoffTeams = new Set(TEAMS_2025.map((t) => t.abbreviation))
-    injuriesToShow = injuries.filter((item) => {
+    injuriesToShow = injuriesToShow.filter((item) => {
       if (!item.team) return true
       if (relevantInjuryTeams.size > 0) return relevantInjuryTeams.has(item.team)
       return fallbackPlayoffTeams.has(item.team)
@@ -1571,7 +1576,7 @@ export function Analysis() {
     injuriesReason =
       injuriesError
       ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
-      ?? (injuries.length > 0 && injuriesToShow.length === 0
+      ?? (injuriesToShow.length === 0 && injuries.length > 0
         ? 'Nenhuma lesão relevante encontrada para os times ativos da rodada.'
         : undefined)
   } catch (injuryFilterError) {
@@ -1579,124 +1584,129 @@ export function Analysis() {
   }
 
   const advantageInsights = useMemo(() => {
-    if (!participantId) return []
+    try {
+      if (!participantId) return []
 
-    const now = Date.now()
-    const injuriesByTeam = new Map<string, InjuryItem[]>()
-    injuriesToShow.forEach((item) => {
-      if (!item.team) return
-      const current = injuriesByTeam.get(item.team) ?? []
-      current.push(item)
-      injuriesByTeam.set(item.team, current)
-    })
-
-    const activeSeries = series.filter((item) => {
-      const unlocked = !item.tip_off_at || new Date(item.tip_off_at).getTime() > now
-      return !item.is_complete && !!item.home_team_id && !!item.away_team_id && unlocked
-    })
-
-    const cards: Array<{
-      id: string
-      eyebrow: string
-      title: string
-      detail: string
-      accent: string
-      border: string
-      background: string
-      meta?: string
-      score: number
-    }> = []
-
-    const unpickedSeries = activeSeries.filter((item) => !picks.some((pick) => pick.series_id === item.id))
-    const bestOpenWindow = unpickedSeries
-      .map((item) => {
-        const homeAbbr = item.home_team?.abbreviation ?? item.home_team_id ?? ''
-        const awayAbbr = item.away_team?.abbreviation ?? item.away_team_id ?? ''
-        const homeHighImpact = (injuriesByTeam.get(homeAbbr) ?? []).filter((injury) => injury.impact === 'high')
-        const awayHighImpact = (injuriesByTeam.get(awayAbbr) ?? []).filter((injury) => injury.impact === 'high')
-        const strongerSide = homeHighImpact.length >= awayHighImpact.length ? { team: homeAbbr, injuries: homeHighImpact, opponent: awayAbbr } : { team: awayAbbr, injuries: awayHighImpact, opponent: homeAbbr }
-
-        return {
-          series: item,
-          strongerSide,
-          impact: strongerSide.injuries.length,
-        }
+      const now = Date.now()
+      const injuriesByTeam = new Map<string, InjuryItem[]>()
+      injuriesToShow.forEach((item) => {
+        if (!item?.team) return
+        const current = injuriesByTeam.get(item.team) ?? []
+        current.push(item)
+        injuriesByTeam.set(item.team, current)
       })
-      .sort((left, right) => right.impact - left.impact)[0]
 
-    if (bestOpenWindow) {
-      const { series: item, strongerSide, impact } = bestOpenWindow
-      cards.push({
-        id: `open-${item.id}`,
-        eyebrow: 'Janela de ataque',
-        title: `${strongerSide.opponent} ganha ângulo antes do lock`,
-        detail: impact > 0
-          ? `${strongerSide.team} carrega ${impact} alerta${impact !== 1 ? 's' : ''} alto${impact !== 1 ? 's' : ''}. Essa série ainda está aberta para leitura e pick.`
-          : `A série ${item.home_team?.abbreviation ?? item.home_team_id} x ${item.away_team?.abbreviation ?? item.away_team_id} segue aberta e pode ser usada para atacar antes do fechamento.`,
-        accent: 'var(--nba-gold)',
-        border: 'rgba(200,150,60,0.22)',
-        background: 'rgba(200,150,60,0.08)',
-        meta: item.tip_off_at ? `Fecha em ${formatShortDateTime(item.tip_off_at)}` : 'Ainda sem horário oficial',
-        score: impact > 0 ? 6 + impact : 4,
+      const activeSeries = safeSeries.filter((item) => {
+        const unlocked = !item.tip_off_at || new Date(item.tip_off_at).getTime() > now
+        return !item.is_complete && !!item.home_team_id && !!item.away_team_id && unlocked
       })
+
+      const cards: Array<{
+        id: string
+        eyebrow: string
+        title: string
+        detail: string
+        accent: string
+        border: string
+        background: string
+        meta?: string
+        score: number
+      }> = []
+
+      const unpickedSeries = activeSeries.filter((item) => !safePicks.some((pick) => pick.series_id === item.id))
+      const bestOpenWindow = unpickedSeries
+        .map((item) => {
+          const homeAbbr = item.home_team?.abbreviation ?? item.home_team_id ?? ''
+          const awayAbbr = item.away_team?.abbreviation ?? item.away_team_id ?? ''
+          const homeHighImpact = (injuriesByTeam.get(homeAbbr) ?? []).filter((injury) => injury.impact === 'high')
+          const awayHighImpact = (injuriesByTeam.get(awayAbbr) ?? []).filter((injury) => injury.impact === 'high')
+          const strongerSide = homeHighImpact.length >= awayHighImpact.length ? { team: homeAbbr, injuries: homeHighImpact, opponent: awayAbbr } : { team: awayAbbr, injuries: awayHighImpact, opponent: homeAbbr }
+
+          return {
+            series: item,
+            strongerSide,
+            impact: strongerSide.injuries.length,
+          }
+        })
+        .sort((left, right) => right.impact - left.impact)[0]
+
+      if (bestOpenWindow) {
+        const { series: item, strongerSide, impact } = bestOpenWindow
+        cards.push({
+          id: `open-${item.id}`,
+          eyebrow: 'Janela de ataque',
+          title: `${strongerSide.opponent} ganha ângulo antes do lock`,
+          detail: impact > 0
+            ? `${strongerSide.team} carrega ${impact} alerta${impact !== 1 ? 's' : ''} alto${impact !== 1 ? 's' : ''}. Essa série ainda está aberta para leitura e pick.`
+            : `A série ${item.home_team?.abbreviation ?? item.home_team_id} x ${item.away_team?.abbreviation ?? item.away_team_id} segue aberta e pode ser usada para atacar antes do fechamento.`,
+          accent: 'var(--nba-gold)',
+          border: 'rgba(200,150,60,0.22)',
+          background: 'rgba(200,150,60,0.08)',
+          meta: item.tip_off_at ? `Fecha em ${formatShortDateTime(item.tip_off_at)}` : 'Ainda sem horário oficial',
+          score: impact > 0 ? 6 + impact : 4,
+        })
+      }
+
+      const riskyPickedSeries = activeSeries
+        .map((item) => {
+          const pick = safePicks.find((entry) => entry.series_id === item.id)
+          if (!pick) return null
+
+          const pickedTeam = item.home_team_id === pick.winner_id ? item.home_team : item.away_team_id === pick.winner_id ? item.away_team : null
+          const pickedAbbr = pickedTeam?.abbreviation ?? pick.winner_id
+          const pickedInjuries = (injuriesByTeam.get(pickedAbbr) ?? []).filter((injury) => injury.impact === 'high')
+          if (pickedInjuries.length === 0) return null
+
+          return { series: item, pick, pickedTeam, pickedInjuries }
+        })
+        .filter((value): value is NonNullable<typeof value> => !!value)
+        .sort((left, right) => right.pickedInjuries.length - left.pickedInjuries.length)[0]
+
+      if (riskyPickedSeries) {
+        cards.push({
+          id: `risk-${riskyPickedSeries.series.id}`,
+          eyebrow: 'Risco da sua cartela',
+          title: `${riskyPickedSeries.pickedTeam?.abbreviation ?? riskyPickedSeries.pick.winner_id} está sob pressão`,
+          detail: `${riskyPickedSeries.pickedInjuries[0].player_name} lidera o alerta do lado que você escolheu nesta série. Vale monitorar o noticiário e o lock.`,
+          accent: '#ff8a65',
+          border: 'rgba(255,138,101,0.22)',
+          background: 'rgba(255,138,101,0.08)',
+          meta: riskyPickedSeries.series.tip_off_at ? `Série ainda aberta até ${formatShortDateTime(riskyPickedSeries.series.tip_off_at)}` : 'Sem lock oficial no feed',
+          score: 8 + riskyPickedSeries.pickedInjuries.length,
+        })
+      }
+
+      const urgentUnpicked = unpickedSeries
+        .filter((item) => item.tip_off_at)
+        .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]
+
+      if (urgentUnpicked) {
+        cards.push({
+          id: `urgent-${urgentUnpicked.id}`,
+          eyebrow: 'Palpite pendente',
+          title: `${urgentUnpicked.home_team?.abbreviation ?? urgentUnpicked.home_team_id} x ${urgentUnpicked.away_team?.abbreviation ?? urgentUnpicked.away_team_id} ainda está sem lado`,
+          detail: 'Essa é a próxima série da sua cartela que ainda não recebeu leitura fechada. Se ela estiver no seu radar, vale resolver antes de esfriar.',
+          accent: 'var(--nba-east)',
+          border: 'rgba(74,144,217,0.22)',
+          background: 'rgba(74,144,217,0.08)',
+          meta: `Lock estimado em ${formatShortDateTime(urgentUnpicked.tip_off_at)}`,
+          score: 7,
+        })
+      }
+
+      return cards
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 3)
+        .map(({ score, ...item }) => item)
+    } catch (advantageError) {
+      console.error('[analysis] advantage insights crashed', advantageError)
+      return []
     }
-
-    const riskyPickedSeries = activeSeries
-      .map((item) => {
-        const pick = picks.find((entry) => entry.series_id === item.id)
-        if (!pick) return null
-
-        const pickedTeam = item.home_team_id === pick.winner_id ? item.home_team : item.away_team_id === pick.winner_id ? item.away_team : null
-        const pickedAbbr = pickedTeam?.abbreviation ?? pick.winner_id
-        const pickedInjuries = (injuriesByTeam.get(pickedAbbr) ?? []).filter((injury) => injury.impact === 'high')
-        if (pickedInjuries.length === 0) return null
-
-        return { series: item, pick, pickedTeam, pickedInjuries }
-      })
-      .filter((value): value is NonNullable<typeof value> => !!value)
-      .sort((left, right) => right.pickedInjuries.length - left.pickedInjuries.length)[0]
-
-    if (riskyPickedSeries) {
-      cards.push({
-        id: `risk-${riskyPickedSeries.series.id}`,
-        eyebrow: 'Risco da sua cartela',
-        title: `${riskyPickedSeries.pickedTeam?.abbreviation ?? riskyPickedSeries.pick.winner_id} está sob pressão`,
-        detail: `${riskyPickedSeries.pickedInjuries[0].player_name} lidera o alerta do lado que você escolheu nesta série. Vale monitorar o noticiário e o lock.`,
-        accent: '#ff8a65',
-        border: 'rgba(255,138,101,0.22)',
-        background: 'rgba(255,138,101,0.08)',
-        meta: riskyPickedSeries.series.tip_off_at ? `Série ainda aberta até ${formatShortDateTime(riskyPickedSeries.series.tip_off_at)}` : 'Sem lock oficial no feed',
-        score: 8 + riskyPickedSeries.pickedInjuries.length,
-      })
-    }
-
-    const urgentUnpicked = unpickedSeries
-      .filter((item) => item.tip_off_at)
-      .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]
-
-    if (urgentUnpicked) {
-      cards.push({
-        id: `urgent-${urgentUnpicked.id}`,
-        eyebrow: 'Palpite pendente',
-        title: `${urgentUnpicked.home_team?.abbreviation ?? urgentUnpicked.home_team_id} x ${urgentUnpicked.away_team?.abbreviation ?? urgentUnpicked.away_team_id} ainda está sem lado`,
-        detail: 'Essa é a próxima série da sua cartela que ainda não recebeu leitura fechada. Se ela estiver no seu radar, vale resolver antes de esfriar.',
-        accent: 'var(--nba-east)',
-        border: 'rgba(74,144,217,0.22)',
-        background: 'rgba(74,144,217,0.08)',
-        meta: `Lock estimado em ${formatShortDateTime(urgentUnpicked.tip_off_at)}`,
-        score: 7,
-      })
-    }
-
-    return cards
-      .sort((left, right) => right.score - left.score)
-      .slice(0, 3)
-      .map(({ score, ...item }) => item)
-  }, [injuriesToShow, participantId, picks, series])
+  }, [injuries, injuriesToShow, participantId, safePicks, safeSeries])
 
   try {
     const relevantTeamNames = new Set(
-      upcomingGames.flatMap((game) => [
+      safeUpcomingGames.flatMap((game) => [
         normalizeName(game.home_team?.name),
         normalizeName(game.away_team?.name),
       ]).filter(Boolean)
@@ -1766,8 +1776,8 @@ export function Analysis() {
     return (
       <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
         <AnalysisHero
-          nextGamesCount={upcomingGames.length}
-          recentResultsCount={recentCompletedGames.length}
+          nextGamesCount={safeUpcomingGames.length}
+          recentResultsCount={safeRecentCompletedGames.length}
           oddsReady={providers.odds.available && oddsToShow.length > 0}
           newsReady={providers.news.available && newsToShow.length > 0}
           injuriesCount={injuriesToShow.length}
@@ -1776,7 +1786,7 @@ export function Analysis() {
 
         <AnalysisSectionBoundary title="Resumo editorial">
           <AnalysisEditorialDeck
-            upcomingGames={upcomingGames}
+            upcomingGames={safeUpcomingGames}
             odds={oddsToShow}
             news={newsToShow}
             injuries={injuriesToShow}
@@ -1785,7 +1795,7 @@ export function Analysis() {
 
         <AnalysisSectionBoundary title="Onde a rodada pesa">
           <AnalysisPressureDeck
-            upcomingGames={upcomingGames}
+            upcomingGames={safeUpcomingGames}
             odds={oddsToShow}
             news={newsToShow}
             injuries={injuriesToShow}
@@ -1803,10 +1813,10 @@ export function Analysis() {
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
           <div className="flex flex-col gap-4 min-w-0">
             <AnalysisSectionBoundary title="Próximos confrontos">
-              <NextGamesCard games={upcomingGames} />
+              <NextGamesCard games={safeUpcomingGames} />
             </AnalysisSectionBoundary>
             <AnalysisSectionBoundary title="Resultados recentes">
-              <RecentResultsCard games={recentCompletedGames} />
+              <RecentResultsCard games={safeRecentCompletedGames} />
             </AnalysisSectionBoundary>
             <AnalysisSectionBoundary title="Odds dos confrontos">
               <OddsCard odds={oddsToShow} loading={loading} reason={oddsReason} unfiltered={oddsUnfiltered} teamStylesByName={teamStylesByName} />
