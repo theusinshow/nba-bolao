@@ -864,13 +864,15 @@ function TeamMark({
 
   return (
     <span
-      className="min-w-0"
+      className="min-w-0 w-full"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: isRight ? 'flex-end' : 'flex-start',
-        gap: 8,
+        gap: 6,
         minWidth: 0,
+        width: '100%',
+        maxWidth: '100%',
         opacity: dimmed ? 0.4 : 1,
         flexDirection: isRight ? 'row-reverse' : 'row',
         flex: '1 1 0',
@@ -886,9 +888,9 @@ function TeamMark({
         className="font-condensed font-bold"
         style={{
           color,
-          fontSize: '1.02rem',
+          fontSize: 'clamp(0.9rem, 3vw, 1.02rem)',
           lineHeight: 1,
-          minWidth: 32,
+          minWidth: 28,
           textAlign: isRight ? 'right' : 'left',
         }}
       >
@@ -916,13 +918,9 @@ function TeamShowcase({
 
   return (
     <div
-      className="gap-3 sm:gap-[10px]"
+      className="grid gap-3 rounded-[14px] p-3 sm:gap-[10px] sm:rounded-2xl sm:p-4"
       style={{
         minWidth: 0,
-        display: 'grid',
-        gap: 10,
-        padding: '14px 16px',
-        borderRadius: 16,
         background: injury ? 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(231,76,60,0.06))' : 'rgba(255,255,255,0.035)',
         border: `1px solid ${injury ? 'rgba(231,76,60,0.18)' : 'rgba(200,150,60,0.10)'}`,
         opacity: dimmed ? 0.52 : 1,
@@ -954,7 +952,8 @@ function TeamShowcase({
             src={getTeamLogoUrl(abbr)}
             alt={abbr}
             onError={(e) => (e.currentTarget.style.display = 'none')}
-            style={{ width: 30, height: 30, objectFit: 'contain', filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}
+            className="h-7 w-7 object-contain sm:h-[30px] sm:w-[30px]"
+            style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}
           />
         </div>
 
@@ -963,7 +962,7 @@ function TeamShowcase({
             className="font-condensed font-bold"
             style={{
               color,
-              fontSize: '1.48rem',
+              fontSize: 'clamp(1.16rem, 5vw, 1.48rem)',
               lineHeight: 0.95,
               letterSpacing: '0.03em',
             }}
@@ -1130,18 +1129,17 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
       <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
 
       <div
+        className="rounded-2xl p-[14px] sm:p-[18px]"
         style={{
           marginBottom: 16,
-          padding: '18px 18px',
-          borderRadius: 18,
           background: 'linear-gradient(135deg, rgba(12,12,18,0.56), rgba(74,144,217,0.08))',
           border: '1px solid rgba(200,150,60,0.18)',
         }}
       >
-        <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.14rem', lineHeight: 1, letterSpacing: '0.04em' }}>
+        <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: 'clamp(1rem, 4.3vw, 1.14rem)', lineHeight: 1, letterSpacing: '0.04em' }}>
           Radar da chave
         </div>
-        <div style={{ color: 'var(--nba-text)', fontSize: '0.95rem', marginTop: 10, lineHeight: 1.5, maxWidth: 760 }}>
+        <div style={{ color: 'var(--nba-text)', fontSize: 'clamp(0.88rem, 3.5vw, 0.95rem)', marginTop: 10, lineHeight: 1.5, maxWidth: 760 }}>
           {sectionHeadline}
         </div>
       </div>
@@ -1178,22 +1176,27 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
               return (
                 <div
                   key={g.id}
-                  className="flex flex-wrap items-center sm:flex-nowrap"
-                  style={{ gap: 10, padding: '12px 14px', borderRadius: 12, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}
+                  className="grid gap-3 rounded-[14px] p-3 sm:flex sm:flex-nowrap sm:items-center sm:gap-[10px] sm:rounded-xl sm:px-[14px] sm:py-3"
+                  style={{ background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}
                 >
-                  <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
-                  <span className="font-condensed order-3 w-full text-left sm:order-none sm:w-auto" style={{ flex: '0 0 auto', textAlign: 'center', fontSize: '0.82rem', color: 'var(--nba-text-muted)', letterSpacing: '0.08em' }}>
-                    {isLive ? '●' : formatBrtTime(g.tip_off_at)}
-                  </span>
-                  <TeamMark abbr={g.away_team?.abbreviation ?? g.away_team_id} color={awayColor} align="right" />
-                  <span style={{
-                    fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-                    background: isLive ? 'rgba(46,204,113,0.18)' : 'rgba(200,150,60,0.12)',
-                    color: isLive ? '#2ecc71' : 'var(--nba-gold)',
-                    border: `1px solid ${isLive ? 'rgba(46,204,113,0.3)' : 'rgba(200,150,60,0.2)'}`,
-                  }}>
-                    {isLive ? 'AO VIVO' : `J${g.game_number}`}
-                  </span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:min-w-0 sm:flex-1 sm:items-center sm:gap-[10px]">
+                    <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
+                    <div className="grid justify-items-center gap-1 px-1">
+                      <span className="font-condensed" style={{ textAlign: 'center', fontSize: '0.82rem', color: isLive ? '#2ecc71' : 'var(--nba-text-muted)', letterSpacing: '0.08em', lineHeight: 1 }}>
+                        {isLive ? '● agora' : formatBrtTime(g.tip_off_at)}
+                      </span>
+                      <span style={{
+                        fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 999, flexShrink: 0,
+                        background: isLive ? 'rgba(46,204,113,0.18)' : 'rgba(200,150,60,0.12)',
+                        color: isLive ? '#2ecc71' : 'var(--nba-gold)',
+                        border: `1px solid ${isLive ? 'rgba(46,204,113,0.3)' : 'rgba(200,150,60,0.2)'}`,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {isLive ? 'AO VIVO' : `J${g.game_number}`}
+                      </span>
+                    </div>
+                    <TeamMark abbr={g.away_team?.abbreviation ?? g.away_team_id} color={awayColor} align="right" />
+                  </div>
                 </div>
               )
             })}
@@ -1249,12 +1252,8 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                     return (
                       <div
                         key={s.id}
-                        className="gap-3 sm:gap-[14px]"
+                        className="grid gap-3 rounded-2xl p-3 sm:gap-[14px] sm:rounded-[18px] sm:p-[18px]"
                         style={{
-                          display: 'grid',
-                          gap: 14,
-                          padding: '18px',
-                          borderRadius: 18,
                           background: hasTodayGame
                             ? 'linear-gradient(135deg, rgba(46,204,113,0.10), rgba(12,12,18,0.44))'
                             : s.is_complete
@@ -1272,7 +1271,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
                         }}
                       >
-                        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" style={{ alignItems: 'stretch', gap: 14 }}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-[14px]" style={{ alignItems: 'stretch' }}>
                           <TeamShowcase
                             abbr={homeAbbr}
                             color={homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor}
@@ -1280,7 +1279,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             injury={!s.is_complete ? homeInjury : undefined}
                           />
 
-                          <div className="order-first sm:order-none" style={{ display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 8, minWidth: 0 }}>
+                          <div className="order-first grid min-w-0 content-center justify-items-center gap-2 rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3 sm:order-none sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0" style={{ minWidth: 0 }}>
                             <span
                               className="font-condensed font-bold"
                               style={{
@@ -1299,7 +1298,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             >
                               {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'VS'}
                             </span>
-                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', textAlign: 'center', lineHeight: 1.25 }}>
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', textAlign: 'center', lineHeight: 1.25 }}>
                               {s.is_complete ? 'série fechada' : hasTodayGame ? 'abertura hoje' : inProgress ? 'série ativa' : 'aguardando'}
                             </span>
                             {s.is_complete ? (
@@ -1331,24 +1330,21 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                         </div>
 
                         <div
+                          className="grid gap-[5px] rounded-[14px] px-3 py-[10px] sm:px-[14px] sm:py-3"
                           style={{
-                            display: 'grid',
-                            gap: 5,
-                            padding: '12px 14px',
-                            borderRadius: 14,
                             background: 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))',
                             border: '1px solid rgba(255,255,255,0.06)',
                           }}
                         >
-                          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem', lineHeight: 1.1 }}>
+                          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: 'clamp(0.92rem, 4vw, 1rem)', lineHeight: 1.1 }}>
                             {headline.title}
                           </div>
-                          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                          <div style={{ color: 'var(--nba-text-muted)', fontSize: 'clamp(0.76rem, 3.4vw, 0.8rem)', lineHeight: 1.45 }}>
                             {headline.detail}
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between" style={{ gap: 10 }}>
                           <span
                             style={{
                               display: 'inline-flex',
