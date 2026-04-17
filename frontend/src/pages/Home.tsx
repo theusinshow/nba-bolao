@@ -125,6 +125,17 @@ function LastNightRecap({
   highlightsLoading: boolean
   highlightsAvailable: boolean
 }) {
+  function buildPlayerOfNight(highlight: GameHighlightItem | undefined) {
+    if (!highlight) return null
+    const candidates = [
+      highlight.leaders.points ? { ...highlight.leaders.points, tag: 'PTS' } : null,
+      highlight.leaders.rebounds ? { ...highlight.leaders.rebounds, tag: 'REB' } : null,
+      highlight.leaders.assists ? { ...highlight.leaders.assists, tag: 'AST' } : null,
+    ].filter((item): item is NonNullable<typeof item> => !!item)
+
+    return candidates.sort((left, right) => right.value - left.value)[0] ?? null
+  }
+
   const sourceGames = games.map((game) => ({
     nbaGameId: game.nba_game_id ?? null,
     home: game.home_team?.abbreviation ?? game.home_team_id,
@@ -262,6 +273,28 @@ function LastNightRecap({
                     {highlightsByGameId[game.nbaGameId].headline && (
                       <div style={{ color: 'var(--nba-text)', fontSize: '0.72rem', lineHeight: 1.35, fontWeight: 600 }}>
                         {highlightsByGameId[game.nbaGameId].headline}
+                      </div>
+                    )}
+
+                    {buildPlayerOfNight(highlightsByGameId[game.nbaGameId]) && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          padding: '6px 8px',
+                          borderRadius: 8,
+                          background: 'rgba(200,150,60,0.08)',
+                          border: '1px solid rgba(200,150,60,0.12)',
+                        }}
+                      >
+                        <span style={{ color: 'var(--nba-gold)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em' }}>
+                          JOGADOR DA NOITE
+                        </span>
+                        <span style={{ color: 'var(--nba-text)', fontSize: '0.68rem', minWidth: 0, flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {buildPlayerOfNight(highlightsByGameId[game.nbaGameId])!.player_name} ({buildPlayerOfNight(highlightsByGameId[game.nbaGameId])!.tag} {buildPlayerOfNight(highlightsByGameId[game.nbaGameId])!.value})
+                        </span>
                       </div>
                     )}
 
@@ -1629,6 +1662,91 @@ function HomeQuickDeck({ vertical = false }: { vertical?: boolean }) {
   )
 }
 
+function ExecutiveSummaryStrip({
+  items,
+}: {
+  items: Array<{ label: string; title: string; detail: string; tone: string }>
+}) {
+  return (
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.06) 50%, rgba(200,150,60,0.06) 100%)',
+        borderRadius: 12,
+      }}
+    >
+      <CardTitle icon={<Sparkles size={14} />}>Resumo do Dia</CardTitle>
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+function AdvantageInsightsCard({
+  items,
+}: {
+  items: Array<{ label: string; title: string; detail: string; tone: string }>
+}) {
+  return (
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      className="card-hover"
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(224,92,58,0.06) 48%, rgba(200,150,60,0.05) 100%)',
+        borderRadius: 12,
+      }}
+    >
+      <CardTitle icon={<Target size={14} />}>Onde Você Pode Ganhar</CardTitle>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '11px 12px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 5 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '0.96rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
@@ -1683,6 +1801,87 @@ export function Home({ participantId }: Props) {
   const readySeries = series.filter(isSeriesReadyForPick)
   const readySeriesIds = new Set(readySeries.map((item) => item.id))
   const pickedSeries = picks.filter((pick) => readySeriesIds.has(pick.series_id)).length
+  const unpickedReadySeries = readySeries.filter((item) => !picks.some((pick) => pick.series_id === item.id))
+  const pressureSeries = series.find((item) => {
+    if (item.is_complete) return false
+    const homeAlert = homeInjuries.find((injury) => injury.team === item.home_team_id && injury.impact === 'high')
+    const awayAlert = homeInjuries.find((injury) => injury.team === item.away_team_id && injury.impact === 'high')
+    return homeAlert || awayAlert
+  })
+  const trackedUpcomingSeries = series.find((item) =>
+    !item.is_complete && upcomingGames.some((game) => game.series_id === item.id && game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey)
+  )
+  const directHunter = myEntry && myEntry.rank > 1 ? ranking[myEntry.rank - 2] : null
+  const executiveItems = [
+    {
+      label: 'Ação imediata',
+      title: unpickedReadySeries.length > 0
+        ? `${unpickedReadySeries.length} série${unpickedReadySeries.length !== 1 ? 's' : ''} sem pick`
+        : 'Cartela sob controle',
+      detail: unpickedReadySeries.length > 0
+        ? 'Fechar essas séries primeiro mantém você vivo antes do próximo lock.'
+        : 'Sem urgência estrutural agora; dá para acompanhar o dia com calma.',
+      tone: unpickedReadySeries.length > 0 ? 'var(--nba-gold)' : 'var(--nba-success)',
+    },
+    {
+      label: 'Rodada real',
+      title: liveGamesCount > 0
+        ? `${liveGamesCount} jogo${liveGamesCount !== 1 ? 's' : ''} ao vivo`
+        : todayGamesCount > 0
+        ? `${todayGamesCount} confronto${todayGamesCount !== 1 ? 's' : ''} hoje`
+        : 'Agenda leve agora',
+      detail: trackedUpcomingSeries
+        ? `${trackedUpcomingSeries.home_team?.abbreviation ?? trackedUpcomingSeries.home_team_id} x ${trackedUpcomingSeries.away_team?.abbreviation ?? trackedUpcomingSeries.away_team_id} puxa a chave hoje.`
+        : 'A próxima mexida da chave oficial entra no radar assim que o calendário apertar.',
+      tone: liveGamesCount > 0 ? 'var(--nba-success)' : 'var(--nba-east)',
+    },
+    {
+      label: 'Disputa do bolão',
+      title: directHunter && myEntry
+        ? `${Math.max(directHunter.total_points - myEntry.total_points, 0)} pts para encostar`
+        : myEntry?.rank === 1
+        ? 'Você dita o ritmo'
+        : 'Ranking em formação',
+      detail: directHunter
+        ? `${directHunter.participant_name.split(' ')[0]} é sua referência imediata na corrida.`
+        : myEntry?.rank === 1
+        ? 'A missão agora é defender a dianteira nas próximas séries.'
+        : 'Os primeiros fechamentos vão separar melhor o pelotão.',
+      tone: directHunter ? 'var(--nba-east)' : 'var(--nba-gold)',
+    },
+  ]
+  const advantageItems = [
+    {
+      label: 'Janela de ganho',
+      title: pressureSeries
+        ? `${pressureSeries.home_team?.abbreviation ?? pressureSeries.home_team_id} x ${pressureSeries.away_team?.abbreviation ?? pressureSeries.away_team_id} ficou sensível`
+        : 'Sem confronto pressionado agora',
+      detail: pressureSeries
+        ? 'Lesão relevante e contexto de elenco deixam essa série com mais chance de abrir vantagem para quem ler melhor.'
+        : 'Quando houver baixa importante numa série aberta, ela aparece aqui como oportunidade.',
+      tone: pressureSeries ? '#ff8c72' : 'var(--nba-text)',
+    },
+    {
+      label: 'Leitura da sua cartela',
+      title: pickedSeries < readySeries.length
+        ? `Você ainda pode atacar ${readySeries.length - pickedSeries} série${readySeries.length - pickedSeries !== 1 ? 's' : ''}`
+        : 'Sua base de picks já está montada',
+      detail: pickedSeries < readySeries.length
+        ? 'As séries prontas sem pick ainda podem virar diferencial antes da galera reagir.'
+        : 'Agora o foco passa a ser acompanhar lesões, locks e o movimento da classificação.',
+      tone: pickedSeries < readySeries.length ? 'var(--nba-gold)' : 'var(--nba-success)',
+    },
+    {
+      label: 'Próximo risco',
+      title: unpickedReadySeries[0]?.tip_off_at
+        ? `Lock em ${formatShortDateTime(unpickedReadySeries[0].tip_off_at)}`
+        : 'Sem lock pressionando agora',
+      detail: unpickedReadySeries[0]
+        ? `${unpickedReadySeries[0].home_team?.abbreviation ?? unpickedReadySeries[0].home_team_id} x ${unpickedReadySeries[0].away_team?.abbreviation ?? unpickedReadySeries[0].away_team_id} é o primeiro ponto de atenção da sua cartela.`
+        : 'Sua janela imediata está limpa neste momento.',
+      tone: unpickedReadySeries[0] ? 'var(--nba-gold)' : 'var(--nba-text)',
+    },
+  ]
   const canStartTour = !rankLoading && !seriesLoading && show
 
   return (
@@ -1725,10 +1924,12 @@ export function Home({ participantId }: Props) {
             alertSeriesCount={alertSeriesCount}
           />
         </motion.div>
+        <ExecutiveSummaryStrip items={executiveItems} />
         <motion.div variants={fadeInItem}><NewsAlertPill /></motion.div>
         <motion.div className="xl:hidden" variants={fadeUpItem}><HomeQuickDeck /></motion.div>
 
         <div className="xl:hidden flex flex-col gap-4">
+          <AdvantageInsightsCard items={advantageItems} />
           <MyPicksCard series={series} picks={picks} injuries={homeInjuries} />
           <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
           <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
@@ -1746,6 +1947,7 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
+        <AdvantageInsightsCard items={advantageItems} />
         <MyPicksCard series={series} picks={picks} injuries={homeInjuries} />
         <RecentSeriesCard series={series} />
       </div>

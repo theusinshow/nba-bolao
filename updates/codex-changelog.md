@@ -4683,6 +4683,17 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 
+## 2026-04-17 02:02:10
+
+### Home / Performance - resumo executivo, insights personalizados e pós-jogo mais forte
+- adicionei `ExecutiveSummaryStrip` em `frontend/src/pages/Home.tsx` para abrir a Home com um resumo mais direto sobre ação imediata, rodada real e disputa do bolão;
+- criei `AdvantageInsightsCard` em `frontend/src/pages/Home.tsx` para cruzar sua cartela com lesões, séries prontas e próximos locks;
+- reforcei o carrossel `Jogos da última noite` em `frontend/src/pages/Home.tsx` com destaque de `jogador da noite` quando os stats do jogo estiverem disponíveis;
+- configurei `manualChunks` em `frontend/vite.config.ts` para separar Recharts, D3, Motion, Supabase e ícones em bundles dedicados, reduzindo o peso do chunk principal.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 01:34:22
 
 ### Home / Jogos / Ranking - nova camada de inteligência operacional
