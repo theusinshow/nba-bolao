@@ -1,5 +1,47 @@
 # Codex Changelog
 
+## 2026-04-17 - Feature: Fechamento do roadmap com alertas, pulso social, badges e admin premium
+
+### Contexto
+A fase principal do produto já estava muito polida, então esta rodada fechou as últimas pontas do roadmap sem poluir a navegação. O foco foi adicionar leitura inteligente e contexto operacional em lugares específicos do app.
+
+### `frontend/src/pages/Home.tsx`
+- Adicionados os blocos `Alertas Inteligentes` e `Pulso do Bolão`
+- A Home agora resume:
+  - próximo lock relevante
+  - série com lesão/pressão mais sensível
+  - rival direto imediato
+  - nome quente do ranking
+  - líder atual
+  - líder em cravadas
+- O objetivo foi manter a Home executiva, mas com mais leitura dinâmica do bolão
+
+### `frontend/src/pages/Games.tsx`
+- Novo bloco `Radar inteligente` logo abaixo do hero
+- A tela de jogos agora destaca:
+  - próximo aperto de lock
+  - janela de ação mais importante
+  - último movimento relevante da cartela
+- Isso reforça a tomada de decisão sem poluir a grade principal de jogos
+
+### `frontend/src/pages/Profile.tsx`
+- Novo card `DNA da Cartela`
+- Entraram badges heurísticos como:
+  - `Cravador`
+  - `Leitura quente`
+  - `Em ascensão`
+  - `Fiel à leitura`
+  - `Sem queda cara`
+- O perfil ficou mais autoral sem virar gamificação exagerada
+
+### `frontend/src/pages/Admin.tsx`
+- Novo bloco `Pulso do Comissário`
+- O painel admin agora abre com leitura rápida de:
+  - estado operacional
+  - última movimentação
+  - modo atual + saúde do backend
+- Isso ajuda a transformar o Admin em um painel mais premium e menos só operacional
+
 ## 2026-04-16 - Feature: Jogos Reais da Home ganham destaques individuais via Ball Don't Lie
 
 ### Contexto
@@ -4679,6 +4721,27 @@ USING (
 - transformei cada lado do confronto em um painel próprio com logo ampliado, sigla maior e contexto de lesão embutido no bloco do time;
 - aumentei tipografia, espaçamento, cartões-resumo e CTA do playoff real para a seção ficar mais editorial e menos “apertada”;
 - mantive a lógica existente de radar da chave, impacto do confronto e estados de série, mas com distribuição visual mais premium.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 03:49:25
+
+### Home, Perfil e Comparar - nova camada de leitura executiva
+- adicionei `Pós-Rodada` em `frontend/src/pages/Home.tsx` para resumir quem mais subiu, qual jogo puxou a noite e quem lidera em cravadas;
+- enriqueci `frontend/src/pages/Profile.tsx` com o bloco `Perfil Competitivo`, destacando momento recente, melhor trecho e principal zona de atenção da campanha;
+- complementei `frontend/src/pages/Compare.tsx` com `Corredor crítico do duelo`, apontando a divergência mais sensível ainda em aberto entre os dois brackets.
+
+### Validação
+- `npm --prefix frontend run build`
+## 2026-04-17 03:18:40
+
+### Análise - sua vantagem na rodada
+- adicionei a seção `Sua vantagem na rodada` em `frontend/src/pages/Analysis.tsx` para personalizar a leitura da rodada com base na cartela do participante;
+- o novo bloco cruza séries abertas, palpites já feitos e lesões relevantes para destacar:
+  - janela de ataque antes do lock;
+  - risco real na cartela quando o lado escolhido entra pressionado;
+  - próximo palpite pendente com urgência operacional;
+- mantive esse insight dentro da aba `Análise`, evitando poluir a Home com mais contexto competitivo.
 
 ### Validação
 - `npm --prefix frontend run build`

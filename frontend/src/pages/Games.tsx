@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Layers3, Users, X, Shuffle } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Layers3, Users, X, Shuffle, BellRing } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -2486,6 +2486,54 @@ function ViewModeToggle({
   )
 }
 
+function SmartAlertsPanel({
+  items,
+}: {
+  items: Array<{ label: string; title: string; detail: string; tone: string }>
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.07) 45%, rgba(200,150,60,0.08) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+        borderRadius: 12,
+        padding: '1rem 1rem 1.05rem',
+        marginBottom: 14,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <BellRing size={14} style={{ color: 'var(--nba-gold)' }} />
+        <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.86rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Radar inteligente
+        </span>
+      </div>
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 md:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 10,
+              background: 'rgba(12,12,18,0.36)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Games({ participantId }: Props) {
@@ -2584,6 +2632,40 @@ export function Games({ participantId }: Props) {
     () => autoPickDayGroups.find((g) => g.key === selectedDay) ?? null,
     [autoPickDayGroups, selectedDay]
   )
+  const firstUrgentSeries = seriesGroups.find((group) => matchesSeriesFilter(group, 'urgent')) ?? null
+  const firstPendingSeries = seriesGroups.find((group) => matchesSeriesFilter(group, 'pending')) ?? null
+  const smartAlertItems = [
+    {
+      label: 'Próximo aperto',
+      title: firstUrgentSeries
+        ? `${firstUrgentSeries.teamA?.abbreviation ?? 'TBD'} x ${firstUrgentSeries.teamB?.abbreviation ?? 'TBD'}`
+        : 'Nenhum lock crítico agora',
+      detail: firstUrgentSeries
+        ? `${firstUrgentSeries.openGames} jogo${firstUrgentSeries.openGames !== 1 ? 's' : ''} aberto${firstUrgentSeries.openGames !== 1 ? 's' : ''} e janela curta para reagir.`
+        : 'Os próximos locks ainda dão espaço para organizar a cartela com calma.',
+      tone: firstUrgentSeries ? 'var(--nba-danger)' : 'var(--nba-success)',
+    },
+    {
+      label: 'Janela de ação',
+      title: firstPendingSeries
+        ? `${Math.max(firstPendingSeries.effectiveGamesCount - firstPendingSeries.pickedGames, 0)} pick${Math.max(firstPendingSeries.effectiveGamesCount - firstPendingSeries.pickedGames, 0) !== 1 ? 's' : ''} faltando`
+        : 'Tudo salvo por enquanto',
+      detail: firstPendingSeries
+        ? `${firstPendingSeries.teamA?.abbreviation ?? 'TBD'} x ${firstPendingSeries.teamB?.abbreviation ?? 'TBD'} ainda pede leitura ativa da série.`
+        : 'Sua grade atual não tem lacunas urgentes no recorte visível.',
+      tone: firstPendingSeries ? 'var(--nba-gold)' : 'var(--nba-text)',
+    },
+    {
+      label: 'Último movimento',
+      title: pickFocusEntries[0]
+        ? `${pickFocusEntries[0].team?.abbreviation ?? 'Pick'} em J${pickFocusEntries[0].game.game_number}`
+        : 'Sem histórico recente',
+      detail: pickFocusEntries[0]
+        ? `${pickFocusEntries[0].statusLabel} no confronto ${pickFocusEntries[0].game.team_a?.abbreviation ?? 'TBD'} x ${pickFocusEntries[0].game.team_b?.abbreviation ?? 'TBD'}.`
+        : 'Assim que você salvar ou revisar um jogo, ele aparece aqui como trilha rápida.',
+      tone: pickFocusEntries[0]?.statusColor ?? 'var(--nba-text)',
+    },
+  ]
 
   useEffect(() => {
     if (filteredSeriesGroups.length === 0) {
@@ -2846,6 +2928,7 @@ export function Games({ participantId }: Props) {
         seriesGroups={seriesGroups}
         recentlySavedGameId={recentlySavedGameId}
       />
+      <SmartAlertsPanel items={smartAlertItems} />
 
       <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
 

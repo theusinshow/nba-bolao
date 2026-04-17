@@ -573,6 +573,15 @@ export function Admin({ participantId }: Props) {
 
   const stats = overview?.stats
   const inconsistencies = overview?.inconsistencies
+  const totalIssues = inconsistencies
+    ? inconsistencies.duplicate_names +
+      inconsistencies.duplicate_emails +
+      inconsistencies.participants_without_access +
+      inconsistencies.allowed_without_participant +
+      inconsistencies.orphaned_series_picks +
+      inconsistencies.orphaned_game_picks
+    : 0
+  const latestActivity = activity[0] ?? null
 
   return (
     <>
@@ -1079,6 +1088,48 @@ export function Admin({ participantId }: Props) {
 
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 12 }}>
           Último health check: {formatTimestamp(healthTimestamp)}
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...card,
+          marginBottom: 16,
+          background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.07) 42%, rgba(200,150,60,0.08) 100%)',
+          borderRadius: 12,
+        }}
+      >
+        <SectionTitle icon={<BellRing size={14} />}>Pulso do Comissário</SectionTitle>
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 md:grid-cols-3">
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Estado operacional</div>
+            <div className="font-condensed font-bold" style={{ color: totalIssues === 0 ? 'var(--nba-success)' : 'var(--nba-danger)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {totalIssues === 0 ? 'Operação limpa' : `${totalIssues} ponto${totalIssues !== 1 ? 's' : ''} pedem atenção`}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {totalIssues === 0 ? 'Sem inconsistência estrutural aberta no recorte atual do sistema.' : 'Vale revisar acesso, órfãos e duplicidades antes da próxima janela crítica.'}
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Última movimentação</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-east)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {latestActivity ? latestActivity.label : 'Sem atividade registrada'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {latestActivity ? `Atualizado em ${formatTimestamp(latestActivity.timestamp)}.` : 'Ações administrativas recentes vão aparecer aqui como trilha operacional.'}
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Modo de comando</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {stats ? `${modeLabel(stats.mode)} · ${stats.participants} no jogo` : 'Aguardando overview'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {healthTimestamp ? `Backend saudável desde ${formatTimestamp(healthTimestamp)}.` : 'Sem health check recente; vale conferir antes de uma ação crítica.'}
+            </div>
+          </div>
         </div>
       </section>
 

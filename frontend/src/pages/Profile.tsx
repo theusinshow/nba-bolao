@@ -39,6 +39,40 @@ const RANK_COLOR: Record<number, string> = {
   3: '#cd7f32',
 }
 
+function buildProfileBadges({
+  overallPct,
+  rankSwing,
+  favoriteTeams,
+  expensiveMisses,
+  entry,
+}: {
+  overallPct: number
+  rankSwing: number
+  favoriteTeams: Array<{ teamId: string; count: number }>
+  expensiveMisses: Array<{ matchup: string }>
+  entry: NonNullable<ReturnType<typeof useParticipantProfile>['entry']>
+}) {
+  const badges: Array<{ label: string; detail: string; tone: string }> = []
+
+  if (entry.cravadas >= 3) {
+    badges.push({ label: 'Cravador', detail: `${entry.cravadas} cravadas já sustentam a campanha.`, tone: 'var(--nba-gold)' })
+  }
+  if (overallPct >= 65) {
+    badges.push({ label: 'Leitura quente', detail: `${overallPct}% de acerto nas séries até aqui.`, tone: 'var(--nba-success)' })
+  }
+  if (rankSwing > 0) {
+    badges.push({ label: 'Em ascensão', detail: `Ganhou ${rankSwing} posição${rankSwing !== 1 ? 'ões' : ''} no recorte recente.`, tone: 'var(--nba-east)' })
+  }
+  if (favoriteTeams[0]?.count >= 3) {
+    badges.push({ label: 'Fiel à leitura', detail: `Voltou ${favoriteTeams[0].count} vezes para a mesma franquia.`, tone: '#ff8c72' })
+  }
+  if (expensiveMisses.length === 0 && entry.series_total > 0) {
+    badges.push({ label: 'Sem queda cara', detail: 'Ainda não tomou uma paulada relevante de pontuação.', tone: 'var(--nba-text)' })
+  }
+
+  return badges.slice(0, 4)
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export function Profile() {
@@ -85,6 +119,18 @@ export function Profile() {
     entry.series_total > 0
       ? Math.round((entry.series_correct / entry.series_total) * 100)
       : 0
+  const bestRound = [...roundStats].sort((left, right) => right.pct - left.pct || right.correct - left.correct)[0]
+  const weakestRound = [...roundStats]
+    .filter((round) => round.total > 0)
+    .sort((left, right) => left.pct - right.pct || left.correct - right.correct)[0]
+  const rankSwing = entry.prev_rank != null ? entry.prev_rank - entry.rank : 0
+  const profileBadges = buildProfileBadges({
+    overallPct,
+    rankSwing,
+    favoriteTeams,
+    expensiveMisses,
+    entry,
+  })
 
   const avatarColor = nameToColor(entry.participant_name)
   const rankColor = RANK_COLOR[entry.rank] ?? 'var(--nba-gold)'
@@ -225,6 +271,90 @@ export function Profile() {
           ))}
         </div>
       </div>
+
+      <div
+        style={{
+          background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 44%, rgba(200,150,60,0.08) 100%)',
+          border: '1px solid rgba(200,150,60,0.18)',
+          borderRadius: 12,
+          padding: '1.1rem 1.25rem',
+          marginBottom: 14,
+        }}
+      >
+        <h2
+          className="title"
+          style={{ fontSize: '1.05rem', color: 'var(--nba-gold)', marginBottom: 14 }}
+        >
+          Perfil Competitivo
+        </h2>
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 md:grid-cols-3">
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Momento</div>
+            <div className="font-condensed font-bold" style={{ color: rankSwing > 0 ? 'var(--nba-success)' : rankSwing < 0 ? 'var(--nba-danger)' : 'var(--nba-gold)', fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {rankSwing > 0 ? `Subiu ${rankSwing} posição${rankSwing !== 1 ? 'ões' : ''}` : rankSwing < 0 ? `Caiu ${Math.abs(rankSwing)} posição${Math.abs(rankSwing) !== 1 ? 'ões' : ''}` : 'Posição estável'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {entry.prev_rank != null ? `Saiu de ${entry.prev_rank}º para ${entry.rank}º no recorte mais recente do ranking.` : 'Primeira leitura registrada nesta corrida.'}
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Melhor trecho</div>
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-success)', fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {bestRound?.total ? `${bestRound.label} em ${bestRound.pct}%` : 'Sem rodada forte ainda'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {bestRound?.total ? `${bestRound.correct}/${bestRound.total} acertos com ${bestRound.cravadas} cravada${bestRound.cravadas !== 1 ? 's' : ''} marcaram o pico da cartela.` : 'O participante ainda não fechou rodada suficiente para destacar um pico.'}
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Zona de atenção</div>
+            <div className="font-condensed font-bold" style={{ color: weakestRound?.total ? 'var(--nba-danger)' : 'var(--nba-text)', fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {weakestRound?.total ? `${weakestRound.label} segurou a pontuação` : 'Sem ponto fraco claro'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {weakestRound?.total ? `${weakestRound.correct}/${weakestRound.total} acertos foi o trecho menos eficiente da campanha até aqui.` : expensiveMisses[0] ? `${expensiveMisses[0].matchup} foi a queda mais cara da cartela até agora.` : 'A campanha ainda não gerou um padrão de fraqueza forte.'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {profileBadges.length > 0 && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 50%, rgba(200,150,60,0.08) 100%)',
+            border: '1px solid rgba(200,150,60,0.18)',
+            borderRadius: 12,
+            padding: '1.1rem 1.25rem',
+            marginBottom: 14,
+          }}
+        >
+          <h2 className="title" style={{ fontSize: '1.05rem', color: 'var(--nba-gold)', marginBottom: 14 }}>
+            DNA da Cartela
+          </h2>
+          <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 md:grid-cols-2">
+            {profileBadges.map((badge) => (
+              <div
+                key={badge.label}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: 'rgba(12,12,18,0.34)',
+                  border: '1px solid rgba(200,150,60,0.14)',
+                }}
+              >
+                <div className="font-condensed font-bold" style={{ color: badge.tone, fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+                  {badge.label}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+                  {badge.detail}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Round accuracy chart */}
       {chartData.length > 0 && (

@@ -1704,6 +1704,138 @@ function ExecutiveSummaryStrip({
   )
 }
 
+function PostRoundSummaryStrip({
+  items,
+}: {
+  items: Array<{ label: string; title: string; detail: string; tone: string }>
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(224,92,58,0.08) 45%, rgba(200,150,60,0.08) 100%)',
+        borderRadius: 12,
+      }}
+    >
+      <CardTitle icon={<Trophy size={14} />}>Pós-Rodada</CardTitle>
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+function SmartAlertsStrip({
+  items,
+}: {
+  items: Array<{ label: string; title: string; detail: string; tone: string }>
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.07) 38%, rgba(231,76,60,0.08) 100%)',
+        borderRadius: 12,
+      }}
+    >
+      <CardTitle icon={<AlertTriangle size={14} />}>Alertas Inteligentes</CardTitle>
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+function SocialPulseStrip({
+  items,
+}: {
+  items: Array<{ label: string; title: string; detail: string; tone: string }>
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      style={{
+        ...card,
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(155,89,182,0.08) 48%, rgba(200,150,60,0.08) 100%)',
+        borderRadius: 12,
+      }}
+    >
+      <CardTitle icon={<Users size={14} />}>Pulso do Bolão</CardTitle>
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.14)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+            <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {item.title}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+              {item.detail}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
 function AdvantageInsightsCard({
   items,
 }: {
@@ -1812,6 +1944,12 @@ export function Home({ participantId }: Props) {
     !item.is_complete && upcomingGames.some((game) => game.series_id === item.id && game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey)
   )
   const directHunter = myEntry && myEntry.rank > 1 ? ranking[myEntry.rank - 2] : null
+  const socialClimber = ranking
+    .filter((entry) => entry.prev_rank != null && entry.prev_rank > entry.rank)
+    .sort((left, right) => (right.prev_rank! - right.rank) - (left.prev_rank! - left.rank))[0] ?? null
+  const cravadaLeader = ranking
+    .slice()
+    .sort((left, right) => right.cravadas - left.cravadas || right.total_points - left.total_points)[0] ?? null
   const executiveItems = [
     {
       label: 'Ação imediata',
@@ -1882,7 +2020,120 @@ export function Home({ participantId }: Props) {
       tone: unpickedReadySeries[0] ? 'var(--nba-gold)' : 'var(--nba-text)',
     },
   ]
+  const smartAlertItems = [
+    {
+      label: 'Próximo lock',
+      title: unpickedReadySeries[0]
+        ? `${unpickedReadySeries[0].home_team?.abbreviation ?? unpickedReadySeries[0].home_team_id} x ${unpickedReadySeries[0].away_team?.abbreviation ?? unpickedReadySeries[0].away_team_id}`
+        : 'Nenhum lock crítico agora',
+      detail: unpickedReadySeries[0]
+        ? `A série trava em ${formatShortDateTime(unpickedReadySeries[0].tip_off_at)} e ainda está aberta na sua cartela.`
+        : 'Sua janela imediata está limpa; o foco agora é acompanhar a rodada.',
+      tone: unpickedReadySeries[0] ? 'var(--nba-gold)' : 'var(--nba-success)',
+    },
+    {
+      label: 'Lesão no radar',
+      title: pressureSeries
+        ? `${pressureSeries.home_team?.abbreviation ?? pressureSeries.home_team_id} x ${pressureSeries.away_team?.abbreviation ?? pressureSeries.away_team_id} segue sensível`
+        : 'Sem série pressionada agora',
+      detail: pressureSeries
+        ? 'Baixa relevante ou status incerto mantêm essa chave com risco extra para leitura de mercado.'
+        : 'Quando uma ausência pesada mexer na rodada, ela aparece aqui primeiro.',
+      tone: pressureSeries ? '#ff8c72' : 'var(--nba-text)',
+    },
+    {
+      label: 'Rival direto',
+      title: directHunter && myEntry
+        ? `${Math.max(directHunter.total_points - myEntry.total_points, 0)} pts separam você de ${directHunter.participant_name.split(' ')[0]}`
+        : myEntry?.rank === 1
+        ? 'Você controla a corrida'
+        : 'Pelotão ainda embolado',
+      detail: directHunter
+        ? 'Qualquer cravada nas próximas séries pode virar a ordem entre vocês rapidamente.'
+        : myEntry?.rank === 1
+        ? 'A pressão agora é defender a liderança nas próximas leituras.'
+        : 'Os primeiros fechamentos tendem a clarear quem entra de vez na perseguição.',
+      tone: directHunter ? 'var(--nba-east)' : 'var(--nba-gold)',
+    },
+  ]
+  const socialPulseItems = [
+    {
+      label: 'Nome quente',
+      title: socialClimber
+        ? `${socialClimber.participant_name.split(' ')[0]} subiu ${socialClimber.prev_rank! - socialClimber.rank} posição${socialClimber.prev_rank! - socialClimber.rank !== 1 ? 'ões' : ''}`
+        : 'Sem disparada no momento',
+      detail: socialClimber
+        ? `A última rodada empurrou ${socialClimber.participant_name.split(' ')[0]} para ${socialClimber.rank}º e ligou o radar da perseguição.`
+        : 'O ranking segue comprimido, sem uma arrancada grande nesta janela.',
+      tone: socialClimber ? 'var(--nba-success)' : 'var(--nba-text)',
+    },
+    {
+      label: 'Chefe da mesa',
+      title: leader ? `${leader.participant_name.split(' ')[0]} dita o ritmo` : 'Liderança em aberto',
+      detail: leader
+        ? `${leader.total_points} pontos totais e ${leader.cravadas} cravada${leader.cravadas !== 1 ? 's' : ''} sustentam a ponta.`
+        : 'O topo ainda não reuniu dados suficientes para um recorte forte.',
+      tone: 'var(--nba-gold)',
+    },
+    {
+      label: 'Rei das cravadas',
+      title: cravadaLeader ? `${cravadaLeader.participant_name.split(' ')[0]} lidera com ${cravadaLeader.cravadas}` : 'Cravadas zeradas',
+      detail: cravadaLeader
+        ? 'As cravadas continuam sendo o maior atalho para mexer de verdade na tabela.'
+        : 'Quando as séries forem fechando, esse termômetro começa a separar o pelotão.',
+      tone: 'var(--nba-east)',
+    },
+  ]
   const canStartTour = !rankLoading && !seriesLoading && show
+  const postRoundItems = useMemo(() => {
+    const biggestRise = ranking
+      .filter((entry) => entry.prev_rank != null && entry.prev_rank > entry.rank)
+      .sort((left, right) => (right.prev_rank! - right.rank) - (left.prev_rank! - left.rank))[0]
+
+    const topCravadas = ranking
+      .slice()
+      .sort((left, right) => right.cravadas - left.cravadas || right.total_points - left.total_points)[0]
+
+    const gameOfNight = recentCompletedGames[0]
+    const gameHighlight = gameOfNight?.nba_game_id ? highlightsByGameId[gameOfNight.nba_game_id] : undefined
+    const homeAbbr = gameOfNight?.home_team?.abbreviation ?? gameOfNight?.home_team_id
+    const awayAbbr = gameOfNight?.away_team?.abbreviation ?? gameOfNight?.away_team_id
+
+    return [
+      {
+        label: 'Maior subida',
+        title: biggestRise
+          ? `${biggestRise.participant_name.split(' ')[0]} subiu ${biggestRise.prev_rank! - biggestRise.rank} posição${biggestRise.prev_rank! - biggestRise.rank !== 1 ? 'ões' : ''}`
+          : 'Pelotão ainda estável',
+        detail: biggestRise
+          ? `A rodada empurrou ${biggestRise.participant_name.split(' ')[0]} para ${biggestRise.rank}º com ${biggestRise.total_points} pontos totais.`
+          : 'Ainda não houve movimento grande o bastante para quebrar o bloco principal do ranking.',
+        tone: biggestRise ? 'var(--nba-success)' : 'var(--nba-text)',
+      },
+      {
+        label: 'Jogo que mais pesou',
+        title: gameOfNight
+          ? `${homeAbbr} x ${awayAbbr} virou o centro da noite`
+          : 'Sem jogo fechado ainda',
+        detail: gameHighlight?.headline
+          ? gameHighlight.headline
+          : gameOfNight
+          ? `O último resultado real fechado foi ${gameOfNight.home_score ?? 0} x ${gameOfNight.away_score ?? 0}, mantendo essa série como referência do momento.`
+          : 'Assim que os primeiros placares fecharem, a Home resume aqui o duelo que mais mexeu na rodada.',
+        tone: gameOfNight ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+      },
+      {
+        label: 'Cravada em destaque',
+        title: topCravadas
+          ? `${topCravadas.participant_name.split(' ')[0]} lidera em cravadas`
+          : 'Sem referência de cravadas',
+        detail: topCravadas
+          ? `${topCravadas.cravadas} cravada${topCravadas.cravadas !== 1 ? 's' : ''} e ${topCravadas.total_points} pontos no total pressionam o resto do bolão.`
+          : 'A disputa ainda está muito cedo para separar quem está lendo melhor as séries.',
+        tone: topCravadas ? 'var(--nba-east)' : 'var(--nba-text)',
+      },
+    ]
+  }, [highlightsByGameId, ranking, recentCompletedGames])
 
   return (
     <motion.div
@@ -1925,6 +2176,9 @@ export function Home({ participantId }: Props) {
           />
         </motion.div>
         <ExecutiveSummaryStrip items={executiveItems} />
+        <PostRoundSummaryStrip items={postRoundItems} />
+        <SmartAlertsStrip items={smartAlertItems} />
+        <SocialPulseStrip items={socialPulseItems} />
         <motion.div variants={fadeInItem}><NewsAlertPill /></motion.div>
         <motion.div className="xl:hidden" variants={fadeUpItem}><HomeQuickDeck /></motion.div>
 

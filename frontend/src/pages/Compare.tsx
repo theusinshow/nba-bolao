@@ -1105,6 +1105,73 @@ function DivergenceSpotlightCard({
   )
 }
 
+function CriticalLaneCard({
+  insights,
+  p1,
+  p2,
+}: {
+  insights: CompareInsights
+  p1: Participant
+  p2: Participant
+}) {
+  const hottest = insights.highlights[0]
+  if (!hottest) return null
+
+  const leftHotter = hottest.leftEdge > hottest.rightEdge
+  const rightHotter = hottest.rightEdge > hottest.leftEdge
+  const hotterName = leftHotter ? p1.name.split(' ')[0] : rightHotter ? p2.name.split(' ')[0] : 'Os dois'
+  const hotterChoice = leftHotter ? hottest.leftChoice : rightHotter ? hottest.rightChoice : `${hottest.leftChoice} / ${hottest.rightChoice}`
+  const swing = Math.max(hottest.leftEdge, hottest.rightEdge)
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(224,92,58,0.08) 42%, rgba(74,144,217,0.08) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+        borderRadius: 10,
+        padding: '1rem',
+        marginBottom: 20,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div>
+          <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1rem', marginBottom: 4 }}>
+            Corredor crítico do duelo
+          </div>
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+            O ponto mais sensível que ainda pode reescrever a diferença entre os dois brackets.
+          </p>
+        </div>
+        <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>{hottest.context}</span>
+      </div>
+
+      <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-[1.2fr_0.8fr]">
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Ponto quente</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+            {hottest.label}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+            {hotterName} está mais exposto aqui com <strong style={{ color: 'var(--nba-gold)' }}>{hotterChoice}</strong>. Se essa leitura bater, o swing direto é de até <strong style={{ color: 'var(--nba-gold)' }}>{swing} ponto{swing === 1 ? '' : 's'}</strong>.
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Leitura rápida</div>
+          <div className="font-condensed font-bold" style={{ color: swing >= 4 ? 'var(--nba-danger)' : 'var(--nba-gold)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
+            {swing >= 4 ? 'Virada com bastante peso' : 'Diferença controlável'}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+            {leftHotter || rightHotter
+              ? `${hotterName} depende mais desse ponto do bracket para sustentar ou virar o duelo.`
+              : 'Os dois estão igualmente expostos aqui, então esse corredor tende a equilibrar o confronto.'}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Stat({ label, value, color, note }: { label: string; value: string; color: string; note: string }) {
   return (
     <div
@@ -1924,6 +1991,8 @@ export function Compare() {
             pts1={pts1} pts2={pts2}
             insights={insights}
           />
+
+          <CriticalLaneCard insights={insights} p1={p1} p2={p2} />
 
           {/* Histórico de acertos jogo a jogo */}
           {(leftGamePicks.length > 0 || rightGamePicks.length > 0) && (

@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { Activity, ChevronRight, Clock, Database, HeartPulse, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
+import { useAuth } from '../hooks/useAuth'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { type AnalysisNewsItem, type AnalysisOddsItem, useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
+import { useSeries } from '../hooks/useSeries'
 import { TEAMS_2025, getTeamLogoUrl } from '../data/teams2025'
 import { BRT_TIMEZONE } from '../utils/constants'
 import { fadeUpItem, premiumTween, pressMotion, softStaggerContainer } from '../lib/motion'
@@ -1377,6 +1379,90 @@ function AnalysisPressureDeck({
   )
 }
 
+function AnalysisAdvantageDeck({
+  loading,
+  participantReady,
+  insights,
+}: {
+  loading: boolean
+  participantReady: boolean
+  insights: Array<{
+    id: string
+    eyebrow: string
+    title: string
+    detail: string
+    accent: string
+    border: string
+    background: string
+    meta?: string
+  }>
+}) {
+  if (!participantReady) return null
+
+  return (
+    <motion.section
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -2, boxShadow: '0 18px 34px rgba(0,0,0,0.16)' }}
+      transition={premiumTween}
+      style={{ ...card, display: 'grid', gap: 12, borderRadius: 12 }}
+    >
+      <CardTitle icon={<TrendingUp size={14} />}>Sua vantagem na rodada</CardTitle>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+        Uma leitura do que está abrindo oportunidade ou risco para a sua cartela agora.
+      </div>
+
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '18px 0 8px' }}>
+          <LoadingBasketball size={40} />
+        </div>
+      ) : insights.length > 0 ? (
+        <div style={{ display: 'grid', gap: 10 }} className="lg:grid-cols-3">
+          {insights.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                padding: '14px 15px',
+                borderRadius: 12,
+                background: item.background,
+                border: `1px solid ${item.border}`,
+                display: 'grid',
+                gap: 8,
+                minWidth: 0,
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {item.eyebrow}
+              </div>
+              <div className="font-condensed font-bold" style={{ color: item.accent, fontSize: '1.02rem', lineHeight: 1.05 }}>
+                {item.title}
+              </div>
+              <div style={{ color: 'var(--nba-text)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                {item.detail}
+              </div>
+              {item.meta && (
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                  {item.meta}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ padding: '14px 15px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.16)', background: 'rgba(12,12,18,0.28)' }}>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', lineHeight: 1.05 }}>
+            Cartela estável neste momento
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', marginTop: 6, lineHeight: 1.45 }}>
+            Sem exposição crítica ou oportunidade clara na leitura atual da rodada.
+          </div>
+        </div>
+      )}
+    </motion.section>
+  )
+}
+
 function AnalysisActionsCard() {
   return (
     <motion.div
@@ -1419,8 +1505,11 @@ function AnalysisActionsCard() {
 
 export function Analysis() {
   const { games, upcomingGames, recentCompletedGames } = useGameFeed()
+  const { auth } = useAuth()
   const { loading, error, generatedAt, odds, news, providers } = useAnalysisInsights()
   const { loading: injuriesLoading, injuries, provider: injuriesProvider, error: injuriesError } = useInjuries()
+  const participantId = auth.status === 'authorized' ? auth.participantId : undefined
+  const { series, picks, loading: seriesLoading } = useSeries(participantId)
   const allFeedGames = games.length > 0 ? games : [...upcomingGames, ...recentCompletedGames]
 
   const relevantTeamNames = new Set(
@@ -1510,6 +1599,122 @@ export function Analysis() {
     ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
     ?? (injuries.length > 0 && injuriesToShow.length === 0 ? 'Nenhuma lesão relevante encontrada para os times ativos da rodada.' : undefined)
 
+  const advantageInsights = useMemo(() => {
+    if (!participantId) return []
+
+    const now = Date.now()
+    const injuriesByTeam = new Map<string, InjuryItem[]>()
+    injuriesToShow.forEach((item) => {
+      if (!item.team) return
+      const current = injuriesByTeam.get(item.team) ?? []
+      current.push(item)
+      injuriesByTeam.set(item.team, current)
+    })
+
+    const activeSeries = series.filter((item) => {
+      const unlocked = !item.tip_off_at || new Date(item.tip_off_at).getTime() > now
+      return !item.is_complete && !!item.home_team_id && !!item.away_team_id && unlocked
+    })
+
+    const cards: Array<{
+      id: string
+      eyebrow: string
+      title: string
+      detail: string
+      accent: string
+      border: string
+      background: string
+      meta?: string
+      score: number
+    }> = []
+
+    const unpickedSeries = activeSeries.filter((item) => !picks.some((pick) => pick.series_id === item.id))
+    const bestOpenWindow = unpickedSeries
+      .map((item) => {
+        const homeAbbr = item.home_team?.abbreviation ?? item.home_team_id ?? ''
+        const awayAbbr = item.away_team?.abbreviation ?? item.away_team_id ?? ''
+        const homeHighImpact = (injuriesByTeam.get(homeAbbr) ?? []).filter((injury) => injury.impact === 'high')
+        const awayHighImpact = (injuriesByTeam.get(awayAbbr) ?? []).filter((injury) => injury.impact === 'high')
+        const strongerSide = homeHighImpact.length >= awayHighImpact.length ? { team: homeAbbr, injuries: homeHighImpact, opponent: awayAbbr } : { team: awayAbbr, injuries: awayHighImpact, opponent: homeAbbr }
+
+        return {
+          series: item,
+          strongerSide,
+          impact: strongerSide.injuries.length,
+        }
+      })
+      .sort((left, right) => right.impact - left.impact)[0]
+
+    if (bestOpenWindow) {
+      const { series: item, strongerSide, impact } = bestOpenWindow
+      cards.push({
+        id: `open-${item.id}`,
+        eyebrow: 'Janela de ataque',
+        title: `${strongerSide.opponent} ganha ângulo antes do lock`,
+        detail: impact > 0
+          ? `${strongerSide.team} carrega ${impact} alerta${impact !== 1 ? 's' : ''} alto${impact !== 1 ? 's' : ''}. Essa série ainda está aberta para leitura e pick.`
+          : `A série ${item.home_team?.abbreviation ?? item.home_team_id} x ${item.away_team?.abbreviation ?? item.away_team_id} segue aberta e pode ser usada para atacar antes do fechamento.`,
+        accent: 'var(--nba-gold)',
+        border: 'rgba(200,150,60,0.22)',
+        background: 'rgba(200,150,60,0.08)',
+        meta: item.tip_off_at ? `Fecha em ${formatShortDateTime(item.tip_off_at)}` : 'Ainda sem horário oficial',
+        score: impact > 0 ? 6 + impact : 4,
+      })
+    }
+
+    const riskyPickedSeries = activeSeries
+      .map((item) => {
+        const pick = picks.find((entry) => entry.series_id === item.id)
+        if (!pick) return null
+
+        const pickedTeam = item.home_team_id === pick.winner_id ? item.home_team : item.away_team_id === pick.winner_id ? item.away_team : null
+        const pickedAbbr = pickedTeam?.abbreviation ?? pick.winner_id
+        const pickedInjuries = (injuriesByTeam.get(pickedAbbr) ?? []).filter((injury) => injury.impact === 'high')
+        if (pickedInjuries.length === 0) return null
+
+        return { series: item, pick, pickedTeam, pickedInjuries }
+      })
+      .filter((value): value is NonNullable<typeof value> => !!value)
+      .sort((left, right) => right.pickedInjuries.length - left.pickedInjuries.length)[0]
+
+    if (riskyPickedSeries) {
+      cards.push({
+        id: `risk-${riskyPickedSeries.series.id}`,
+        eyebrow: 'Risco da sua cartela',
+        title: `${riskyPickedSeries.pickedTeam?.abbreviation ?? riskyPickedSeries.pick.winner_id} está sob pressão`,
+        detail: `${riskyPickedSeries.pickedInjuries[0].player_name} lidera o alerta do lado que você escolheu nesta série. Vale monitorar o noticiário e o lock.`,
+        accent: '#ff8a65',
+        border: 'rgba(255,138,101,0.22)',
+        background: 'rgba(255,138,101,0.08)',
+        meta: riskyPickedSeries.series.tip_off_at ? `Série ainda aberta até ${formatShortDateTime(riskyPickedSeries.series.tip_off_at)}` : 'Sem lock oficial no feed',
+        score: 8 + riskyPickedSeries.pickedInjuries.length,
+      })
+    }
+
+    const urgentUnpicked = unpickedSeries
+      .filter((item) => item.tip_off_at)
+      .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]
+
+    if (urgentUnpicked) {
+      cards.push({
+        id: `urgent-${urgentUnpicked.id}`,
+        eyebrow: 'Palpite pendente',
+        title: `${urgentUnpicked.home_team?.abbreviation ?? urgentUnpicked.home_team_id} x ${urgentUnpicked.away_team?.abbreviation ?? urgentUnpicked.away_team_id} ainda está sem lado`,
+        detail: 'Essa é a próxima série da sua cartela que ainda não recebeu leitura fechada. Se ela estiver no seu radar, vale resolver antes de esfriar.',
+        accent: 'var(--nba-east)',
+        border: 'rgba(74,144,217,0.22)',
+        background: 'rgba(74,144,217,0.08)',
+        meta: `Lock estimado em ${formatShortDateTime(urgentUnpicked.tip_off_at)}`,
+        score: 7,
+      })
+    }
+
+    return cards
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 3)
+      .map(({ score, ...item }) => item)
+  }, [injuriesToShow, participantId, picks, series])
+
   return (
     <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
       <AnalysisHero
@@ -1533,6 +1738,12 @@ export function Analysis() {
         odds={oddsToShow}
         news={newsToShow}
         injuries={injuriesToShow}
+      />
+
+      <AnalysisAdvantageDeck
+        loading={seriesLoading || injuriesLoading}
+        participantReady={auth.status === 'authorized'}
+        insights={advantageInsights}
       />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
