@@ -5,6 +5,7 @@ const backendUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3001'
 export interface PostseasonRailExtraGame {
   id: string
   nba_game_id: number
+  series_id: string | null
   tip_off_at: string | null
   played: boolean
   game_state: 'scheduled' | 'live' | 'halftime' | 'final'
@@ -20,6 +21,7 @@ export interface PostseasonRailExtraGame {
   away_team_abbr: string
   game_number: number
   stage_label: string
+  round: number | null
   source: 'external'
 }
 

@@ -12,8 +12,20 @@ const ABBREV_MAP: Record<string, string> = {
   ATL: 'ATL', TOR: 'TOR', GS: 'GSW',
 }
 
+const ROUND_LABEL: Record<number, string> = {
+  1: 'R1',
+  2: 'R2',
+  3: 'CF',
+  4: 'Finals',
+}
+
 function mapAbbr(abbr: string): string {
   return ABBREV_MAP[abbr] ?? abbr
+}
+
+function buildPairKey(teamA: string | null | undefined, teamB: string | null | undefined): string | null {
+  if (!teamA || !teamB) return null
+  return [teamA, teamB].sort().join('::')
 }
 
 function isFinalStatus(status: string): boolean {
@@ -74,18 +86,39 @@ function getDefaultSeason(): number {
 router.get('/rail', async (_req, res) => {
   try {
     const season = Number(process.env.BALLDONTLIE_SEASON ?? getDefaultSeason())
-    const [providerGames, localGamesResult] = await Promise.all([
+    const [providerGames, localGamesResult, localSeriesResult] = await Promise.all([
       fetchPostseasonGames(season),
-      supabase.from('games').select('nba_game_id'),
+      supabase.from('games').select('id, nba_game_id, series_id, game_number, home_team_id, away_team_id, tip_off_at'),
+      supabase.from('series').select('id, round, home_team_id, away_team_id'),
     ])
 
     if (localGamesResult.error) throw localGamesResult.error
+    if (localSeriesResult.error) throw localSeriesResult.error
+
+    const localGames = localGamesResult.data ?? []
+    const localSeries = localSeriesResult.data ?? []
 
     const localIds = new Set(
-      (localGamesResult.data ?? [])
+      localGames
         .map((game) => game.nba_game_id)
         .filter((value): value is number => typeof value === 'number')
     )
+
+    const seriesByPair = new Map(
+      localSeries
+        .map((series) => {
+          const pairKey = buildPairKey(series.home_team_id, series.away_team_id)
+          return pairKey ? [pairKey, series] as const : null
+        })
+        .filter((entry): entry is readonly [string, (typeof localSeries)[number]] => !!entry)
+    )
+
+    const localGamesBySeriesId = new Map<string, typeof localGames>()
+    for (const game of localGames) {
+      const bucket = localGamesBySeriesId.get(game.series_id) ?? []
+      bucket.push(game)
+      localGamesBySeriesId.set(game.series_id, bucket)
+    }
 
     const unmatchedGames = providerGames
       .filter((game) => !localIds.has(game.id))
@@ -93,6 +126,8 @@ router.get('/rail', async (_req, res) => {
       .map((game) => {
         const homeTeamId = mapAbbr(game.home_team.abbreviation)
         const awayTeamId = mapAbbr(game.visitor_team.abbreviation)
+        const pairKey = buildPairKey(homeTeamId, awayTeamId)
+        const matchedSeries = pairKey ? seriesByPair.get(pairKey) ?? null : null
         const played = isFinalStatus(game.status)
         const winnerId = played
           ? (
@@ -103,11 +138,12 @@ router.get('/rail', async (_req, res) => {
                 : null
             )
           : null
+        const tipOffAt = parseTipOffAt(game.date, game.status, game.datetime)
 
         return {
           id: `external-${game.id}`,
           nba_game_id: game.id,
-          tip_off_at: parseTipOffAt(game.date, game.status, game.datetime),
+          tip_off_at: tipOffAt,
           played,
           game_state: inferGameState(game.status, game.period),
           status_text: game.status.trim(),
@@ -120,11 +156,66 @@ router.get('/rail', async (_req, res) => {
           away_team_id: awayTeamId,
           home_team_abbr: homeTeamId,
           away_team_abbr: awayTeamId,
+          series_id: matchedSeries?.id ?? null,
+          round: matchedSeries?.round ?? null,
           game_number: 0,
-          stage_label: 'Play-In',
+          stage_label: matchedSeries ? ROUND_LABEL[matchedSeries.round] ?? 'NBA' : 'Play-In',
           source: 'external',
         }
       })
+
+    const unmatchedSeriesGames = unmatchedGames.filter((game) => !!game.series_id)
+    const unmatchedBySeriesId = new Map<string, typeof unmatchedSeriesGames>()
+    for (const game of unmatchedSeriesGames) {
+      if (!game.series_id) continue
+      const bucket = unmatchedBySeriesId.get(game.series_id) ?? []
+      bucket.push(game)
+      unmatchedBySeriesId.set(game.series_id, bucket)
+    }
+
+    for (const [seriesId, extraGames] of unmatchedBySeriesId.entries()) {
+      const localSeriesGames = [...(localGamesBySeriesId.get(seriesId) ?? [])]
+      const orderedLocalGames = localSeriesGames.sort((left, right) => {
+        const leftTime = left.tip_off_at ? new Date(left.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+        const rightTime = right.tip_off_at ? new Date(right.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+        if (leftTime !== rightTime) return leftTime - rightTime
+        return left.game_number - right.game_number
+      })
+      const orderedExtraGames = [...extraGames].sort((left, right) => {
+        const leftTime = left.tip_off_at ? new Date(left.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+        const rightTime = right.tip_off_at ? new Date(right.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+        return leftTime - rightTime
+      })
+
+      const merged = [
+        ...orderedLocalGames.map((game) => ({
+          kind: 'local' as const,
+          tipOffAt: game.tip_off_at,
+          gameNumber: game.game_number,
+        })),
+        ...orderedExtraGames.map((game) => ({
+          kind: 'extra' as const,
+          tipOffAt: game.tip_off_at,
+          ref: game,
+        })),
+      ].sort((left, right) => {
+        const leftTime = left.tipOffAt ? new Date(left.tipOffAt).getTime() : Number.MAX_SAFE_INTEGER
+        const rightTime = right.tipOffAt ? new Date(right.tipOffAt).getTime() : Number.MAX_SAFE_INTEGER
+        if (leftTime !== rightTime) return leftTime - rightTime
+        if (left.kind === right.kind) return 0
+        return left.kind === 'local' ? -1 : 1
+      })
+
+      let lastGameNumber = 0
+      for (const entry of merged) {
+        if (entry.kind === 'local') {
+          lastGameNumber = Math.max(lastGameNumber, entry.gameNumber)
+          continue
+        }
+        lastGameNumber += 1
+        entry.ref.game_number = lastGameNumber
+      }
+    }
 
     res.json({
       ok: true,

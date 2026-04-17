@@ -1,5 +1,16 @@
 # Codex Changelog
 
+## 2026-04-17 13:42:00
+
+### Home - rail de jogos com leitura editorial de pressão da série
+- refinei a linguagem contextual da nova faixa de `Jogos` em `frontend/src/pages/Home.tsx` para sair de rótulos frios e passar a comunicar o momento da série de forma mais útil;
+- os cards agora podem mostrar leituras como `série começa hoje`, `entra empatada 2-2`, `vale fechamento para BOS`, `MIA tenta empatar` e `DEN abre match point`, dependendo do estado da série antes ou depois do jogo;
+- mantive o placar agregado da série no card, mas com uma camada editorial mais direta para leitura rápida da Home.
+- também separei o texto por estado do confronto, com frases próprias para `próximo`, `ao vivo` e `final`, evitando que a mesma mensagem apareça fora de contexto.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 - Feature: Centro operacional do Admin com preview real, trilha persistida e backups auditáveis
 
 ### Contexto
@@ -5043,6 +5054,40 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 ## 2026-04-17 00:51:51
+## 2026-04-17 13:31:00
+
+### Home - rail de jogos agora mostra o estado da série
+- enriqueci a nova faixa de `Jogos` em `frontend/src/pages/Home.tsx` para exibir não só o `Game X`, mas também como a série chega naquele confronto;
+- os cards agora mostram leituras como `série empatada 1-1`, `BOS lidera 2-1` ou `DEN fecha 4-2`, dependendo do estágio do confronto;
+- para jogos ao vivo e próximos, a rail mostra o placar agregado de entrada da série; para jogos finalizados, ela passa a mostrar o estado após o resultado daquele jogo;
+- também alinhei `frontend/src/hooks/usePostseasonRailExtras.ts` com os novos campos (`series_id` e `round`) usados para calcular esse contexto.
+
+### Validação
+- `npm --prefix frontend run build`
+- `npm --prefix backend run build`
+
+## 2026-04-17 13:18:00
+
+### Home - correção de classificação indevida como Play-In na rail
+- corrigi a rota `GET /games/rail` em `backend/src/routes/games.ts` para não marcar automaticamente como `Play-In` todo jogo extra de pós-temporada fora da base local;
+- a classificação agora cruza o par de times com as séries locais e reaproveita a rodada correta (`R1`, `R2`, `CF`, `Finals`) quando o confronto já pertence a uma chave do bolão;
+- também passei a inferir melhor o `game_number` desses jogos extras dentro da série, evitando cards com contexto errado na nova faixa de jogos da Home.
+
+### Validação
+- `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
+## 2026-04-17 13:05:00
+
+### Home - rail de jogos refinada para mobile
+- refinei a nova faixa horizontal de `Jogos` em `frontend/src/pages/Home.tsx` para funcionar melhor em telas estreitas, sem perder a estrutura inspirada na NBA.com;
+- os cards de dia e de jogo ficaram mais compactos no celular, com tipografia, logos, badges e espaçamentos ajustados para leitura mais limpa;
+- o cabeçalho da rail agora se reorganiza melhor no mobile, os chips viram uma linha horizontal navegável e a dica de interação ficou mais natural para toque;
+- também adicionei `scroll snap` leve no mobile e reduzi os fades laterais, deixando a navegação por arraste mais confortável.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 12:45:00
 
 ### Home - faixa de jogos agora também puxa play-in para a timeline

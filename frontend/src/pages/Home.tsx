@@ -145,6 +145,124 @@ function getRailStageLabel(game: HomeRailGame) {
   return ROUND_LABEL[round] ?? 'NBA'
 }
 
+function buildRailPairKey(teamA: string | null | undefined, teamB: string | null | undefined) {
+  if (!teamA || !teamB) return null
+  return [teamA, teamB].sort().join('::')
+}
+
+function getRailSeriesGroupKey(game: HomeRailGame) {
+  if ('series_id' in game && game.series_id) return `series:${game.series_id}`
+  const stageLabel = getRailStageLabel(game)
+  const pairKey = buildRailPairKey(game.home_team_id, game.away_team_id)
+  if (!pairKey) return null
+  return `${stageLabel}:${pairKey}`
+}
+
+function formatRailSeriesStanding(
+  homeWins: number,
+  awayWins: number,
+  homeAbbr: string,
+  awayAbbr: string,
+  phase: 'pre' | 'live' | 'post',
+  isClosed: boolean
+) {
+  const homeLeads = homeWins > awayWins
+  const leaderAbbr = homeLeads ? homeAbbr : awayAbbr
+  const trailingAbbr = homeLeads ? awayAbbr : homeAbbr
+  const leaderWins = homeLeads ? homeWins : awayWins
+  const trailingWins = homeLeads ? awayWins : homeWins
+
+  if (isClosed) return `${leaderAbbr} fecha ${leaderWins}-${trailingWins}`
+
+  if (homeWins === awayWins) {
+    if (homeWins === 0) {
+      if (phase === 'pre') return 'série começa hoje'
+      if (phase === 'live') return 'abertura de série ao vivo'
+      return 'série empatada 0-0'
+    }
+
+    if (phase === 'pre') return `entra empatada ${homeWins}-${awayWins}`
+    if (phase === 'live') return `ao vivo com empate ${homeWins}-${awayWins}`
+    return `série empatada ${homeWins}-${awayWins}`
+  }
+
+  if (phase === 'pre') {
+    if (leaderWins === 3) return `vale fechamento para ${leaderAbbr}`
+    if (leaderWins === trailingWins + 1) return `${trailingAbbr} tenta empatar`
+    if (leaderWins === 2 && trailingWins === 0) return `${leaderAbbr} tenta abrir 3-0`
+    return `${leaderAbbr} lidera ${leaderWins}-${trailingWins}`
+  }
+
+  if (phase === 'live') {
+    if (leaderWins === 3) return `${leaderAbbr} joga por fechamento`
+    if (leaderWins === trailingWins + 1) return `${trailingAbbr} busca empatar ao vivo`
+    if (leaderWins === 2 && trailingWins === 0) return `${leaderAbbr} tenta abrir 3-0 ao vivo`
+    return `${leaderAbbr} defende ${leaderWins}-${trailingWins}`
+  }
+
+  if (leaderWins === 3) return `${leaderAbbr} abre match point`
+  return `${leaderAbbr} lidera ${leaderWins}-${trailingWins}`
+}
+
+function buildRailSeriesStatusMap(
+  games: ReturnType<typeof useGameFeed>['games'],
+  extraGames: PostseasonRailExtraGame[]
+) {
+  const grouped = new Map<string, HomeRailGame[]>()
+  const allKnownGames: HomeRailGame[] = [...games, ...extraGames]
+
+  for (const game of allKnownGames) {
+    const key = getRailSeriesGroupKey(game)
+    if (!key) continue
+    const bucket = grouped.get(key) ?? []
+    bucket.push(game)
+    grouped.set(key, bucket)
+  }
+
+  const statusByGameId = new Map<string, { preLabel: string; liveLabel: string; postLabel: string }>()
+
+  for (const groupGames of grouped.values()) {
+    const orderedGames = [...groupGames].sort((left, right) => {
+      const leftTime = left.tip_off_at ? new Date(left.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+      const rightTime = right.tip_off_at ? new Date(right.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+      if (leftTime !== rightTime) return leftTime - rightTime
+      return (left.game_number ?? 0) - (right.game_number ?? 0)
+    })
+
+    let homeWins = 0
+    let awayWins = 0
+
+    for (const game of orderedGames) {
+      const stageLabel = getRailStageLabel(game)
+      const homeAbbr = getRailGameAbbr(game, 'home')
+      const awayAbbr = getRailGameAbbr(game, 'away')
+      const isPlayIn = stageLabel === 'Play-In'
+      const preLabel = isPlayIn ? 'eliminação única' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'pre', false)
+      const liveLabel = isPlayIn ? 'vaga em jogo ao vivo' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'live', false)
+
+      let nextHomeWins = homeWins
+      let nextAwayWins = awayWins
+
+      if (game.played) {
+        if (game.winner_id === game.home_team_id) nextHomeWins += 1
+        if (game.winner_id === game.away_team_id) nextAwayWins += 1
+      }
+
+      const postLabel = isPlayIn
+        ? game.played && game.winner_id
+          ? `${game.winner_id === game.home_team_id ? homeAbbr : awayAbbr} avançou`
+          : 'eliminação única'
+        : formatRailSeriesStanding(nextHomeWins, nextAwayWins, homeAbbr, awayAbbr, 'post', Math.max(nextHomeWins, nextAwayWins) >= 4)
+
+      statusByGameId.set(game.id, { preLabel, liveLabel, postLabel })
+      homeWins = nextHomeWins
+      awayWins = nextAwayWins
+    }
+  }
+
+  return statusByGameId
+}
+
 function buildHomeGamesRailEntries(
   completedGames: ReturnType<typeof useGameFeed>['recentCompletedGames'],
   liveGames: ReturnType<typeof useGameFeed>['liveGames'],
@@ -189,11 +307,13 @@ function buildHomeGamesRailEntries(
 }
 
 function LastNightRecap({
+  games,
   recentCompletedGames,
   liveGames,
   upcomingGames,
   loading,
 }: {
+  games: ReturnType<typeof useGameFeed>['games']
   recentCompletedGames: ReturnType<typeof useGameFeed>['recentCompletedGames']
   liveGames: ReturnType<typeof useGameFeed>['liveGames']
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
@@ -206,9 +326,14 @@ function LastNightRecap({
   const dragStartXRef = useRef(0)
   const dragStartScrollRef = useRef(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [isCompactRail, setIsCompactRail] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false))
   const sourceItems = useMemo(
     () => buildHomeGamesRailEntries(recentCompletedGames, liveGames, upcomingGames, extraGames),
     [recentCompletedGames, liveGames, upcomingGames, extraGames]
+  )
+  const seriesStatusByGameId = useMemo(
+    () => buildRailSeriesStatusMap(games, extraGames),
+    [games, extraGames]
   )
   const railGames = useMemo(
     () => sourceItems.flatMap((item) => (item.kind === 'game' && item.game ? [item.game] : [])),
@@ -229,6 +354,22 @@ function LastNightRecap({
     [railGames]
   )
   const countdown = useCountdown(nextRealGame?.tip_off_at)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const media = window.matchMedia('(max-width: 639px)')
+    const sync = () => setIsCompactRail(media.matches)
+    sync()
+
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', sync)
+      return () => media.removeEventListener('change', sync)
+    }
+
+    media.addListener(sync)
+    return () => media.removeListener(sync)
+  }, [])
 
   useEffect(() => {
     const node = railRef.current
@@ -308,8 +449,8 @@ function LastNightRecap({
       transition={premiumTween}
       style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 1rem', marginBottom: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: isCompactRail ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: isCompactRail ? 'wrap' : 'nowrap', gap: isCompactRail ? 8 : 10, padding: `0 ${isCompactRail ? '0.8rem' : '1rem'}`, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
             <Clock size={14} />
           </span>
@@ -318,7 +459,7 @@ function LastNightRecap({
           </h2>
         </div>
         {countdown && nextRealGame ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(200,150,60,0.12)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 6, padding: '3px 8px', fontSize: '0.72rem', color: 'var(--nba-gold)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(200,150,60,0.12)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 6, padding: isCompactRail ? '4px 7px' : '3px 8px', fontSize: isCompactRail ? '0.68rem' : '0.72rem', color: 'var(--nba-gold)', fontWeight: 600, whiteSpace: 'nowrap' }}>
             <Clock size={11} />
             Próximo {countdown}
           </span>
@@ -330,8 +471,8 @@ function LastNightRecap({
       </div>
 
       {!loading && sourceItems.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 1rem 0.55rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: isCompactRail ? 'stretch' : 'center', justifyContent: 'space-between', flexDirection: isCompactRail ? 'column' : 'row', gap: isCompactRail ? 8 : 10, padding: `0 ${isCompactRail ? '0.8rem' : '1rem'} 0.55rem` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: isCompactRail ? 'nowrap' : 'wrap', overflowX: isCompactRail ? 'auto' : 'visible', paddingBottom: isCompactRail ? 2 : 0, width: '100%', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {[
               { label: 'Encerrados', value: completedCount, color: 'var(--nba-text-muted)' },
               { label: 'Ao vivo', value: liveCount, color: '#2ecc71' },
@@ -348,13 +489,14 @@ function LastNightRecap({
                   background: `${item.color}18`,
                   border: `1px solid ${item.color}28`,
                   color: item.color,
-                  fontSize: '0.68rem',
+                  fontSize: isCompactRail ? '0.64rem' : '0.68rem',
                   fontWeight: 700,
                   letterSpacing: '0.05em',
+                  flexShrink: 0,
                 }}
               >
                 {item.label}
-                <span className="font-condensed font-bold" style={{ fontSize: '0.82rem', lineHeight: 1 }}>
+                <span className="font-condensed font-bold" style={{ fontSize: isCompactRail ? '0.76rem' : '0.82rem', lineHeight: 1 }}>
                   {item.value}
                 </span>
               </span>
@@ -416,8 +558,8 @@ function LastNightRecap({
         </div>
       ) : sourceItems.length > 0 ? (
         <div style={{ overflow: 'hidden', padding: '0 0 0.2rem', position: 'relative' }}>
-          <div style={{ padding: '0 1rem 0.35rem', color: 'var(--nba-text-muted)', fontSize: '0.68rem', letterSpacing: '0.04em' }}>
-            Arraste para navegar. A faixa roda lentamente sozinha e pausa durante a interação.
+          <div style={{ padding: `0 ${isCompactRail ? '0.8rem' : '1rem'} 0.35rem`, color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.63rem' : '0.68rem', letterSpacing: '0.04em' }}>
+            {isCompactRail ? 'Deslize para navegar. A faixa pausa quando você toca.' : 'Arraste para navegar. A faixa roda lentamente sozinha e pausa durante a interação.'}
           </div>
           <div
             aria-hidden="true"
@@ -426,7 +568,7 @@ function LastNightRecap({
               left: 0,
               top: 24,
               bottom: 0,
-              width: 36,
+              width: isCompactRail ? 18 : 36,
               background: 'linear-gradient(90deg, rgba(16,16,24,0.95), rgba(16,16,24,0))',
               pointerEvents: 'none',
               zIndex: 2,
@@ -439,7 +581,7 @@ function LastNightRecap({
               right: 0,
               top: 24,
               bottom: 0,
-              width: 36,
+              width: isCompactRail ? 18 : 36,
               background: 'linear-gradient(270deg, rgba(16,16,24,0.95), rgba(16,16,24,0))',
               pointerEvents: 'none',
               zIndex: 2,
@@ -459,11 +601,13 @@ function LastNightRecap({
               display: 'flex',
               gap: 0,
               overflowX: 'auto',
-              padding: '0 1rem 0.2rem',
+              padding: `0 ${isCompactRail ? '0.8rem' : '1rem'} 0.2rem`,
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               cursor: isDragging ? 'grabbing' : 'grab',
               userSelect: 'none',
+              scrollSnapType: isCompactRail ? 'x proximity' : undefined,
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             <div style={{ display: 'flex', width: 'max-content' }}>
@@ -473,9 +617,9 @@ function LastNightRecap({
                     <div
                       key={`${item.key}-${index}`}
                       style={{
-                        width: 72,
-                        minHeight: 116,
-                        padding: '12px 10px',
+                        width: isCompactRail ? 58 : 72,
+                        minHeight: isCompactRail ? 106 : 116,
+                        padding: isCompactRail ? '10px 8px' : '12px 10px',
                         borderTop: '1px solid rgba(200,150,60,0.12)',
                         borderBottom: '1px solid rgba(200,150,60,0.12)',
                         borderLeft: '1px solid rgba(200,150,60,0.12)',
@@ -484,12 +628,13 @@ function LastNightRecap({
                         alignContent: 'space-between',
                         justifyItems: 'center',
                         flexShrink: 0,
+                        scrollSnapAlign: isCompactRail ? 'start' : undefined,
                       }}
                     >
-                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.82rem', letterSpacing: '0.08em' }}>
+                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: isCompactRail ? '0.74rem' : '0.82rem', letterSpacing: '0.08em' }}>
                         {item.label}
                       </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', fontWeight: 600 }}>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.62rem' : '0.7rem', fontWeight: 600 }}>
                         {item.sublabel}
                       </span>
                     </div>
@@ -502,7 +647,7 @@ function LastNightRecap({
                 const awayAbbr = getRailGameAbbr(game, 'away')
                 const stageLabel = getRailStageLabel(game)
                 const gameContextLabel = game.game_number > 0 ? `${stageLabel} · Game ${game.game_number}` : stageLabel
-                const seriesGamesPlayed = 'series' in game ? game.series?.games_played : null
+                const seriesStatus = seriesStatusByGameId.get(game.id)
                 const homeWon = game.winner_id === game.home_team_id
                 const awayWon = game.winner_id === game.away_team_id
                 const badgeColor = statusMeta.state === 'live'
@@ -517,9 +662,9 @@ function LastNightRecap({
                   <div
                     key={`${item.key}-${index}`}
                     style={{
-                      width: statusMeta.isLive ? 194 : 182,
-                      minHeight: 116,
-                      padding: '10px 12px 10px',
+                      width: isCompactRail ? (statusMeta.isLive ? 172 : 162) : statusMeta.isLive ? 194 : 182,
+                      minHeight: isCompactRail ? 106 : 116,
+                      padding: isCompactRail ? '9px 10px 9px' : '10px 12px 10px',
                       borderTop: '1px solid rgba(200,150,60,0.12)',
                       borderBottom: '1px solid rgba(200,150,60,0.12)',
                       borderLeft: '1px solid rgba(200,150,60,0.12)',
@@ -530,21 +675,22 @@ function LastNightRecap({
                       gap: 7,
                       flexShrink: 0,
                       boxShadow: statusMeta.isLive ? 'inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 24px rgba(46,204,113,0.08)' : 'none',
+                      scrollSnapAlign: isCompactRail ? 'start' : undefined,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.84rem', letterSpacing: '0.03em' }}>
+                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: isCompactRail ? '0.76rem' : '0.84rem', letterSpacing: '0.03em' }}>
                         {formatBrtTime(game.tip_off_at)} BRT
                       </span>
                       <span
                         style={{
-                          fontSize: '0.58rem',
+                          fontSize: isCompactRail ? '0.54rem' : '0.58rem',
                           fontWeight: 800,
                           letterSpacing: '0.08em',
                           color: badgeColor,
                           background: `${badgeColor}22`,
                           border: `1px solid ${badgeColor}35`,
-                          padding: '2px 6px',
+                          padding: isCompactRail ? '2px 5px' : '2px 6px',
                           borderRadius: 999,
                           whiteSpace: 'nowrap',
                         }}
@@ -553,7 +699,7 @@ function LastNightRecap({
                       </span>
                     </div>
 
-                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.64rem', lineHeight: 1.25 }}>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.59rem' : '0.64rem', lineHeight: 1.25 }}>
                       {statusMeta.state === 'final'
                         ? `${gameContextLabel} · encerrado`
                         : statusMeta.isLive
@@ -577,18 +723,18 @@ function LastNightRecap({
                         emphasized: awayWon || statusMeta.isLive,
                       },
                     ].map((team) => (
-                      <div key={`${game.id}-${team.abbr}`} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0,1fr) auto', alignItems: 'center', gap: 8 }}>
+                      <div key={`${game.id}-${team.abbr}`} style={{ display: 'grid', gridTemplateColumns: `${isCompactRail ? 18 : 20}px minmax(0,1fr) auto`, alignItems: 'center', gap: isCompactRail ? 6 : 8 }}>
                         <img
                           src={team.logo}
                           alt={team.abbr}
                           onError={(e) => (e.currentTarget.style.display = 'none')}
-                          style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          style={{ width: isCompactRail ? 18 : 20, height: isCompactRail ? 18 : 20, objectFit: 'contain' }}
                         />
                         <span
                           className="font-condensed font-bold"
                           style={{
                             color: team.emphasized ? 'var(--nba-text)' : 'var(--nba-text-muted)',
-                            fontSize: '0.96rem',
+                            fontSize: isCompactRail ? '0.88rem' : '0.96rem',
                             lineHeight: 1,
                             letterSpacing: '0.02em',
                           }}
@@ -599,7 +745,7 @@ function LastNightRecap({
                           className="font-condensed font-bold"
                           style={{
                             color: statusMeta.showScore ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                            fontSize: '1rem',
+                            fontSize: isCompactRail ? '0.92rem' : '1rem',
                             lineHeight: 1,
                             minWidth: 18,
                             textAlign: 'right',
@@ -611,18 +757,14 @@ function LastNightRecap({
                     ))}
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem' }}>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.58rem' : '0.62rem' }}>
                         {statusMeta.state === 'final'
-                          ? 'placar fechado'
+                          ? (seriesStatus?.postLabel ?? 'placar fechado')
                           : statusMeta.isLive
-                          ? statusMeta.detail ?? 'jogo rolando'
-                          : seriesGamesPlayed != null
-                          ? `${seriesGamesPlayed} jogo${seriesGamesPlayed !== 1 ? 's' : ''} na série`
-                          : stageLabel === 'Play-In'
-                          ? 'torneio de entrada'
-                          : 'abertura da série'}
+                          ? (seriesStatus?.liveLabel ?? (stageLabel === 'Play-In' ? 'vaga em jogo ao vivo' : 'série ao vivo'))
+                          : (seriesStatus?.preLabel ?? (stageLabel === 'Play-In' ? 'eliminação única' : 'série empatada 0-0'))}
                       </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem', fontWeight: 700 }}>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.56rem' : '0.6rem', fontWeight: 700 }}>
                         {game.game_number > 0 ? `J${game.game_number}` : stageLabel}
                       </span>
                     </div>
@@ -2215,7 +2357,7 @@ function AdvantageInsightsCard({
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
-  const { recentCompletedGames, liveGames, upcomingGames } = useGameFeed()
+  const { games, recentCompletedGames, liveGames, upcomingGames } = useGameFeed()
   const recentGameIds = useMemo(
     () => recentCompletedGames.map((game) => game.nba_game_id).filter((id): id is number => !!id),
     [recentCompletedGames]
@@ -2483,6 +2625,7 @@ export function Home({ participantId }: Props) {
       <div className="flex flex-col gap-4 min-w-0">
         <motion.div variants={fadeUpItem}>
           <LastNightRecap
+            games={games}
             recentCompletedGames={recentCompletedGames}
             liveGames={liveGames}
             upcomingGames={upcomingGames}
