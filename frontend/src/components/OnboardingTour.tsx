@@ -241,6 +241,8 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
   const location = useLocation()
   const driverRef = useRef<ReturnType<typeof driver> | null>(null)
   const actionRef = useRef<'next-route' | 'prev-route' | 'finish' | 'skip' | null>(null)
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
   const storedRoute = sessionStorage.getItem(ROUTE_KEY)
 
   const currentRoute = useMemo<TourRoute>(() => {
@@ -317,7 +319,7 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
           actionRef.current = null
 
           if (action === 'skip' || action === 'finish') {
-            onComplete()
+            onCompleteRef.current()
             return
           }
 
@@ -349,7 +351,7 @@ export function OnboardingTour({ show, onComplete, profilePath }: OnboardingTour
       driverRef.current?.destroy()
       driverRef.current = null
     }
-  }, [currentRoute, location.pathname, navigate, onComplete, profilePath, routeIndex, show, steps, storedRoute])
+  }, [currentRoute, location.pathname, navigate, profilePath, routeIndex, show, steps, storedRoute])
 
   return null
 }
