@@ -1182,30 +1182,31 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
         </div>
       )}
 
-      <Link
-        to="/official"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          marginTop: 18,
-          padding: '16px 22px',
-          minHeight: 56,
-          borderRadius: 14,
-          textDecoration: 'none',
-          background: 'linear-gradient(135deg, rgba(200,150,60,0.20), rgba(224,92,58,0.10))',
-          border: '1px solid rgba(200,150,60,0.24)',
-          color: 'var(--nba-gold)',
-          fontWeight: 700,
-          fontSize: '1rem',
-          fontFamily: "'Barlow Condensed', sans-serif",
-          letterSpacing: '0.05em',
-        }}
-      >
-        Ver playoff real da NBA
-        <ChevronRight size={15} />
-      </Link>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
+        <Link
+          to="/official"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '16px 22px',
+            minHeight: 56,
+            borderRadius: 14,
+            textDecoration: 'none',
+            background: 'linear-gradient(135deg, rgba(200,150,60,0.20), rgba(224,92,58,0.10))',
+            border: '1px solid rgba(200,150,60,0.24)',
+            color: 'var(--nba-gold)',
+            fontWeight: 700,
+            fontSize: '1rem',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            letterSpacing: '0.05em',
+          }}
+        >
+          Ver playoff real da NBA
+          <ChevronRight size={15} />
+        </Link>
+      </div>
     </div>
   )
 }
@@ -1289,7 +1290,7 @@ function NewsAlertPill() {
   )
 }
 
-function HomeQuickDeck() {
+function HomeQuickDeck({ vertical = false }: { vertical?: boolean }) {
   return (
     <motion.div
       variants={fadeUpItem}
@@ -1299,7 +1300,13 @@ function HomeQuickDeck() {
       style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}
     >
       <CardTitle icon={<Sparkles size={14} />}>Acessos Rápidos</CardTitle>
-      <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+        style={{ display: 'grid', gap: 10 }}
+        className={vertical ? undefined : 'sm:grid-cols-2 lg:grid-cols-4'}
+      >
         <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
         <Link
           id="bracket-highlight"
@@ -1456,6 +1463,7 @@ export function Home({ participantId }: Props) {
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
         <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
+        <HomeQuickDeck vertical />
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
@@ -1472,7 +1480,7 @@ export function Home({ participantId }: Props) {
         </motion.div>
         <motion.div variants={scaleInItem}><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></motion.div>
         <motion.div variants={fadeInItem}><NewsAlertPill /></motion.div>
-        <motion.div variants={fadeUpItem}><HomeQuickDeck /></motion.div>
+        <motion.div className="xl:hidden" variants={fadeUpItem}><HomeQuickDeck /></motion.div>
 
         <div className="xl:hidden flex flex-col gap-4">
           <MyPicksCard series={series} picks={picks} />
