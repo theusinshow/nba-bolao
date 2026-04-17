@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
+const AUTH_BOOT_TIMEOUT_MS = 10000
+
 export type AuthState =
   | { status: 'loading' }
   | { status: 'unauthenticated' }
@@ -13,17 +15,49 @@ export function useAuth() {
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' })
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) handleUser(data.session.user)
-      else setAuth({ status: 'unauthenticated' })
-    })
+    let active = true
+
+    const authBootTimeout = window.setTimeout(() => {
+      if (!active) return
+      setAuth((current) => {
+        if (current.status !== 'loading') return current
+        console.warn('[useAuth] auth bootstrap timed out; falling back to unauthenticated')
+        return { status: 'unauthenticated' }
+      })
+    }, AUTH_BOOT_TIMEOUT_MS)
+
+    async function resolveSession(session: { user: User } | null) {
+      if (!active) return
+
+      if (!session) {
+        setAuth({ status: 'unauthenticated' })
+        return
+      }
+
+      try {
+        await handleUser(session.user, active)
+      } catch (error) {
+        console.error('[useAuth] unexpected auth bootstrap error:', error)
+        if (active) setAuth({ status: 'unauthenticated' })
+      }
+    }
+
+    void supabase.auth.getSession()
+      .then(({ data }) => resolveSession(data.session ?? null))
+      .catch((error) => {
+        console.error('[useAuth] getSession failed:', error)
+        if (active) setAuth({ status: 'unauthenticated' })
+      })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      if (session) handleUser(session.user)
-      else setAuth({ status: 'unauthenticated' })
+      void resolveSession(session)
     })
 
-    return () => listener.subscription.unsubscribe()
+    return () => {
+      active = false
+      window.clearTimeout(authBootTimeout)
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -72,7 +106,7 @@ export function useAuth() {
       .maybeSingle()
   }
 
-  async function handleUser(user: User) {
+  async function handleUser(user: User, active = true) {
     const email = user.email!
 
     const { data: allowed, error: allowedError } = await supabase
@@ -84,12 +118,12 @@ export function useAuth() {
     // PGRST116 = no rows found (expected when user is not in allowed list)
     if (allowedError && allowedError.code !== 'PGRST116') {
       console.error('[useAuth] DB error checking allowed_emails:', allowedError.message)
-      setAuth({ status: 'unauthenticated' })
+      if (active) setAuth({ status: 'unauthenticated' })
       return
     }
 
     if (!allowed) {
-      setAuth({ status: 'unauthorized', email })
+      if (active) setAuth({ status: 'unauthorized', email })
       return
     }
 
@@ -97,7 +131,7 @@ export function useAuth() {
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('[useAuth] DB error fetching participant:', fetchError.message)
-      setAuth({ status: 'unauthenticated' })
+      if (active) setAuth({ status: 'unauthenticated' })
       return
     }
 
@@ -116,18 +150,20 @@ export function useAuth() {
         const { data: existingAfterRace, error: raceFetchError } = await loadParticipant(user.id)
         if (raceFetchError || !existingAfterRace) {
           console.error('[useAuth] Erro ao recuperar participante após corrida:', raceFetchError?.message)
-          setAuth({ status: 'unauthorized', email })
+          if (active) setAuth({ status: 'unauthorized', email })
           return
         }
         participant = existingAfterRace
       } else if (createError || !created) {
         console.error('[useAuth] Erro ao criar participante:', createError?.message)
-        setAuth({ status: 'unauthorized', email })
+        if (active) setAuth({ status: 'unauthorized', email })
         return
       } else {
         participant = created
       }
     }
+
+    if (!active) return
 
     setAuth({
       status: 'authorized',
