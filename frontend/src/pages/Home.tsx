@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronLeft, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
-import { type GameHighlightItem, useGameHighlights } from '../hooks/useGameHighlights'
+import { useGameHighlights } from '../hooks/useGameHighlights'
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
+import { type PostseasonRailExtraGame, usePostseasonRailExtras } from '../hooks/usePostseasonRailExtras'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getGameStatusMeta } from '../utils/gameStatus'
 import { getTeamLogoUrl } from '../data/teams2025'
@@ -107,52 +108,196 @@ function useCountdown(targetDate: string | null | undefined) {
   return label
 }
 
-function LastNightRecap({
-  games,
-  upcomingGames,
-  isRealData,
-  loading,
-  highlightsByGameId,
-  highlightsLoading,
-  highlightsAvailable,
-}: {
-  games: ReturnType<typeof useGameFeed>['recentCompletedGames']
-  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
-  isRealData: boolean
-  loading: boolean
-  highlightsByGameId: Record<number, GameHighlightItem>
-  highlightsLoading: boolean
-  highlightsAvailable: boolean
-}) {
-  function buildPlayerOfNight(highlight: GameHighlightItem | undefined) {
-    if (!highlight) return null
-    const candidates = [
-      highlight.leaders.points ? { ...highlight.leaders.points, tag: 'PTS' } : null,
-      highlight.leaders.rebounds ? { ...highlight.leaders.rebounds, tag: 'REB' } : null,
-      highlight.leaders.assists ? { ...highlight.leaders.assists, tag: 'AST' } : null,
-    ].filter((item): item is NonNullable<typeof item> => !!item)
+interface HomeGamesRailEntry {
+  kind: 'day' | 'game'
+  key: string
+  label?: string
+  sublabel?: string
+  game?: HomeRailGame
+}
 
-    return candidates.sort((left, right) => right.value - left.value)[0] ?? null
+type HomeRailGame = ReturnType<typeof useGameFeed>['games'][number] | PostseasonRailExtraGame
+
+function formatRailDayLabel(iso: string) {
+  const date = new Date(iso)
+  const weekday = date.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: BRT_TIMEZONE }).replace('.', '').toUpperCase()
+  const month = date.toLocaleDateString('pt-BR', { month: 'short', timeZone: BRT_TIMEZONE }).replace('.', '').toUpperCase()
+  const day = date.toLocaleDateString('pt-BR', { day: '2-digit', timeZone: BRT_TIMEZONE })
+  return {
+    label: weekday,
+    sublabel: `${day} ${month}`,
+  }
+}
+
+function getRailGameAbbr(game: HomeRailGame, side: 'home' | 'away') {
+  if (side === 'home') {
+    if ('home_team_abbr' in game && game.home_team_abbr) return game.home_team_abbr
+    return ('home_team' in game ? game.home_team?.abbreviation : undefined) ?? game.home_team_id
   }
 
-  const sourceGames = games.map((game) => ({
-    nbaGameId: game.nba_game_id ?? null,
-    home: game.home_team?.abbreviation ?? game.home_team_id,
-    away: game.away_team?.abbreviation ?? game.away_team_id,
-    homeAbbr: game.home_team?.abbreviation ?? game.home_team_id,
-    awayAbbr: game.away_team?.abbreviation ?? game.away_team_id,
-    homeScore: game.home_score ?? 0,
-    awayScore: game.away_score ?? 0,
-    homeWon: game.winner_id === game.home_team_id,
-    awayWon: game.winner_id === game.away_team_id,
-    round: ROUND_LABEL[game.series?.round ?? game.round ?? 1] ?? 'NBA',
-    note: formatShortDateTime(game.tip_off_at),
-    gameNumber: game.game_number,
-  }))
-  // Duplica para loop contínuo do carrossel
-  const carouselItems = sourceGames.length > 0 ? [...sourceGames, ...sourceGames] : []
-  const nextRealGame = upcomingGames[0]
+  if ('away_team_abbr' in game && game.away_team_abbr) return game.away_team_abbr
+  return ('away_team' in game ? game.away_team?.abbreviation : undefined) ?? game.away_team_id
+}
+
+function getRailStageLabel(game: HomeRailGame) {
+  if ('stage_label' in game && game.stage_label) return game.stage_label
+  const round = ('series' in game ? game.series?.round : undefined) ?? ('round' in game ? game.round : undefined) ?? 1
+  return ROUND_LABEL[round] ?? 'NBA'
+}
+
+function buildHomeGamesRailEntries(
+  completedGames: ReturnType<typeof useGameFeed>['recentCompletedGames'],
+  liveGames: ReturnType<typeof useGameFeed>['liveGames'],
+  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames'],
+  extraGames: PostseasonRailExtraGame[]
+): HomeGamesRailEntry[] {
+  const deduped = new Map<string, HomeRailGame>()
+
+  for (const game of [...completedGames].reverse()) deduped.set(game.id, game)
+  for (const game of liveGames) deduped.set(game.id, game)
+  for (const game of upcomingGames) deduped.set(game.id, game)
+  for (const game of extraGames) deduped.set(game.id, game)
+
+  const sortedGames = [...deduped.values()]
+    .filter((game) => !!game.tip_off_at)
+    .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime())
+
+  const items: HomeGamesRailEntry[] = []
+  let lastDateKey: string | null = null
+
+  for (const game of sortedGames) {
+    const dateKey = getBrtDateKey(new Date(game.tip_off_at!))
+    if (dateKey !== lastDateKey) {
+      const dayLabel = formatRailDayLabel(game.tip_off_at!)
+      items.push({
+        kind: 'day',
+        key: `day-${dateKey}`,
+        label: dayLabel.label,
+        sublabel: dayLabel.sublabel,
+      })
+      lastDateKey = dateKey
+    }
+
+    items.push({
+      kind: 'game',
+      key: `game-${game.id}`,
+      game,
+    })
+  }
+
+  return items
+}
+
+function LastNightRecap({
+  recentCompletedGames,
+  liveGames,
+  upcomingGames,
+  loading,
+}: {
+  recentCompletedGames: ReturnType<typeof useGameFeed>['recentCompletedGames']
+  liveGames: ReturnType<typeof useGameFeed>['liveGames']
+  upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
+  loading: boolean
+}) {
+  const { games: extraGames } = usePostseasonRailExtras()
+  const railRef = useRef<HTMLDivElement | null>(null)
+  const pausedRef = useRef(false)
+  const draggingRef = useRef(false)
+  const dragStartXRef = useRef(0)
+  const dragStartScrollRef = useRef(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const sourceItems = useMemo(
+    () => buildHomeGamesRailEntries(recentCompletedGames, liveGames, upcomingGames, extraGames),
+    [recentCompletedGames, liveGames, upcomingGames, extraGames]
+  )
+  const railGames = useMemo(
+    () => sourceItems.flatMap((item) => (item.kind === 'game' && item.game ? [item.game] : [])),
+    [sourceItems]
+  )
+  const completedCount = railGames.filter((game) => getGameStatusMeta(game).state === 'final').length
+  const liveCount = railGames.filter((game) => {
+    const state = getGameStatusMeta(game).state
+    return state === 'live' || state === 'halftime'
+  }).length
+  const upcomingCount = railGames.filter((game) => getGameStatusMeta(game).state === 'scheduled').length
+  const loopItems = sourceItems.length > 0 ? [...sourceItems, ...sourceItems] : []
+  const nextRealGame = useMemo(
+    () =>
+      [...railGames]
+        .filter((game) => getGameStatusMeta(game).state === 'scheduled' && !!game.tip_off_at)
+        .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime())[0],
+    [railGames]
+  )
   const countdown = useCountdown(nextRealGame?.tip_off_at)
+
+  useEffect(() => {
+    const node = railRef.current
+    if (!node || sourceItems.length === 0) return
+
+    let frameId = 0
+    let lastTimestamp = 0
+    const speedPxPerSecond = 18
+
+    const tick = (timestamp: number) => {
+      if (!lastTimestamp) lastTimestamp = timestamp
+      const deltaSeconds = (timestamp - lastTimestamp) / 1000
+      lastTimestamp = timestamp
+
+      if (!pausedRef.current && !draggingRef.current) {
+        const loopWidth = node.scrollWidth / 2
+        node.scrollLeft += deltaSeconds * speedPxPerSecond
+        if (node.scrollLeft >= loopWidth) {
+          node.scrollLeft -= loopWidth
+        }
+      }
+
+      frameId = window.requestAnimationFrame(tick)
+    }
+
+    frameId = window.requestAnimationFrame(tick)
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [sourceItems.length])
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    const node = railRef.current
+    if (!node) return
+    draggingRef.current = true
+    pausedRef.current = true
+    setIsDragging(true)
+    dragStartXRef.current = event.clientX
+    dragStartScrollRef.current = node.scrollLeft
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const node = railRef.current
+    if (!node || !draggingRef.current) return
+    const deltaX = event.clientX - dragStartXRef.current
+    node.scrollLeft = dragStartScrollRef.current - deltaX
+  }
+
+  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    pausedRef.current = false
+    setIsDragging(false)
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  function nudgeRail(direction: 'left' | 'right') {
+    const node = railRef.current
+    if (!node) return
+    pausedRef.current = true
+    node.scrollBy({
+      left: direction === 'right' ? 320 : -320,
+      behavior: 'smooth',
+    })
+    window.setTimeout(() => {
+      if (!draggingRef.current) pausedRef.current = false
+    }, 900)
+  }
 
   return (
     <motion.section
@@ -169,7 +314,7 @@ function LastNightRecap({
             <Clock size={14} />
           </span>
           <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', letterSpacing: '0.08em', lineHeight: 1, margin: 0 }}>
-            Jogos da última noite
+            Jogos
           </h2>
         </div>
         {countdown && nextRealGame ? (
@@ -179,10 +324,85 @@ function LastNightRecap({
           </span>
         ) : (
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-            {isRealData ? 'placares reais' : 'aguardando dados'}
+            {liveGames.length > 0 ? `${liveGames.length} ao vivo` : 'timeline da rodada'}
           </span>
         )}
       </div>
+
+      {!loading && sourceItems.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 1rem 0.55rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Encerrados', value: completedCount, color: 'var(--nba-text-muted)' },
+              { label: 'Ao vivo', value: liveCount, color: '#2ecc71' },
+              { label: 'Próximos', value: upcomingCount, color: 'var(--nba-east)' },
+            ].map((item) => (
+              <span
+                key={item.label}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 9px',
+                  borderRadius: 999,
+                  background: `${item.color}18`,
+                  border: `1px solid ${item.color}28`,
+                  color: item.color,
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {item.label}
+                <span className="font-condensed font-bold" style={{ fontSize: '0.82rem', lineHeight: 1 }}>
+                  {item.value}
+                </span>
+              </span>
+            ))}
+          </div>
+
+          <div className="hidden sm:flex" style={{ alignItems: 'center', gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => nudgeRail('left')}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 999,
+                border: '1px solid rgba(200,150,60,0.2)',
+                background: 'rgba(12,12,18,0.52)',
+                color: 'var(--nba-gold)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              aria-label="Voltar jogos"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => nudgeRail('right')}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 999,
+                border: '1px solid rgba(200,150,60,0.2)',
+                background: 'rgba(12,12,18,0.52)',
+                color: 'var(--nba-gold)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              aria-label="Avançar jogos"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 1rem 0.2rem' }}>
@@ -194,141 +414,222 @@ function LastNightRecap({
             </div>
           ))}
         </div>
-      ) : sourceGames.length > 0 ? (
-        <div style={{ overflow: 'hidden', padding: '0 0 0.2rem' }}>
+      ) : sourceItems.length > 0 ? (
+        <div style={{ overflow: 'hidden', padding: '0 0 0.2rem', position: 'relative' }}>
+          <div style={{ padding: '0 1rem 0.35rem', color: 'var(--nba-text-muted)', fontSize: '0.68rem', letterSpacing: '0.04em' }}>
+            Arraste para navegar. A faixa roda lentamente sozinha e pausa durante a interação.
+          </div>
           <div
-            className="nba-marquee"
-            style={{ display: 'flex', gap: 10, width: 'max-content' }}
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 24,
+              bottom: 0,
+              width: 36,
+              background: 'linear-gradient(90deg, rgba(16,16,24,0.95), rgba(16,16,24,0))',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 24,
+              bottom: 0,
+              width: 36,
+              background: 'linear-gradient(270deg, rgba(16,16,24,0.95), rgba(16,16,24,0))',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+          <div
+            ref={railRef}
+            onMouseEnter={() => { pausedRef.current = true }}
+            onMouseLeave={() => {
+              if (!draggingRef.current) pausedRef.current = false
+            }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={{
+              display: 'flex',
+              gap: 0,
+              overflowX: 'auto',
+              padding: '0 1rem 0.2rem',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              cursor: isDragging ? 'grabbing' : 'grab',
+              userSelect: 'none',
+            }}
           >
-            {carouselItems.map((game, i) => (
-              <div
-                key={`${game.home}-${game.away}-${i}`}
-                style={{
-                  width: 252,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  background: 'rgba(12,12,18,0.42)',
-                  border: '1px solid rgba(200,150,60,0.14)',
-                  display: 'grid',
-                  gap: 8,
-                  flexShrink: 0,
-                }}
-              >
-                {/* Times com logos */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                    <img
-                      src={getTeamLogoUrl(game.homeAbbr)}
-                      alt={game.homeAbbr}
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
-                    />
-                    <span
-                      className="font-condensed font-bold"
-                      style={{ color: game.homeWon ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '0.88rem', lineHeight: 1 }}
+            <div style={{ display: 'flex', width: 'max-content' }}>
+              {loopItems.map((item, index) => {
+                if (item.kind === 'day') {
+                  return (
+                    <div
+                      key={`${item.key}-${index}`}
+                      style={{
+                        width: 72,
+                        minHeight: 116,
+                        padding: '12px 10px',
+                        borderTop: '1px solid rgba(200,150,60,0.12)',
+                        borderBottom: '1px solid rgba(200,150,60,0.12)',
+                        borderLeft: '1px solid rgba(200,150,60,0.12)',
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(12,12,18,0.32))',
+                        display: 'grid',
+                        alignContent: 'space-between',
+                        justifyItems: 'center',
+                        flexShrink: 0,
+                      }}
                     >
-                      {game.home}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem', fontWeight: 600 }}>J{game.gameNumber}</span>
-                    <Badge label={game.round} color={ROUND_BADGE_COLOR[game.round] ?? '#888'} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                  <img
-                    src={getTeamLogoUrl(game.awayAbbr)}
-                    alt={game.awayAbbr}
-                    onError={(e) => (e.currentTarget.style.display = 'none')}
-                    style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
-                  />
-                  <span
-                    className="font-condensed font-bold"
-                    style={{ color: game.awayWon ? 'var(--nba-text)' : 'var(--nba-text-muted)', fontSize: '0.88rem', lineHeight: 1 }}
-                  >
-                    {game.away}
-                  </span>
-                </div>
+                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.82rem', letterSpacing: '0.08em' }}>
+                        {item.label}
+                      </span>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', fontWeight: 600 }}>
+                        {item.sublabel}
+                      </span>
+                    </div>
+                  )
+                }
 
-                {/* Placar */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.25rem', lineHeight: 1 }}>
-                    {game.homeScore} — {game.awayScore}
-                  </span>
-                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>final</span>
-                </div>
-                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>{game.note}</div>
+                const game = item.game!
+                const statusMeta = getGameStatusMeta(game)
+                const homeAbbr = getRailGameAbbr(game, 'home')
+                const awayAbbr = getRailGameAbbr(game, 'away')
+                const stageLabel = getRailStageLabel(game)
+                const gameContextLabel = game.game_number > 0 ? `${stageLabel} · Game ${game.game_number}` : stageLabel
+                const seriesGamesPlayed = 'series' in game ? game.series?.games_played : null
+                const homeWon = game.winner_id === game.home_team_id
+                const awayWon = game.winner_id === game.away_team_id
+                const badgeColor = statusMeta.state === 'live'
+                  ? '#2ecc71'
+                  : statusMeta.state === 'halftime'
+                  ? 'var(--nba-gold)'
+                  : statusMeta.state === 'final'
+                  ? 'var(--nba-text-muted)'
+                  : 'var(--nba-east)'
 
-                {game.nbaGameId && highlightsByGameId[game.nbaGameId] && (
+                return (
                   <div
+                    key={`${item.key}-${index}`}
                     style={{
-                      marginTop: 2,
-                      paddingTop: 8,
+                      width: statusMeta.isLive ? 194 : 182,
+                      minHeight: 116,
+                      padding: '10px 12px 10px',
                       borderTop: '1px solid rgba(200,150,60,0.12)',
+                      borderBottom: '1px solid rgba(200,150,60,0.12)',
+                      borderLeft: '1px solid rgba(200,150,60,0.12)',
+                      background: statusMeta.isLive
+                        ? 'linear-gradient(180deg, rgba(46,204,113,0.16), rgba(12,12,18,0.38))'
+                        : 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(12,12,18,0.3))',
                       display: 'grid',
-                      gap: 6,
+                      gap: 7,
+                      flexShrink: 0,
+                      boxShadow: statusMeta.isLive ? 'inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 24px rgba(46,204,113,0.08)' : 'none',
                     }}
                   >
-                    {highlightsByGameId[game.nbaGameId].headline && (
-                      <div style={{ color: 'var(--nba-text)', fontSize: '0.72rem', lineHeight: 1.35, fontWeight: 600 }}>
-                        {highlightsByGameId[game.nbaGameId].headline}
-                      </div>
-                    )}
-
-                    {buildPlayerOfNight(highlightsByGameId[game.nbaGameId]) && (
-                      <div
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.84rem', letterSpacing: '0.03em' }}>
+                        {formatBrtTime(game.tip_off_at)} BRT
+                      </span>
+                      <span
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 8,
-                          padding: '6px 8px',
-                          borderRadius: 8,
-                          background: 'rgba(200,150,60,0.08)',
-                          border: '1px solid rgba(200,150,60,0.12)',
+                          fontSize: '0.58rem',
+                          fontWeight: 800,
+                          letterSpacing: '0.08em',
+                          color: badgeColor,
+                          background: `${badgeColor}22`,
+                          border: `1px solid ${badgeColor}35`,
+                          padding: '2px 6px',
+                          borderRadius: 999,
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        <span style={{ color: 'var(--nba-gold)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em' }}>
-                          JOGADOR DA NOITE
+                        {statusMeta.state === 'live' ? 'AO VIVO' : statusMeta.state === 'halftime' ? 'INTERVALO' : statusMeta.state === 'final' ? 'FINAL' : 'PRÓXIMO'}
+                      </span>
+                    </div>
+
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.64rem', lineHeight: 1.25 }}>
+                      {statusMeta.state === 'final'
+                        ? `${gameContextLabel} · encerrado`
+                        : statusMeta.isLive
+                        ? `${gameContextLabel} · ${statusMeta.detail ?? 'em andamento'}`
+                        : gameContextLabel}
+                    </div>
+
+                    <div style={{ height: 1, background: statusMeta.isLive ? 'rgba(46,204,113,0.18)' : 'rgba(255,255,255,0.05)' }} />
+
+                    {[
+                      {
+                        abbr: homeAbbr,
+                        logo: getTeamLogoUrl(homeAbbr),
+                        score: game.home_score,
+                        emphasized: homeWon || statusMeta.isLive,
+                      },
+                      {
+                        abbr: awayAbbr,
+                        logo: getTeamLogoUrl(awayAbbr),
+                        score: game.away_score,
+                        emphasized: awayWon || statusMeta.isLive,
+                      },
+                    ].map((team) => (
+                      <div key={`${game.id}-${team.abbr}`} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0,1fr) auto', alignItems: 'center', gap: 8 }}>
+                        <img
+                          src={team.logo}
+                          alt={team.abbr}
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                          style={{ width: 20, height: 20, objectFit: 'contain' }}
+                        />
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            color: team.emphasized ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+                            fontSize: '0.96rem',
+                            lineHeight: 1,
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          {team.abbr}
                         </span>
-                        <span style={{ color: 'var(--nba-text)', fontSize: '0.68rem', minWidth: 0, flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {buildPlayerOfNight(highlightsByGameId[game.nbaGameId])!.player_name} ({buildPlayerOfNight(highlightsByGameId[game.nbaGameId])!.tag} {buildPlayerOfNight(highlightsByGameId[game.nbaGameId])!.value})
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            color: statusMeta.showScore ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                            fontSize: '1rem',
+                            lineHeight: 1,
+                            minWidth: 18,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {statusMeta.showScore ? (team.score ?? 0) : '—'}
                         </span>
                       </div>
-                    )}
+                    ))}
 
-                    <div style={{ display: 'grid', gap: 4 }}>
-                      {[
-                        { label: 'PTS', leader: highlightsByGameId[game.nbaGameId].leaders.points },
-                        { label: 'REB', leader: highlightsByGameId[game.nbaGameId].leaders.rebounds },
-                        { label: 'AST', leader: highlightsByGameId[game.nbaGameId].leaders.assists },
-                      ].map(({ label, leader }) => (
-                        leader ? (
-                          <div key={`${game.nbaGameId}-${label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem', fontWeight: 700 }}>{label}</span>
-                            <span style={{ color: 'var(--nba-text)', fontSize: '0.68rem', minWidth: 0, flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {leader.player_name}{leader.team ? ` (${leader.team})` : ''} — {leader.value}
-                            </span>
-                          </div>
-                        ) : null
-                      ))}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem' }}>
+                        {statusMeta.state === 'final'
+                          ? 'placar fechado'
+                          : statusMeta.isLive
+                          ? statusMeta.detail ?? 'jogo rolando'
+                          : seriesGamesPlayed != null
+                          ? `${seriesGamesPlayed} jogo${seriesGamesPlayed !== 1 ? 's' : ''} na série`
+                          : stageLabel === 'Play-In'
+                          ? 'torneio de entrada'
+                          : 'abertura da série'}
+                      </span>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem', fontWeight: 700 }}>
+                        {game.game_number > 0 ? `J${game.game_number}` : stageLabel}
+                      </span>
                     </div>
                   </div>
-                )}
-
-                {game.nbaGameId && !highlightsByGameId[game.nbaGameId] && highlightsLoading && (
-                  <div style={{ marginTop: 2, paddingTop: 8, borderTop: '1px solid rgba(200,150,60,0.12)', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
-                    Carregando destaques individuais...
-                  </div>
-                )}
-
-                {game.nbaGameId && !highlightsByGameId[game.nbaGameId] && !highlightsLoading && !highlightsAvailable && (
-                  <div style={{ marginTop: 2, paddingTop: 8, borderTop: '1px solid rgba(200,150,60,0.12)', color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
-                    Destaques individuais indisponíveis no momento.
-                  </div>
-                )}
-              </div>
-            ))}
+                )
+              })}
+            </div>
           </div>
         </div>
       ) : (
@@ -344,14 +645,14 @@ function LastNightRecap({
             }}
           >
             <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.98rem', lineHeight: 1 }}>
-              Ainda não há jogos finalizados nesta pós-temporada
+              Ainda não há jogos suficientes para montar a faixa
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.55 }}>
-              A Home agora mostra só placares reais. Quando o primeiro jogo terminar, este bloco será atualizado automaticamente pelo feed sincronizado do Supabase.
+              Assim que a agenda real carregar mais confrontos, a Home passa a exibir a timeline horizontal com encerrados, ao vivo e próximos jogos.
             </div>
             {nextRealGame && (
               <div style={{ color: 'var(--nba-east)', fontSize: '0.76rem', lineHeight: 1.45 }}>
-                Próximo jogo confirmado: {nextRealGame.home_team?.abbreviation ?? nextRealGame.home_team_id} vs {nextRealGame.away_team?.abbreviation ?? nextRealGame.away_team_id} em {formatShortDateTime(nextRealGame.tip_off_at)}
+                Próximo jogo confirmado: {getRailGameAbbr(nextRealGame, 'home')} vs {getRailGameAbbr(nextRealGame, 'away')} em {formatShortDateTime(nextRealGame.tip_off_at)}
               </div>
             )}
           </div>
@@ -1914,12 +2215,12 @@ function AdvantageInsightsCard({
 export function Home({ participantId }: Props) {
   const { ranking, loading: rankLoading } = useRanking()
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
-  const { recentCompletedGames, liveGames, upcomingGames, hasRealGames } = useGameFeed()
+  const { recentCompletedGames, liveGames, upcomingGames } = useGameFeed()
   const recentGameIds = useMemo(
     () => recentCompletedGames.map((game) => game.nba_game_id).filter((id): id is number => !!id),
     [recentCompletedGames]
   )
-  const { highlights, loading: highlightsLoading, provider: highlightsProvider } = useGameHighlights(recentGameIds)
+  const { highlights } = useGameHighlights(recentGameIds)
   const { injuries, loading: injuriesLoading, provider: injuriesProvider } = useInjuries()
   const highlightsByGameId = useMemo(
     () => Object.fromEntries(highlights.map((item) => [item.game_id, item])),
@@ -2182,13 +2483,10 @@ export function Home({ participantId }: Props) {
       <div className="flex flex-col gap-4 min-w-0">
         <motion.div variants={fadeUpItem}>
           <LastNightRecap
-            games={recentCompletedGames}
+            recentCompletedGames={recentCompletedGames}
+            liveGames={liveGames}
             upcomingGames={upcomingGames}
-            isRealData={hasRealGames && recentCompletedGames.length > 0}
             loading={seriesLoading}
-            highlightsByGameId={highlightsByGameId}
-            highlightsLoading={highlightsLoading}
-            highlightsAvailable={highlightsProvider.available}
           />
         </motion.div>
         <motion.div id="home-summary-tour" variants={scaleInItem}>

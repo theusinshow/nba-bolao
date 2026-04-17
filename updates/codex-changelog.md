@@ -4854,6 +4854,18 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 
+## 2026-04-17 14:28:00
+
+### Home - polimento premium da games rail
+- refinei a rail horizontal de jogos em `frontend/src/pages/Home.tsx` com chips-resumo para `Encerrados`, `Ao vivo` e `Próximos`;
+- adicionei controles laterais no desktop para avançar ou voltar a faixa sem depender só do drag;
+- apliquei fades nas bordas para reforçar a sensação de continuidade da rail e deixar o recorte mais próximo de uma seção editorial finalizada;
+- dei mais destaque visual aos cards ao vivo, com largura maior, sombra leve e separador interno para melhorar a leitura do placar;
+- mantive o auto-scroll lento com pausa na interação, agora combinado com navegação manual mais confortável.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 13:35:00
 
 ### Live scoring - fase 1 e 2 de atualização de placar e resultado
@@ -4867,6 +4879,18 @@ USING (
 
 ### Validação
 - `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
+## 2026-04-17 14:10:00
+
+### Home - nova faixa horizontal de jogos no estilo NBA.com
+- substituí o bloco `Jogos da última noite` por uma rail horizontal de jogos em `frontend/src/pages/Home.tsx`, com estrutura inspirada na faixa do site da NBA;
+- a nova seção agora mistura jogos encerrados, ao vivo e próximos em uma timeline única por dia, com cards compactos, horário no topo, times empilhados e estado visual do jogo;
+- adicionei auto-scroll lento, pausa ao hover e navegação por drag para desktop e touch, mantendo a leitura mais próxima de uma “games rail” real;
+- priorizei a identidade visual do bolão nas cores e acabamento, mas preservei a hierarquia horizontal e compacta típica do NBA.com;
+- deixei o play-in para a próxima etapa dessa mesma seção, sem misturar agora na primeira implementação.
+
+### Validação
 - `npm --prefix frontend run build`
 
 ## 2026-04-17 - UI: polimento final de Resultados reais + pendência do backup automático
@@ -5019,6 +5043,18 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 ## 2026-04-17 00:51:51
+## 2026-04-17 12:45:00
+
+### Home - faixa de jogos agora também puxa play-in para a timeline
+- adicionei `backend/src/routes/games.ts` com a rota pública `GET /games/rail`, que busca jogos de pós-temporada ainda fora da base local e expõe uma trilha complementar para a Home;
+- criei `frontend/src/hooks/usePostseasonRailExtras.ts` para buscar esses jogos extras no backend e manter a rail atualizada;
+- ajustei a nova faixa horizontal de `Jogos` em `frontend/src/pages/Home.tsx` para misturar corretamente playoffs e play-in, inclusive nos contadores, no próximo jogo e nos rótulos do card;
+- os cards agora deixam de forçar `Game X` quando o confronto extra é play-in, usando `Play-In` como contexto editorial e preservando a identidade visual da rail.
+
+### Validação
+- `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
 
 ### Home - acessos rápidos refinados para a nova coluna esquerda
 - evoluí `HomeQuickDeck` em `frontend/src/pages/Home.tsx` para ficar mais coerente com a coluna esquerda no desktop;
