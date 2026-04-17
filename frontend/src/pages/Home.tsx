@@ -10,6 +10,7 @@ import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { type GameHighlightItem, useGameHighlights } from '../hooks/useGameHighlights'
+import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
 import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getTeamLogoUrl } from '../data/teams2025'
@@ -695,10 +696,13 @@ function useSeriesPickStats() {
   return bySeriesId
 }
 
-function OfficialBracketCard({ series, upcomingGames, participantCount }: {
+function OfficialBracketCard({ series, upcomingGames, participantCount, injuries, injuriesLoading, injuriesAvailable }: {
   series: ReturnType<typeof useSeries>['series']
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
   participantCount: number
+  injuries: InjuryItem[]
+  injuriesLoading: boolean
+  injuriesAvailable: boolean
 }) {
   const pickStats = useSeriesPickStats()
   const completedSeries = series.filter((item) => item.is_complete).length
@@ -724,6 +728,32 @@ function OfficialBracketCard({ series, upcomingGames, participantCount }: {
         .sort((a, b) => (a.conference ?? '').localeCompare(b.conference ?? '')),
     }))
     .filter((g) => g.items.length > 0)
+
+  const topInjuryByTeam = useMemo(() => {
+    const byTeam = new Map<string, InjuryItem>()
+    const impactWeight = { high: 0, medium: 1, low: 2 }
+    const statusWeight = { Out: 0, Doubtful: 1, Questionable: 2 }
+
+    for (const injury of injuries) {
+      if (!injury.team) continue
+      const current = byTeam.get(injury.team)
+      if (!current) {
+        byTeam.set(injury.team, injury)
+        continue
+      }
+
+      const currentImpact = impactWeight[current.impact]
+      const nextImpact = impactWeight[injury.impact]
+      const currentStatus = statusWeight[current.status as keyof typeof statusWeight] ?? 9
+      const nextStatus = statusWeight[injury.status as keyof typeof statusWeight] ?? 9
+
+      if (nextImpact < currentImpact || (nextImpact === currentImpact && nextStatus < currentStatus)) {
+        byTeam.set(injury.team, injury)
+      }
+    }
+
+    return byTeam
+  }, [injuries])
 
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(224,92,58,0.12), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
@@ -818,74 +848,104 @@ function OfficialBracketCard({ series, upcomingGames, participantCount }: {
                     const seriesPickMap = pickStats.get(s.id)
                     const correctCount = s.winner_id && seriesPickMap ? (seriesPickMap.get(s.winner_id) ?? 0) : 0
                     const totalPicked = seriesPickMap ? Array.from(seriesPickMap.values()).reduce((a, b) => a + b, 0) : 0
+                    const homeInjury = s.home_team_id ? topInjuryByTeam.get(s.home_team_id) : undefined
+                    const awayInjury = s.away_team_id ? topInjuryByTeam.get(s.away_team_id) : undefined
 
                     return (
                       <div
                         key={s.id}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
+                          display: 'grid',
+                          gap: 6,
                           padding: '8px 10px',
                           borderRadius: 8,
                           background: s.is_complete ? 'rgba(12,12,18,0.28)' : 'rgba(12,12,18,0.42)',
                           border: `1px solid ${s.is_complete ? 'rgba(46,204,113,0.12)' : inProgress ? 'rgba(200,150,60,0.18)' : 'rgba(200,150,60,0.08)'}`,
                         }}
                       >
-                        {/* Home team */}
-                        <span
-                          className="font-condensed font-bold"
-                          style={{
-                            color: homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor,
-                            fontSize: '0.92rem',
-                            minWidth: 32,
-                            opacity: awayWon ? 0.4 : 1,
-                          }}
-                        >
-                          {homeAbbr}
-                        </span>
-
-                        {/* Score / status */}
-                        <span
-                          className="font-condensed font-bold"
-                          style={{
-                            flex: 1,
-                            textAlign: 'center',
-                            fontSize: s.is_complete ? '0.88rem' : '0.72rem',
-                            color: s.is_complete ? 'var(--nba-text)' : 'var(--nba-text-muted)',
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'vs'}
-                        </span>
-
-                        {/* Away team */}
-                        <span
-                          className="font-condensed font-bold"
-                          style={{
-                            color: awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : awayColor,
-                            fontSize: '0.92rem',
-                            minWidth: 32,
-                            textAlign: 'right',
-                            opacity: homeWon ? 0.4 : 1,
-                          }}
-                        >
-                          {awayAbbr}
-                        </span>
-
-                        {/* Status badge */}
-                        {s.is_complete ? (
-                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
-                            {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            className="font-condensed font-bold"
+                            style={{
+                              color: homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor,
+                              fontSize: '0.92rem',
+                              minWidth: 32,
+                              opacity: awayWon ? 0.4 : 1,
+                            }}
+                          >
+                            {homeAbbr}
                           </span>
-                        ) : inProgress ? (
-                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
-                            {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
+
+                          <span
+                            className="font-condensed font-bold"
+                            style={{
+                              flex: 1,
+                              textAlign: 'center',
+                              fontSize: s.is_complete ? '0.88rem' : '0.72rem',
+                              color: s.is_complete ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+                              letterSpacing: '0.04em',
+                            }}
+                          >
+                            {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'vs'}
                           </span>
-                        ) : (
-                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
-                            {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'pendente'}
+
+                          <span
+                            className="font-condensed font-bold"
+                            style={{
+                              color: awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : awayColor,
+                              fontSize: '0.92rem',
+                              minWidth: 32,
+                              textAlign: 'right',
+                              opacity: homeWon ? 0.4 : 1,
+                            }}
+                          >
+                            {awayAbbr}
                           </span>
+
+                          {s.is_complete ? (
+                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
+                              {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
+                            </span>
+                          ) : inProgress ? (
+                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
+                              {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
+                              {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'pendente'}
+                            </span>
+                          )}
+                        </div>
+
+                        {!s.is_complete && (homeInjury || awayInjury || injuriesLoading || !injuriesAvailable) && (
+                          <div style={{ display: 'grid', gap: 4 }}>
+                            {homeInjury && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ color: homeColor, fontSize: '0.66rem', fontWeight: 700, minWidth: 26 }}>{homeAbbr}</span>
+                                <span style={{ color: getInjuryTone(homeInjury.status).color, fontSize: '0.68rem', fontWeight: 700, minWidth: 0 }}>
+                                  {homeInjury.player_name} {getInjuryTone(homeInjury.status).label}
+                                </span>
+                              </div>
+                            )}
+                            {awayInjury && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ color: awayColor, fontSize: '0.66rem', fontWeight: 700, minWidth: 26 }}>{awayAbbr}</span>
+                                <span style={{ color: getInjuryTone(awayInjury.status).color, fontSize: '0.68rem', fontWeight: 700, minWidth: 0 }}>
+                                  {awayInjury.player_name} {getInjuryTone(awayInjury.status).label}
+                                </span>
+                              </div>
+                            )}
+                            {!homeInjury && !awayInjury && injuriesLoading && (
+                              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.67rem' }}>
+                                Carregando radar de lesões...
+                              </div>
+                            )}
+                            {!homeInjury && !awayInjury && !injuriesLoading && !injuriesAvailable && (
+                              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.67rem' }}>
+                                Radar de lesões indisponível.
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )
@@ -1116,10 +1176,19 @@ export function Home({ participantId }: Props) {
     [recentCompletedGames]
   )
   const { highlights, loading: highlightsLoading, provider: highlightsProvider } = useGameHighlights(recentGameIds)
+  const { injuries, loading: injuriesLoading, provider: injuriesProvider } = useInjuries()
   const { show, complete } = useOnboarding()
   const highlightsByGameId = useMemo(
     () => Object.fromEntries(highlights.map((item) => [item.game_id, item])),
     [highlights]
+  )
+  const homeRelevantTeams = useMemo(
+    () => new Set(series.flatMap((item) => [item.home_team_id, item.away_team_id]).filter((team): team is string => !!team)),
+    [series]
+  )
+  const homeInjuries = useMemo(
+    () => injuries.filter((item) => item.team != null && homeRelevantTeams.has(item.team)),
+    [injuries, homeRelevantTeams]
   )
 
   const myEntry = ranking.find((r) => r.participant_id === participantId)
@@ -1167,7 +1236,14 @@ export function Home({ participantId }: Props) {
           <RecentSeriesCard series={series} />
         </div>
 
-        <OfficialBracketCard series={series} upcomingGames={upcomingGames} participantCount={ranking.length} />
+        <OfficialBracketCard
+          series={series}
+          upcomingGames={upcomingGames}
+          participantCount={ranking.length}
+          injuries={homeInjuries}
+          injuriesLoading={injuriesLoading}
+          injuriesAvailable={injuriesProvider.available}
+        />
       </div>
 
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
@@ -1176,4 +1252,11 @@ export function Home({ participantId }: Props) {
       </div>
     </motion.div>
   )
+}
+
+function getInjuryTone(status: string) {
+  if (status === 'Out') return { label: 'fora', color: '#ff8c72' }
+  if (status === 'Doubtful') return { label: 'dúvida', color: '#f39c12' }
+  if (status === 'Questionable') return { label: 'questionável', color: '#ffd166' }
+  return { label: status.toLowerCase(), color: 'var(--nba-text-muted)' }
 }

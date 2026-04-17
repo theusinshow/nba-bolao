@@ -33,6 +33,12 @@ Com o plano `ALL-STAR` ativo, a seção `Jogos Reais` da Home passou a aproveita
 - O bloco continua preservando o comportamento anterior de placar real e o restante da página segue intacto
 - O botão do chaveamento real não foi alterado e continua no fluxo atual da Home
 
+### Correção de alvo
+- Depois da validação visual, foi identificado que o pedido do usuário mirava a seção `Resultados reais` do `OfficialBracketCard`, e não o carrossel `Jogos da última noite`
+- A seção `Resultados reais` passou então a consumir o radar de lesões já disponível no app
+- Cada série pendente agora pode mostrar o principal alerta/desfalque de cada lado (`LAL Luka fora`, `PHI Embiid fora`, etc.)
+- O CTA `Acompanhar playoffs` foi mantido exatamente no mesmo lugar
+
 ### Validações
 - `backend`: `npm run build` concluído com sucesso
 - `frontend`: `npm run build` concluído com sucesso
