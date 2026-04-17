@@ -915,6 +915,48 @@ function TeamShowcase({
 }) {
   const isRight = align === 'right'
   const tone = injury ? getInjuryTone(injury.status) : null
+  const logoBadge = (
+    <div
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        display: 'grid',
+        placeItems: 'center',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03))',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 10px 24px rgba(0,0,0,0.18)',
+        flexShrink: 0,
+      }}
+    >
+      <img
+        src={getTeamLogoUrl(abbr)}
+        alt={abbr}
+        onError={(e) => (e.currentTarget.style.display = 'none')}
+        className="h-7 w-7 object-contain sm:h-[30px] sm:w-[30px]"
+        style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}
+      />
+    </div>
+  )
+
+  const identityBlock = (
+    <div style={{ minWidth: 0, textAlign: isRight ? 'right' : 'left', justifySelf: isRight ? 'end' : 'start' }}>
+      <div
+        className="font-condensed font-bold"
+        style={{
+          color,
+          fontSize: 'clamp(1.16rem, 5vw, 1.48rem)',
+          lineHeight: 0.95,
+          letterSpacing: '0.03em',
+        }}
+      >
+        {abbr}
+      </div>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {injury ? 'alerta no elenco' : 'elenco principal ok'}
+      </div>
+    </div>
+  )
 
   return (
     <div
@@ -928,51 +970,23 @@ function TeamShowcase({
     >
       <div
         style={{
-          display: 'flex',
+          display: 'grid',
           alignItems: 'center',
-          justifyContent: isRight ? 'flex-end' : 'flex-start',
+          gridTemplateColumns: isRight ? 'minmax(0,1fr) auto' : 'auto minmax(0,1fr)',
           gap: 12,
-          flexDirection: isRight ? 'row-reverse' : 'row',
         }}
       >
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            display: 'grid',
-            placeItems: 'center',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03))',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 10px 24px rgba(0,0,0,0.18)',
-            flexShrink: 0,
-          }}
-        >
-          <img
-            src={getTeamLogoUrl(abbr)}
-            alt={abbr}
-            onError={(e) => (e.currentTarget.style.display = 'none')}
-            className="h-7 w-7 object-contain sm:h-[30px] sm:w-[30px]"
-            style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}
-          />
-        </div>
-
-        <div style={{ minWidth: 0, textAlign: isRight ? 'right' : 'left' }}>
-          <div
-            className="font-condensed font-bold"
-            style={{
-              color,
-              fontSize: 'clamp(1.16rem, 5vw, 1.48rem)',
-              lineHeight: 0.95,
-              letterSpacing: '0.03em',
-            }}
-          >
-            {abbr}
-          </div>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {injury ? 'alerta no elenco' : 'elenco principal ok'}
-          </div>
-        </div>
+        {isRight ? (
+          <>
+            {identityBlock}
+            {logoBadge}
+          </>
+        ) : (
+          <>
+            {logoBadge}
+            {identityBlock}
+          </>
+        )}
       </div>
 
       {injury ? (
