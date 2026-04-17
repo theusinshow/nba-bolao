@@ -3,6 +3,17 @@ import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
 const AUTH_BOOT_TIMEOUT_MS = 10000
+const AUTH_REDIRECT_ENV = import.meta.env.VITE_AUTH_REDIRECT_URL?.trim()
+
+function getAuthRedirectUrl() {
+  if (AUTH_REDIRECT_ENV) return AUTH_REDIRECT_ENV
+
+  const { hostname, origin } = window.location
+  const isLoopbackHost = hostname === 'localhost' || hostname === '127.0.0.1'
+
+  if (isLoopbackHost) return undefined
+  return origin
+}
 
 export type AuthState =
   | { status: 'loading' }
@@ -174,9 +185,10 @@ export function useAuth() {
   }
 
   async function signInWithGoogle() {
+    const redirectTo = getAuthRedirectUrl()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: redirectTo ? { redirectTo } : undefined,
     })
   }
 
