@@ -39,6 +39,21 @@ Com o plano `ALL-STAR` ativo, a seção `Jogos Reais` da Home passou a aproveita
 - Cada série pendente agora pode mostrar o principal alerta/desfalque de cada lado (`LAL Luka fora`, `PHI Embiid fora`, etc.)
 - O CTA `Acompanhar playoffs` foi mantido exatamente no mesmo lugar
 
+### Segunda rodada de polimento
+- A seção `Resultados reais` ganhou um resumo editorial no topo com leitura rápida da chave
+- As séries passaram a ser priorizadas por urgência:
+  - jogos de hoje sobem na leitura
+  - confrontos com impacto alto ficam mais evidentes
+- Cada série aberta agora recebe selo de impacto:
+  - `Impacto alto`
+  - `Impacto moderado`
+  - `Monitorar`
+  - `Elencos íntegros`
+- O contexto operacional da série também ficou mais claro:
+  - `Confronto ativo na agenda de hoje`
+  - `Série em andamento`
+  - `Aguardando abertura`
+
 ### Validações
 - `backend`: `npm run build` concluído com sucesso
 - `frontend`: `npm run build` concluído com sucesso

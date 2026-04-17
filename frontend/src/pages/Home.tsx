@@ -755,9 +755,80 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
     return byTeam
   }, [injuries])
 
+  const enhancedRoundGroups = useMemo(() => (
+    roundGroups.map(({ round, items }) => ({
+      round,
+      items: items
+        .map((seriesItem) => {
+          const homeInjury = seriesItem.home_team_id ? topInjuryByTeam.get(seriesItem.home_team_id) : undefined
+          const awayInjury = seriesItem.away_team_id ? topInjuryByTeam.get(seriesItem.away_team_id) : undefined
+          const hasTodayGame = todayGames.some((game) => game.series_id === seriesItem.id)
+          const impact = getSeriesImpactLabel(homeInjury, awayInjury)
+          const impactPriority = impact.label === 'Impacto alto' ? 0 : impact.label === 'Impacto moderado' ? 1 : impact.label === 'Monitorar' ? 2 : 3
+
+          return {
+            seriesItem,
+            homeInjury,
+            awayInjury,
+            hasTodayGame,
+            impact,
+            sortPriority: [
+              hasTodayGame ? 0 : 1,
+              impactPriority,
+              seriesItem.is_complete ? 1 : 0,
+              (seriesItem.position ?? 99),
+            ] as const,
+          }
+        })
+        .sort((left, right) => {
+          for (let index = 0; index < left.sortPriority.length; index += 1) {
+            if (left.sortPriority[index] !== right.sortPriority[index]) {
+              return left.sortPriority[index] - right.sortPriority[index]
+            }
+          }
+          return (left.seriesItem.conference ?? '').localeCompare(right.seriesItem.conference ?? '')
+        }),
+    }))
+  ), [roundGroups, topInjuryByTeam, todayGames])
+
+  const sectionHeadline = useMemo(() => {
+    const spotlight = enhancedRoundGroups.flatMap((group) => group.items).filter((item) => !item.seriesItem.is_complete)
+    const activeToday = spotlight.filter((item) => item.hasTodayGame).length
+    const highImpact = spotlight.filter((item) => item.impact.label === 'Impacto alto').length
+    const watchlist = spotlight.filter((item) => item.impact.label === 'Monitorar' || item.impact.label === 'Impacto moderado').length
+
+    if (activeToday > 0 && highImpact > 0) {
+      return `${activeToday} série${activeToday !== 1 ? 's' : ''} em jogo hoje e ${highImpact} confronto${highImpact !== 1 ? 's' : ''} com alerta alto`
+    }
+    if (highImpact > 0) {
+      return `${highImpact} confronto${highImpact !== 1 ? 's' : ''} chegam com desfalques pesados`
+    }
+    if (watchlist > 0) {
+      return `${watchlist} série${watchlist !== 1 ? 's' : ''} pedem monitoramento antes da abertura`
+    }
+    return 'Chave oficial pronta para acompanhar a rodada real da NBA'
+  }, [enhancedRoundGroups])
+
   return (
     <div style={{ ...card, background: 'linear-gradient(135deg, rgba(224,92,58,0.12), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
       <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
+
+      <div
+        style={{
+          marginBottom: 14,
+          padding: '10px 12px',
+          borderRadius: 10,
+          background: 'rgba(12,12,18,0.34)',
+          border: '1px solid rgba(200,150,60,0.12)',
+        }}
+      >
+        <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.9rem', lineHeight: 1 }}>
+          Radar da chave
+        </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 5, lineHeight: 1.45 }}>
+          {sectionHeadline}
+        </div>
+      </div>
 
       {/* 3 chips */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
@@ -821,7 +892,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>
-          {roundGroups.map(({ round, items }) => {
+          {enhancedRoundGroups.map(({ round, items }) => {
             const color = ROUND_COLOR[round]
             return (
               <div key={round}>
@@ -834,7 +905,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                 </div>
 
                 <div style={{ display: 'grid', gap: 5 }}>
-                  {items.map((s) => {
+                  {items.map(({ seriesItem: s, homeInjury, awayInjury, hasTodayGame, impact }) => {
                     const homeAbbr = s.home_team?.abbreviation ?? s.home_team_id ?? '—'
                     const awayAbbr = s.away_team?.abbreviation ?? s.away_team_id ?? '—'
                     const homeColor = s.home_team?.primary_color ?? 'var(--nba-text)'
@@ -848,8 +919,6 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                     const seriesPickMap = pickStats.get(s.id)
                     const correctCount = s.winner_id && seriesPickMap ? (seriesPickMap.get(s.winner_id) ?? 0) : 0
                     const totalPicked = seriesPickMap ? Array.from(seriesPickMap.values()).reduce((a, b) => a + b, 0) : 0
-                    const homeInjury = s.home_team_id ? topInjuryByTeam.get(s.home_team_id) : undefined
-                    const awayInjury = s.away_team_id ? topInjuryByTeam.get(s.away_team_id) : undefined
 
                     return (
                       <div
@@ -859,8 +928,20 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                           gap: 6,
                           padding: '8px 10px',
                           borderRadius: 8,
-                          background: s.is_complete ? 'rgba(12,12,18,0.28)' : 'rgba(12,12,18,0.42)',
-                          border: `1px solid ${s.is_complete ? 'rgba(46,204,113,0.12)' : inProgress ? 'rgba(200,150,60,0.18)' : 'rgba(200,150,60,0.08)'}`,
+                          background: hasTodayGame
+                            ? 'linear-gradient(135deg, rgba(46,204,113,0.08), rgba(12,12,18,0.42))'
+                            : s.is_complete
+                            ? 'rgba(12,12,18,0.28)'
+                            : 'rgba(12,12,18,0.42)',
+                          border: `1px solid ${
+                            hasTodayGame
+                              ? 'rgba(46,204,113,0.24)'
+                              : s.is_complete
+                              ? 'rgba(46,204,113,0.12)'
+                              : inProgress
+                              ? 'rgba(200,150,60,0.18)'
+                              : 'rgba(200,150,60,0.08)'
+                          }`,
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -906,6 +987,10 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
                               {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
                             </span>
+                          ) : hasTodayGame ? (
+                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.16)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.26)', whiteSpace: 'nowrap' }}>
+                              hoje
+                            </span>
                           ) : inProgress ? (
                             <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
                               {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
@@ -916,6 +1001,29 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             </span>
                           )}
                         </div>
+
+                        {!s.is_complete && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '3px 8px',
+                                borderRadius: 999,
+                                fontSize: '0.64rem',
+                                fontWeight: 700,
+                                color: impact.color,
+                                background: impact.background,
+                                border: `1px solid ${impact.border}`,
+                              }}
+                            >
+                              {impact.label}
+                            </span>
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                              {hasTodayGame ? 'Confronto ativo na agenda de hoje' : inProgress ? 'Série em andamento' : 'Aguardando abertura'}
+                            </span>
+                          </div>
+                        )}
 
                         {!s.is_complete && (homeInjury || awayInjury || injuriesLoading || !injuriesAvailable) && (
                           <div style={{ display: 'grid', gap: 4 }}>
@@ -1259,4 +1367,14 @@ function getInjuryTone(status: string) {
   if (status === 'Doubtful') return { label: 'dúvida', color: '#f39c12' }
   if (status === 'Questionable') return { label: 'questionável', color: '#ffd166' }
   return { label: status.toLowerCase(), color: 'var(--nba-text-muted)' }
+}
+
+function getSeriesImpactLabel(homeInjury?: InjuryItem, awayInjury?: InjuryItem) {
+  const keyAlerts = [homeInjury, awayInjury].filter((item) => item?.impact === 'high').length
+  const mediumAlerts = [homeInjury, awayInjury].filter((item) => item?.impact === 'medium').length
+
+  if (keyAlerts >= 2) return { label: 'Impacto alto', color: '#ff8c72', background: 'rgba(255,140,114,0.10)', border: 'rgba(255,140,114,0.24)' }
+  if (keyAlerts === 1 || mediumAlerts >= 2) return { label: 'Impacto moderado', color: '#ffd166', background: 'rgba(255,209,102,0.10)', border: 'rgba(255,209,102,0.20)' }
+  if (mediumAlerts === 1) return { label: 'Monitorar', color: '#4a90d9', background: 'rgba(74,144,217,0.10)', border: 'rgba(74,144,217,0.20)' }
+  return { label: 'Elencos íntegros', color: 'var(--nba-text-muted)', background: 'rgba(136,136,153,0.08)', border: 'rgba(136,136,153,0.16)' }
 }
