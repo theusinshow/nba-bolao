@@ -4872,3 +4872,4 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 - o tour de primeira entrada agora também termina na aba `Perfil`, usando o perfil do próprio participante autenticado para fechar o onboarding mostrando leitura competitiva e DNA da cartela.
+- endureci a aba `Análise` com error boundaries por seção para evitar tela preta caso algum bloco receba dado inesperado em runtime.

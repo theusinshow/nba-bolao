@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Component, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { Activity, ChevronRight, Clock, Database, HeartPulse, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
@@ -26,6 +26,38 @@ const card: React.CSSProperties = {
   border: '1px solid var(--nba-border)',
   borderRadius: 8,
   padding: '1rem',
+}
+
+class AnalysisSectionBoundary extends Component<
+  { title: string; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error(`[analysis] section crashed: ${this.props.title}`, error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ ...card, borderRadius: 12 }}>
+          <div className="font-condensed font-bold" style={{ color: '#ff8a65', fontSize: '1rem', lineHeight: 1.05, marginBottom: 8 }}>
+            {this.props.title} indisponível
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+            Esse bloco recebeu um dado inesperado e foi isolado para não derrubar a aba inteira.
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
 }
 
 function CardTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
@@ -1730,44 +1762,66 @@ export function Analysis() {
         generatedAt={generatedAt}
       />
 
-      <AnalysisEditorialDeck
-        upcomingGames={upcomingGames}
-        odds={oddsToShow}
-        news={newsToShow}
-        injuries={injuriesToShow}
-      />
+      <AnalysisSectionBoundary title="Resumo editorial">
+        <AnalysisEditorialDeck
+          upcomingGames={upcomingGames}
+          odds={oddsToShow}
+          news={newsToShow}
+          injuries={injuriesToShow}
+        />
+      </AnalysisSectionBoundary>
 
-      <AnalysisPressureDeck
-        upcomingGames={upcomingGames}
-        odds={oddsToShow}
-        news={newsToShow}
-        injuries={injuriesToShow}
-      />
+      <AnalysisSectionBoundary title="Onde a rodada pesa">
+        <AnalysisPressureDeck
+          upcomingGames={upcomingGames}
+          odds={oddsToShow}
+          news={newsToShow}
+          injuries={injuriesToShow}
+        />
+      </AnalysisSectionBoundary>
 
-      <AnalysisAdvantageDeck
-        loading={seriesLoading || injuriesLoading}
-        participantReady={auth.status === 'authorized'}
-        insights={advantageInsights}
-      />
+      <AnalysisSectionBoundary title="Sua vantagem na rodada">
+        <AnalysisAdvantageDeck
+          loading={seriesLoading || injuriesLoading}
+          participantReady={auth.status === 'authorized'}
+          insights={advantageInsights}
+        />
+      </AnalysisSectionBoundary>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
         <div className="flex flex-col gap-4 min-w-0">
-          <NextGamesCard games={upcomingGames} />
-          <RecentResultsCard games={recentCompletedGames} />
-          <OddsCard odds={oddsToShow} loading={loading} reason={oddsReason} unfiltered={oddsUnfiltered} teamStylesByName={teamStylesByName} />
+          <AnalysisSectionBoundary title="Próximos confrontos">
+            <NextGamesCard games={upcomingGames} />
+          </AnalysisSectionBoundary>
+          <AnalysisSectionBoundary title="Resultados recentes">
+            <RecentResultsCard games={recentCompletedGames} />
+          </AnalysisSectionBoundary>
+          <AnalysisSectionBoundary title="Odds dos confrontos">
+            <OddsCard odds={oddsToShow} loading={loading} reason={oddsReason} unfiltered={oddsUnfiltered} teamStylesByName={teamStylesByName} />
+          </AnalysisSectionBoundary>
           <div className="xl:hidden">
-            <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+            <AnalysisSectionBoundary title="Notícias da NBA">
+              <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+            </AnalysisSectionBoundary>
           </div>
           <div className="xl:hidden">
-            <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
+            <AnalysisSectionBoundary title="Relatório de lesões">
+              <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
+            </AnalysisSectionBoundary>
           </div>
         </div>
         <div className="flex flex-col gap-4 min-w-0">
           <div className="hidden xl:block">
-            <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+            <AnalysisSectionBoundary title="Notícias da NBA">
+              <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+            </AnalysisSectionBoundary>
           </div>
-          <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
-          <AnalysisActionsCard />
+          <AnalysisSectionBoundary title="Relatório de lesões">
+            <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
+          </AnalysisSectionBoundary>
+          <AnalysisSectionBoundary title="Atalhos relacionados">
+            <AnalysisActionsCard />
+          </AnalysisSectionBoundary>
         </div>
       </div>
     </div>
