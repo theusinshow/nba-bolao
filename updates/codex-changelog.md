@@ -1,5 +1,23 @@
 # Codex Changelog
 
+## 2026-04-16 - Fix: Loader passa a usar o asset oficial loading.svg
+
+### Contexto
+O ícone de loading precisava usar a arte centralizada em `assets/loading.svg`, em vez do desenho inline mantido no componente.
+
+### `frontend/src/components/LoadingBasketball.tsx`
+- O componente passou a importar `../../../assets/loading.svg`
+- O SVG inline foi removido
+- O loader agora renderiza a arte oficial por `<img>` mantendo as classes e animações já existentes
+
+### `frontend/src/index.css`
+- A rotação do loader foi refinada para girar no próprio eixo com leve perspectiva
+- Adicionada aura dourado/laranja com pulso sutil, alinhada à paleta do app
+- Glow e sombra foram ajustados para deixar o ícone mais premium sem pesar visualmente
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso
+
 ## 2026-04-16 - Fix: Correcoes de review em locks, ranking, bracket e auth
 
 ### Contexto

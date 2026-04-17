@@ -1,3 +1,5 @@
+import loadingIcon from '../../../assets/loading.svg'
+
 interface Props {
   size?: number
 }
@@ -18,6 +20,14 @@ export function LoadingBasketball({ size = 32 }: Props) {
       role="status"
     >
       <span
+        className="loading-basketball-aura"
+        aria-hidden="true"
+        style={{
+          width: size * 1.18,
+          height: size * 1.18,
+        }}
+      />
+      <span
         className="loading-basketball-shadow"
         aria-hidden="true"
         style={{
@@ -25,14 +35,11 @@ export function LoadingBasketball({ size = 32 }: Props) {
           height: Math.max(6, size * 0.14),
         }}
       />
-      <svg
+      <img
         className="loading-basketball-icon"
+        src={loadingIcon}
+        alt=""
         aria-hidden="true"
-        width={size}
-        height={size}
-        viewBox="0 0 2000 2000"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
         style={{
           width: size,
           height: size,
@@ -43,21 +50,7 @@ export function LoadingBasketball({ size = 32 }: Props) {
           zIndex: 1,
           flexShrink: 0,
         }}
-      >
-        {/* Corpo da bola */}
-        <circle cx="1000" cy="1000" r="940" fill="#1a1a24" stroke="#C8963C" strokeWidth="80" />
-
-        {/* Linhas curvas do basquete */}
-        <g stroke="#E05C3A" strokeWidth="55" strokeLinecap="round" fill="none" opacity="0.85">
-          {/* Linha central horizontal */}
-          <path d="M 62 1000 Q 500 820 1000 820 Q 1500 820 1938 1000" />
-          <path d="M 62 1000 Q 500 1180 1000 1180 Q 1500 1180 1938 1000" />
-
-          {/* Linha central vertical */}
-          <path d="M 1000 62 Q 820 500 820 1000 Q 820 1500 1000 1938" />
-          <path d="M 1000 62 Q 1180 500 1180 1000 Q 1180 1500 1000 1938" />
-        </g>
-      </svg>
+      />
     </div>
   )
 }
