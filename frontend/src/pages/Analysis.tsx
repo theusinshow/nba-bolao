@@ -1547,93 +1547,35 @@ export function Analysis() {
   const participantId = auth.status === 'authorized' ? auth.participantId : undefined
   const { series, picks, loading: seriesLoading } = useSeries(participantId)
   const allFeedGames = games.length > 0 ? games : [...upcomingGames, ...recentCompletedGames]
+  let injuriesToShow: InjuryItem[] = injuries
+  let injuriesReason =
+    injuriesError ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
 
-  const relevantTeamNames = new Set(
-    upcomingGames.flatMap((game) => [
-      normalizeName(game.home_team?.name),
-      normalizeName(game.away_team?.name),
-    ]).filter(Boolean)
-  )
+  try {
+    const relevantInjuryTeams = new Set(
+      allFeedGames.flatMap((game) => [
+        game.home_team?.abbreviation ?? game.home_team_id,
+        game.away_team?.abbreviation ?? game.away_team_id,
+        game.series?.home_team_id,
+        game.series?.away_team_id,
+      ]).filter((team): team is string => !!team)
+    )
 
-  const filteredOdds = odds.filter((item) => (
-    relevantTeamNames.has(normalizeName(item.home_team_name)) &&
-    relevantTeamNames.has(normalizeName(item.away_team_name))
-  ))
-  const oddsToShow = filteredOdds.length > 0 ? filteredOdds : odds
-  const oddsUnfiltered = filteredOdds.length === 0 && odds.length > 0
-  const teamStylesByName = Object.fromEntries(
-    allFeedGames.flatMap((game) => {
-      const homeName = normalizeName(game.home_team?.name)
-      const awayName = normalizeName(game.away_team?.name)
-      const entries: Array<[string, TeamOddsStyle]> = []
-
-      if (homeName && game.home_team) {
-        entries.push([
-          homeName,
-          {
-            abbreviation: game.home_team.abbreviation,
-            primaryColor: game.home_team.primary_color ?? '#4a90d9',
-            secondaryColor: game.home_team.secondary_color ?? 'rgba(74,144,217,0.18)',
-          },
-        ])
-      }
-
-      if (awayName && game.away_team) {
-        entries.push([
-          awayName,
-          {
-            abbreviation: game.away_team.abbreviation,
-            primaryColor: game.away_team.primary_color ?? '#e05c3a',
-            secondaryColor: game.away_team.secondary_color ?? 'rgba(224,92,58,0.18)',
-          },
-        ])
-      }
-
-      return entries
+    const fallbackPlayoffTeams = new Set(TEAMS_2025.map((t) => t.abbreviation))
+    injuriesToShow = injuries.filter((item) => {
+      if (!item.team) return true
+      if (relevantInjuryTeams.size > 0) return relevantInjuryTeams.has(item.team)
+      return fallbackPlayoffTeams.has(item.team)
     })
-  )
-
-  const filteredNews = news.filter((item) => {
-    const haystack = normalizeName(`${item.title} ${item.summary ?? ''}`)
-    if (!haystack) return false
-    return Array.from(relevantTeamNames).some((teamName) => teamName && haystack.includes(teamName))
-  })
-  const newsToShow = filteredNews.length > 0 ? filteredNews : news
-
-  const oddsReason = error
-    ? error
-    : !providers.odds.available
-    ? providers.odds.reason
-    : oddsToShow.length === 0
-    ? 'Nenhuma odd disponível no momento.'
-    : undefined
-
-  const newsReason = error
-    ? error
-    : !providers.news.available
-    ? providers.news.reason
-    : newsToShow.length === 0
-    ? 'Nenhuma notícia relevante encontrada para a rodada neste momento.'
-    : undefined
-
-  const relevantInjuryTeams = new Set(
-    allFeedGames.flatMap((game) => [
-      game.home_team?.abbreviation ?? game.home_team_id,
-      game.away_team?.abbreviation ?? game.away_team_id,
-      game.series?.home_team_id,
-      game.series?.away_team_id,
-    ]).filter((team): team is string => !!team)
-  )
-
-  const fallbackPlayoffTeams = new Set(TEAMS_2025.map((t) => t.abbreviation))
-  const injuriesToShow = injuries.filter((item) => {
-    if (!item.team) return true
-    if (relevantInjuryTeams.size > 0) return relevantInjuryTeams.has(item.team)
-    return fallbackPlayoffTeams.has(item.team)
-  })
-  const injuriesReason = injuriesError
-    ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
-    ?? (injuries.length > 0 && injuriesToShow.length === 0 ? 'Nenhuma lesão relevante encontrada para os times ativos da rodada.' : undefined)
+    injuriesReason =
+      injuriesError
+      ?? (!injuriesProvider.available ? injuriesProvider.reason : undefined)
+      ?? (injuries.length > 0 && injuriesToShow.length === 0
+        ? 'Nenhuma lesão relevante encontrada para os times ativos da rodada.'
+        : undefined)
+  } catch (injuryFilterError) {
+    console.error('[analysis] injuries filter crashed', injuryFilterError)
+  }
 
   const advantageInsights = useMemo(() => {
     if (!participantId) return []
@@ -1751,79 +1693,163 @@ export function Analysis() {
       .map(({ score, ...item }) => item)
   }, [injuriesToShow, participantId, picks, series])
 
-  return (
-    <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
-      <AnalysisHero
-        nextGamesCount={upcomingGames.length}
-        recentResultsCount={recentCompletedGames.length}
-        oddsReady={providers.odds.available && oddsToShow.length > 0}
-        newsReady={providers.news.available && newsToShow.length > 0}
-        injuriesCount={injuriesToShow.length}
-        generatedAt={generatedAt}
-      />
+  try {
+    const relevantTeamNames = new Set(
+      upcomingGames.flatMap((game) => [
+        normalizeName(game.home_team?.name),
+        normalizeName(game.away_team?.name),
+      ]).filter(Boolean)
+    )
 
-      <AnalysisSectionBoundary title="Resumo editorial">
-        <AnalysisEditorialDeck
-          upcomingGames={upcomingGames}
-          odds={oddsToShow}
-          news={newsToShow}
-          injuries={injuriesToShow}
+    const filteredOdds = odds.filter((item) => (
+      relevantTeamNames.has(normalizeName(item.home_team_name)) &&
+      relevantTeamNames.has(normalizeName(item.away_team_name))
+    ))
+    const oddsToShow = filteredOdds.length > 0 ? filteredOdds : odds
+    const oddsUnfiltered = filteredOdds.length === 0 && odds.length > 0
+    const teamStylesByName = Object.fromEntries(
+      allFeedGames.flatMap((game) => {
+        const homeName = normalizeName(game.home_team?.name)
+        const awayName = normalizeName(game.away_team?.name)
+        const entries: Array<[string, TeamOddsStyle]> = []
+
+        if (homeName && game.home_team) {
+          entries.push([
+            homeName,
+            {
+              abbreviation: game.home_team.abbreviation,
+              primaryColor: game.home_team.primary_color ?? '#4a90d9',
+              secondaryColor: game.home_team.secondary_color ?? 'rgba(74,144,217,0.18)',
+            },
+          ])
+        }
+
+        if (awayName && game.away_team) {
+          entries.push([
+            awayName,
+            {
+              abbreviation: game.away_team.abbreviation,
+              primaryColor: game.away_team.primary_color ?? '#e05c3a',
+              secondaryColor: game.away_team.secondary_color ?? 'rgba(224,92,58,0.18)',
+            },
+          ])
+        }
+
+        return entries
+      })
+    )
+
+    const filteredNews = news.filter((item) => {
+      const haystack = normalizeName(`${item.title} ${item.summary ?? ''}`)
+      if (!haystack) return false
+      return Array.from(relevantTeamNames).some((teamName) => teamName && haystack.includes(teamName))
+    })
+    const newsToShow = filteredNews.length > 0 ? filteredNews : news
+
+    const oddsReason = error
+      ? error
+      : !providers.odds.available
+      ? providers.odds.reason
+      : oddsToShow.length === 0
+      ? 'Nenhuma odd disponível no momento.'
+      : undefined
+
+    const newsReason = error
+      ? error
+      : !providers.news.available
+      ? providers.news.reason
+      : newsToShow.length === 0
+      ? 'Nenhuma notícia relevante encontrada para a rodada neste momento.'
+      : undefined
+
+    return (
+      <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
+        <AnalysisHero
+          nextGamesCount={upcomingGames.length}
+          recentResultsCount={recentCompletedGames.length}
+          oddsReady={providers.odds.available && oddsToShow.length > 0}
+          newsReady={providers.news.available && newsToShow.length > 0}
+          injuriesCount={injuriesToShow.length}
+          generatedAt={generatedAt}
         />
-      </AnalysisSectionBoundary>
 
-      <AnalysisSectionBoundary title="Onde a rodada pesa">
-        <AnalysisPressureDeck
-          upcomingGames={upcomingGames}
-          odds={oddsToShow}
-          news={newsToShow}
-          injuries={injuriesToShow}
-        />
-      </AnalysisSectionBoundary>
+        <AnalysisSectionBoundary title="Resumo editorial">
+          <AnalysisEditorialDeck
+            upcomingGames={upcomingGames}
+            odds={oddsToShow}
+            news={newsToShow}
+            injuries={injuriesToShow}
+          />
+        </AnalysisSectionBoundary>
 
-      <AnalysisSectionBoundary title="Sua vantagem na rodada">
-        <AnalysisAdvantageDeck
-          loading={seriesLoading || injuriesLoading}
-          participantReady={auth.status === 'authorized'}
-          insights={advantageInsights}
-        />
-      </AnalysisSectionBoundary>
+        <AnalysisSectionBoundary title="Onde a rodada pesa">
+          <AnalysisPressureDeck
+            upcomingGames={upcomingGames}
+            odds={oddsToShow}
+            news={newsToShow}
+            injuries={injuriesToShow}
+          />
+        </AnalysisSectionBoundary>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
-        <div className="flex flex-col gap-4 min-w-0">
-          <AnalysisSectionBoundary title="Próximos confrontos">
-            <NextGamesCard games={upcomingGames} />
-          </AnalysisSectionBoundary>
-          <AnalysisSectionBoundary title="Resultados recentes">
-            <RecentResultsCard games={recentCompletedGames} />
-          </AnalysisSectionBoundary>
-          <AnalysisSectionBoundary title="Odds dos confrontos">
-            <OddsCard odds={oddsToShow} loading={loading} reason={oddsReason} unfiltered={oddsUnfiltered} teamStylesByName={teamStylesByName} />
-          </AnalysisSectionBoundary>
-          <div className="xl:hidden">
-            <AnalysisSectionBoundary title="Notícias da NBA">
-              <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+        <AnalysisSectionBoundary title="Sua vantagem na rodada">
+          <AnalysisAdvantageDeck
+            loading={seriesLoading || injuriesLoading}
+            participantReady={auth.status === 'authorized'}
+            insights={advantageInsights}
+          />
+        </AnalysisSectionBoundary>
+
+        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
+          <div className="flex flex-col gap-4 min-w-0">
+            <AnalysisSectionBoundary title="Próximos confrontos">
+              <NextGamesCard games={upcomingGames} />
             </AnalysisSectionBoundary>
+            <AnalysisSectionBoundary title="Resultados recentes">
+              <RecentResultsCard games={recentCompletedGames} />
+            </AnalysisSectionBoundary>
+            <AnalysisSectionBoundary title="Odds dos confrontos">
+              <OddsCard odds={oddsToShow} loading={loading} reason={oddsReason} unfiltered={oddsUnfiltered} teamStylesByName={teamStylesByName} />
+            </AnalysisSectionBoundary>
+            <div className="xl:hidden">
+              <AnalysisSectionBoundary title="Notícias da NBA">
+                <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+              </AnalysisSectionBoundary>
+            </div>
+            <div className="xl:hidden">
+              <AnalysisSectionBoundary title="Relatório de lesões">
+                <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
+              </AnalysisSectionBoundary>
+            </div>
           </div>
-          <div className="xl:hidden">
+          <div className="flex flex-col gap-4 min-w-0">
+            <div className="hidden xl:block">
+              <AnalysisSectionBoundary title="Notícias da NBA">
+                <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+              </AnalysisSectionBoundary>
+            </div>
             <AnalysisSectionBoundary title="Relatório de lesões">
               <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
             </AnalysisSectionBoundary>
-          </div>
-        </div>
-        <div className="flex flex-col gap-4 min-w-0">
-          <div className="hidden xl:block">
-            <AnalysisSectionBoundary title="Notícias da NBA">
-              <NewsCard news={newsToShow} loading={loading} reason={newsReason} />
+            <AnalysisSectionBoundary title="Atalhos relacionados">
+              <AnalysisActionsCard />
             </AnalysisSectionBoundary>
           </div>
-          <AnalysisSectionBoundary title="Relatório de lesões">
-            <InjuriesCard injuries={injuriesToShow} loading={injuriesLoading} reason={injuriesReason} />
-          </AnalysisSectionBoundary>
-          <AnalysisSectionBoundary title="Atalhos relacionados">
-            <AnalysisActionsCard />
-          </AnalysisSectionBoundary>
         </div>
       </div>
-    </div>
-  )
+    )
+  } catch (error) {
+    console.error('[analysis] page render crashed', error)
+    return (
+      <div className="pb-24 pt-4 px-4 mx-auto flex flex-col gap-4" style={{ maxWidth: 1280 }}>
+        <div style={{ ...card, borderRadius: 12, border: '1px solid rgba(255,138,101,0.24)' }}>
+          <div className="font-condensed font-bold" style={{ color: '#ff8a65', fontSize: '1.08rem', lineHeight: 1.05, marginBottom: 8 }}>
+            Análise temporariamente indisponível
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', lineHeight: 1.5 }}>
+            A aba recebeu um dado inesperado durante a montagem. O restante do app continua íntegro enquanto isolamos esse trecho.
+          </div>
+        </div>
+      </div>
+    )
+  }
 }
