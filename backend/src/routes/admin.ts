@@ -5,9 +5,15 @@ import { recalculateAllScores } from '../scoring/engine'
 import { supabase } from '../lib/supabase'
 import { removeParticipantCompletely } from '../admin/removeParticipant'
 import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
-import { exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
-import { exportDailyReminder } from '../digest/exportDailyReminder'
+import { verifyOperationalSnapshot } from '../backup/verifyOperationalSnapshot'
+import { buildDailyPicksDigestPreview, exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
+import { buildDailyReminderPreview, exportDailyReminder } from '../digest/exportDailyReminder'
 import { restoreRows } from '../lib/rollback'
+import { getDailyDigestSchedulerSnapshot } from '../scheduler/dailyDigestScheduler'
+import { getNBASyncSchedulerSnapshot } from '../scheduler/nbaSyncScheduler'
+import { listAdminOperationRuns, recordAdminOperation } from '../admin/adminOperationLog'
+import type { AdminOperationName } from '../admin/adminOperationLog'
+import type { ArtifactDescriptor } from '../lib/operationalArtifacts'
 
 const router = Router()
 
@@ -31,6 +37,82 @@ interface PickRow {
 interface AdminRequest extends Request {
   adminUserId?: string
   adminParticipantId?: string
+}
+
+type AsyncValue<T> = T | Promise<T>
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function getAdminActor(req: Request) {
+  const adminRequest = req as AdminRequest
+  return {
+    adminUserId: adminRequest.adminUserId ?? null,
+    adminParticipantId: adminRequest.adminParticipantId ?? null,
+  }
+}
+
+interface TrackedOperationOptions<TResult> {
+  req: Request
+  operation: AdminOperationName
+  summary: string | ((result: TResult) => AsyncValue<string>)
+  errorSummary?: string
+  targetDate?: string | null
+  variant?: string | null
+  metadata?: Record<string, unknown> | ((result: TResult) => AsyncValue<Record<string, unknown>>)
+  artifacts?: (result: TResult) => AsyncValue<ArtifactDescriptor[]>
+  outputDir?: string | ((result: TResult) => AsyncValue<string | null>) | null
+}
+
+async function executeTrackedOperation<TResult>(
+  options: TrackedOperationOptions<TResult>,
+  task: () => Promise<TResult>
+) {
+  const startedAt = new Date().toISOString()
+
+  try {
+    const result = await task()
+    const summary = typeof options.summary === 'function' ? await options.summary(result) : options.summary
+    const metadata = typeof options.metadata === 'function'
+      ? await options.metadata(result)
+      : (options.metadata ?? {})
+    const artifacts = options.artifacts ? await options.artifacts(result) : []
+    const outputDir = typeof options.outputDir === 'function'
+      ? await options.outputDir(result)
+      : (options.outputDir ?? null)
+
+    await recordAdminOperation({
+      operation: options.operation,
+      status: 'success',
+      summary,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      actor: getAdminActor(options.req),
+      targetDate: options.targetDate,
+      variant: options.variant,
+      artifacts,
+      outputDir,
+      metadata,
+    })
+
+    return result
+  } catch (error) {
+    await recordAdminOperation({
+      operation: options.operation,
+      status: 'error',
+      summary: options.errorSummary ?? `Falha em ${options.operation}`,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      actor: getAdminActor(options.req),
+      targetDate: options.targetDate,
+      variant: options.variant,
+      metadata: typeof options.metadata === 'function' ? {} : (options.metadata ?? {}),
+      error: getErrorMessage(error),
+    })
+
+    throw error
+  }
 }
 
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
@@ -187,9 +269,18 @@ async function snapshotTable(table: 'series_picks' | 'game_picks' | 'simulation_
 router.use(requireAdmin)
 
 // POST /admin/sync — trigger manual NBA sync
-router.post('/sync', async (_req, res) => {
+router.post('/sync', async (req, res) => {
   try {
-    await syncNBA()
+    await executeTrackedOperation(
+      {
+        req,
+        operation: 'sync',
+        summary: 'Sync manual da NBA concluido.',
+        errorSummary: 'Falha no sync manual da NBA',
+      },
+      () => syncNBA()
+    )
+
     res.json({ ok: true, message: 'Sync completed successfully' })
   } catch (err: unknown) {
     console.error('[admin/sync] Sync failed:', err)
@@ -198,9 +289,18 @@ router.post('/sync', async (_req, res) => {
 })
 
 // POST /admin/rescore — recalculate scores only
-router.post('/rescore', async (_req, res) => {
+router.post('/rescore', async (req, res) => {
   try {
-    await recalculateAllScores()
+    await executeTrackedOperation(
+      {
+        req,
+        operation: 'rescore',
+        summary: 'Recalculo manual do ranking concluido.',
+        errorSummary: 'Falha ao recalcular ranking',
+      },
+      () => recalculateAllScores()
+    )
+
     res.json({ ok: true, message: 'Rescoring completed successfully' })
   } catch (err: unknown) {
     console.error('[admin/rescore] Rescore failed:', err)
@@ -209,8 +309,40 @@ router.post('/rescore', async (_req, res) => {
 })
 
 // GET /admin/health
-router.get('/health', (_req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString() })
+router.get('/health', async (_req, res) => {
+  const operations = await listAdminOperationRuns(12)
+  res.json({
+    ok: true,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    scheduler: {
+      nbaSync: getNBASyncSchedulerSnapshot(),
+      dailyDigest: getDailyDigestSchedulerSnapshot(),
+    },
+    operations: {
+      updatedAt: operations.updatedAt,
+      summary: operations.summary,
+      recentCount: operations.runs.length,
+    },
+  })
+})
+
+// GET /admin/operations
+router.get('/operations', async (req, res) => {
+  try {
+    const rawLimit = Number(req.query.limit ?? 24)
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 60) : 24
+    const operations = await listAdminOperationRuns(limit)
+
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      operations,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/operations] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
 })
 
 // GET /admin/overview
@@ -248,9 +380,25 @@ router.get('/allowed-emails', async (_req, res) => {
 })
 
 // POST /admin/backup — generate operational backup snapshot
-router.post('/backup', async (_req, res) => {
+router.post('/backup', async (req, res) => {
   try {
-    const result = await exportOperationalSnapshot()
+    const result = await executeTrackedOperation(
+      {
+        req,
+        operation: 'backup',
+        summary: (backup) => `Backup operacional gerado com ${backup.validation.fileCount} artefatos validados.`,
+        errorSummary: 'Falha ao gerar backup operacional',
+        outputDir: (backup) => backup.outputDir,
+        artifacts: (backup) => backup.artifacts,
+        metadata: (backup) => ({
+          backupId: backup.backupId,
+          metrics: backup.metrics,
+          validation: backup.validation,
+        }),
+      },
+      () => exportOperationalSnapshot()
+    )
+
     res.json({
       ok: true,
       message: 'Operational backup generated successfully',
@@ -262,11 +410,98 @@ router.post('/backup', async (_req, res) => {
   }
 })
 
+// GET /admin/daily-digest/preview
+router.get('/daily-digest/preview', async (req, res) => {
+  try {
+    const targetDate = typeof req.query.targetDate === 'string' ? req.query.targetDate.trim() : ''
+    const variant = req.query.variant === 'compact' ? 'compact' : 'full'
+    const result = await buildDailyPicksDigestPreview(targetDate || undefined, variant)
+
+    res.json({
+      ok: true,
+      result,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/daily-digest/preview] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/backup/verify — validate an existing operational backup
+router.post('/backup/verify', async (req, res) => {
+  try {
+    const backupId = typeof req.body?.backupId === 'string' ? req.body.backupId.trim() : ''
+    const outputDir = typeof req.body?.outputDir === 'string' ? req.body.outputDir.trim() : ''
+
+    if (!backupId && !outputDir) {
+      return res.status(400).json({
+        ok: false,
+        error: 'backupId ou outputDir é obrigatório para validar um backup.',
+      })
+    }
+
+    const result = await executeTrackedOperation(
+      {
+        req,
+        operation: 'verify-backup',
+        summary: (verification) => (
+          verification.ok
+            ? `Backup ${verification.backupId} verificado com ${verification.artifactsChecked} artefato(s).`
+            : `Backup ${verification.backupId} verificado com ${verification.problems.length} alerta(s).`
+        ),
+        errorSummary: 'Falha ao verificar backup operacional',
+        outputDir: (verification) => verification.outputDir,
+        artifacts: (verification) => verification.artifacts,
+        metadata: (verification) => ({
+          backupId: verification.backupId,
+          manifestPath: verification.manifestPath,
+          problems: verification.problems,
+          ok: verification.ok,
+          artifactsChecked: verification.artifactsChecked,
+          storageArtifactsChecked: verification.storageArtifactsChecked,
+        }),
+      },
+      () => verifyOperationalSnapshot({
+        backupId: backupId || null,
+        outputDir: outputDir || null,
+      })
+    )
+
+    res.json({
+      ok: true,
+      message: result.ok
+        ? 'Backup verificado com sucesso.'
+        : 'Backup verificado com alertas.',
+      result,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/backup/verify] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
 // POST /admin/daily-digest — generate WhatsApp-ready daily picks summary
 router.post('/daily-digest', async (req, res) => {
   try {
     const targetDate = typeof req.body?.targetDate === 'string' ? req.body.targetDate.trim() : ''
-    const result = await exportDailyPicksDigest(targetDate || undefined)
+    const variant = req.body?.variant === 'compact' ? 'compact' : 'full'
+    const result = await executeTrackedOperation(
+      {
+        req,
+        operation: 'daily-digest',
+        summary: (digest) => `Resumo do dia ${digest.targetDate} gerado na variante ${digest.variant}.`,
+        errorSummary: 'Falha ao gerar resumo diario',
+        targetDate: targetDate || null,
+        variant,
+        outputDir: (digest) => digest.outputDir,
+        artifacts: (digest) => digest.artifacts,
+        metadata: (digest) => ({
+          summary: digest.summary,
+          validation: digest.validation,
+        }),
+      },
+      () => exportDailyPicksDigest(targetDate || undefined, variant)
+    )
 
     res.json({
       ok: true,
@@ -279,11 +514,42 @@ router.post('/daily-digest', async (req, res) => {
   }
 })
 
+// GET /admin/daily-reminder/preview
+router.get('/daily-reminder/preview', async (req, res) => {
+  try {
+    const targetDate = typeof req.query.targetDate === 'string' ? req.query.targetDate.trim() : ''
+    const variant = req.query.variant === 'pending-only' ? 'pending-only' : 'full'
+    const result = await buildDailyReminderPreview(targetDate || undefined, variant)
+
+    res.json({ ok: true, result })
+  } catch (err: unknown) {
+    console.error('[admin/daily-reminder/preview] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
 // POST /admin/daily-reminder — generate WhatsApp-ready reminder of who hasn't picked today
 router.post('/daily-reminder', async (req, res) => {
   try {
     const targetDate = typeof req.body?.targetDate === 'string' ? req.body.targetDate.trim() : ''
-    const result = await exportDailyReminder(targetDate || undefined)
+    const variant = req.body?.variant === 'pending-only' ? 'pending-only' : 'full'
+    const result = await executeTrackedOperation(
+      {
+        req,
+        operation: 'daily-reminder',
+        summary: (reminder) => `Lembrete de ${reminder.targetDate} gerado com ${reminder.summary.gamesNeedingAttention} jogo(s) em aberto.`,
+        errorSummary: 'Falha ao gerar lembrete diario',
+        targetDate: targetDate || null,
+        variant,
+        outputDir: (reminder) => reminder.outputDir,
+        artifacts: (reminder) => reminder.artifacts,
+        metadata: (reminder) => ({
+          summary: reminder.summary,
+          validation: reminder.validation,
+        }),
+      },
+      () => exportDailyReminder(targetDate || undefined, variant)
+    )
 
     res.json({ ok: true, result })
   } catch (err: unknown) {
@@ -300,6 +566,7 @@ router.post('/reset-picks', async (req, res) => {
     simulation_series_picks: Record<string, unknown>[]
     simulation_game_picks: Record<string, unknown>[]
   } | null = null
+  const startedAt = new Date().toISOString()
 
   try {
     const confirmation = typeof req.body?.confirmation === 'string' ? req.body.confirmation.trim() : ''
@@ -329,6 +596,22 @@ router.post('/reset-picks', async (req, res) => {
 
     await recalculateAllScores()
 
+    await recordAdminOperation({
+      operation: 'reset-picks',
+      status: 'success',
+      summary: 'Reset pre-largada executado com backup previo validado.',
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      actor: getAdminActor(req),
+      outputDir: backup.outputDir,
+      artifacts: backup.artifacts,
+      metadata: {
+        deleted,
+        backupId: backup.backupId,
+        validation: backup.validation,
+      },
+    })
+
     res.json({
       ok: true,
       message: 'Todos os palpites foram zerados com backup prévio gerado.',
@@ -344,6 +627,18 @@ router.post('/reset-picks', async (req, res) => {
     } catch (rollbackErr) {
       console.error('[admin/reset-picks] Rollback failed:', rollbackErr)
     }
+    await recordAdminOperation({
+      operation: 'reset-picks',
+      status: 'error',
+      summary: 'Falha ao executar reset pre-largada.',
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      actor: getAdminActor(req),
+      metadata: {
+        rollbackAttempted: true,
+      },
+      error: getErrorMessage(err),
+    })
     console.error('[admin/reset-picks] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
@@ -357,15 +652,28 @@ router.post('/allowed-emails/add', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Email is required.' })
     }
 
-    const { data, error } = await supabase
-      .from('allowed_emails')
-      .upsert({ email }, { onConflict: 'email' })
-      .select('email')
-      .single()
+    const data = await executeTrackedOperation(
+      {
+        req,
+        operation: 'add-allowed-email',
+        summary: `Email liberado: ${email}`,
+        errorSummary: `Falha ao liberar email ${email}`,
+        metadata: { email },
+      },
+      async () => {
+        const response = await supabase
+          .from('allowed_emails')
+          .upsert({ email }, { onConflict: 'email' })
+          .select('email')
+          .single()
 
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message })
-    }
+        if (response.error) {
+          throw new Error(response.error.message)
+        }
+
+        return response.data
+      }
+    )
 
     res.json({ ok: true, email: data.email, message: 'Email liberado com sucesso.' })
   } catch (err: unknown) {
@@ -382,17 +690,30 @@ router.post('/allowed-emails/remove', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Email is required.' })
     }
 
-    const { data, error } = await supabase
-      .from('allowed_emails')
-      .delete()
-      .eq('email', email)
-      .select('email')
+    const data = await executeTrackedOperation(
+      {
+        req,
+        operation: 'remove-allowed-email',
+        summary: `Email removido da whitelist: ${email}`,
+        errorSummary: `Falha ao remover email ${email}`,
+        metadata: { email },
+      },
+      async () => {
+        const response = await supabase
+          .from('allowed_emails')
+          .delete()
+          .eq('email', email)
+          .select('email')
 
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message })
-    }
+        if (response.error) {
+          throw new Error(response.error.message)
+        }
 
-    res.json({ ok: true, removed: data?.length ?? 0, message: 'Email removido da lista de acesso.' })
+        return response.data ?? []
+      }
+    )
+
+    res.json({ ok: true, removed: data.length, message: 'Email removido da lista de acesso.' })
   } catch (err: unknown) {
     console.error('[admin/allowed-emails/remove] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
@@ -414,16 +735,29 @@ router.post('/participants/set-admin', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Você não pode remover seu próprio acesso de admin por esta rota.' })
     }
 
-    const { data, error } = await supabase
-      .from('participants')
-      .update({ is_admin: isAdmin })
-      .eq('id', participantId)
-      .select('id, name, email, is_admin')
-      .single()
+    const data = await executeTrackedOperation(
+      {
+        req,
+        operation: 'toggle-admin',
+        summary: () => isAdmin ? 'Participante promovido a admin.' : 'Privilegio de admin removido.',
+        errorSummary: 'Falha ao alterar privilegio admin',
+        metadata: { participantId, isAdmin },
+      },
+      async () => {
+        const response = await supabase
+          .from('participants')
+          .update({ is_admin: isAdmin })
+          .eq('id', participantId)
+          .select('id, name, email, is_admin')
+          .single()
 
-    if (error || !data) {
-      return res.status(500).json({ ok: false, error: error?.message ?? 'Participant not found.' })
-    }
+        if (response.error || !response.data) {
+          throw new Error(response.error?.message ?? 'Participant not found.')
+        }
+
+        return response.data
+      }
+    )
 
     res.json({
       ok: true,
@@ -451,11 +785,22 @@ router.post('/participants/remove', async (req, res) => {
       })
     }
 
-    const result = participantId
-      ? await removeParticipantCompletely({ participantId })
-      : email
-      ? await removeParticipantCompletely({ email })
-      : await removeParticipantCompletely({ userId })
+    const result = await executeTrackedOperation(
+      {
+        req,
+        operation: 'remove-participant',
+        summary: (payload) => `Participante removido completamente: ${payload.participant.name}.`,
+        errorSummary: 'Falha ao remover participante',
+        metadata: { participantId, email, userId },
+      },
+      () => (
+        participantId
+          ? removeParticipantCompletely({ participantId })
+          : email
+          ? removeParticipantCompletely({ email })
+          : removeParticipantCompletely({ userId })
+      )
+    )
 
     res.json({
       ok: true,

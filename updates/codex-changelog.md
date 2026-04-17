@@ -1,5 +1,95 @@
 # Codex Changelog
 
+## 2026-04-17 - Feature: Centro operacional do Admin com preview real, trilha persistida e backups auditáveis
+
+### Contexto
+O painel administrativo saiu de um estado mais manual e local para uma operação mais confiável. O foco foi tratar `backup operacional`, `resumo do dia`, `lembrete de palpites` e observabilidade como rotinas auditáveis de verdade, com preview, manifesto e histórico compartilhado.
+
+### `backend/src/lib/operationalArtifacts.ts`, `backend/src/admin/adminOperationLog.ts`
+- Entrou uma camada comum para descrever artefatos operacionais com:
+  - `sha256`
+  - tamanho em bytes
+  - tipo do arquivo
+  - validação final do lote
+- As execuções administrativas agora geram histórico persistido em disco dentro de `backups/admin-operations/operations-log.json`
+- O backend passou a resumir por operação:
+  - última execução
+  - último sucesso
+  - último erro
+  - total de execuções
+
+### `backend/src/backup/exportOperationalSnapshot.ts`
+- O `backup operacional` deixou de gerar só CSVs e resumo solto
+- Agora ele gera também:
+  - `payload` bruto do snapshot
+  - `manifesto` do backup
+  - validação do conjunto de arquivos
+  - métricas consolidadas do estado do bolão
+- O retorno do backend passou a incluir:
+  - `backupId`
+  - `generatedAt`
+  - `metrics`
+  - `validation`
+  - lista completa de `artifacts`
+
+### `backend/src/digest/exportDailyPicksDigest.ts`
+- O `resumo do dia` ganhou modo de preview reutilizável no backend
+- Entraram variantes:
+  - `full`
+  - `compact`
+- A exportação agora salva:
+  - `.txt`
+  - `.md`
+  - `payload .json`
+  - `manifesto .json`
+- O resultado também traz resumo operacional com:
+  - jogos do dia
+  - séries abertas
+  - picks do dia
+  - itens sem cobertura
+
+### `backend/src/digest/exportDailyReminder.ts`
+- O `lembrete de palpites` também passou a ter preview e exportação auditável
+- Entraram variantes:
+  - `full`
+  - `pending-only`
+- A rotina agora salva artefatos em `backups/daily-reminders/...` com manifesto e payload bruto
+- O retorno traz:
+  - jogos pedindo atenção
+  - participantes pendentes
+  - total de lacunas de pick
+  - validação do pacote gerado
+
+### `backend/src/routes/admin.ts`, `backend/src/scheduler/dailyDigestScheduler.ts`
+- `GET /admin/health` ficou rico e passou a expor:
+  - uptime
+  - snapshot do scheduler de sync da NBA
+  - snapshot do scheduler do resumo diário
+  - resumo do histórico operacional
+- Nova rota `GET /admin/operations` para abastecer o painel com execuções recentes
+- Novas rotas de preview:
+  - `GET /admin/daily-digest/preview`
+  - `GET /admin/daily-reminder/preview`
+- As ações administrativas críticas agora são rastreadas no log operacional, inclusive quando falham
+- O scheduler automático do resumo diário também passou a registrar sua própria execução no histórico
+
+### `frontend/src/pages/Admin.tsx`
+- O Admin virou um `Centro Operacional`
+- A lateral de operações agora ganhou:
+  - preview real de `Resumo do dia`
+  - preview real de `Lembrete`
+  - seleção de data alvo
+  - seleção de variante
+  - cards de `sync`, `rescore` e `reset` com contexto da última execução
+  - observabilidade dos schedulers
+- A trilha `Atividade Recente` deixou de depender de estado local do navegador e passou a usar o histórico real vindo do backend
+- Os modais de `backup`, `resumo` e `lembrete` passaram a mostrar métricas, validação e artefatos gerados
+- Os `window.confirm` / `window.prompt` foram substituídos por modal interno de confirmação, inclusive com confirmação digitada no reset pré-largada
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
+
 ## 2026-04-17 - Fix: Rodada crítica de estabilidade em Análise, login mobile, Compare e Home
 
 ### Contexto
@@ -4762,6 +4852,31 @@ USING (
 - mantive a lógica existente de radar da chave, impacto do confronto e estados de série, mas com distribuição visual mais premium.
 
 ### Validação
+- `npm --prefix frontend run build`
+
+## 2026-04-17 - Feature: Endurecimento operacional com Storage, persistência Supabase e verificação formal de backup
+
+### Centro operacional e persistência durável
+- ampliei a trilha administrativa para persistir também em Supabase com `admin_operation_runs` e `admin_operation_artifacts`, mantendo o arquivo local como fallback;
+- o backend agora reidrata links assinados de artefatos espelhados no Storage ao listar operações, deixando o histórico mais auditável entre reinícios e deploys;
+- adicionei a base SQL em `supabase/admin-operations.sql` para provisionar as tabelas operacionais.
+
+### Storage e artefatos administrativos
+- backups operacionais, `Resumo do dia` e `Lembrete de palpites` agora tentam subir seus artefatos para o bucket `operational-artifacts` no Supabase Storage;
+- os descritores passaram a registrar `storageBucket`, `storagePath`, `storageStatus`, `storageError` e `downloadUrl`, além do caminho local.
+
+### Verificação formal de backup
+- criei `backend/src/backup/verifyOperationalSnapshot.ts` para validar manifesto, existência local, tamanho, checksum e disponibilidade no Storage dos artefatos de um backup;
+- expus a nova rota `POST /admin/backup/verify` em `backend/src/routes/admin.ts`;
+- o fluxo de backup agora também registra `backupId` no metadata da operação, facilitando rechecagem posterior pelo painel.
+
+### Admin - UX operacional refinada
+- evoluí `frontend/src/pages/Admin.tsx` para mostrar status de Storage e links assinados no modal de backup;
+- adicionei o botão `Verificar último` no card de backup e um modal próprio com relatório detalhado da verificação formal;
+- enriqueci `Atividade Recente` com categoria, artefatos, `backupId`, diretório e alertas, tornando a trilha operacional mais útil em produção.
+
+### Validação
+- `npm --prefix backend run build`
 - `npm --prefix frontend run build`
 ## 2026-04-17 11:25:00
 

@@ -31,9 +31,94 @@ interface Props {
   participantId: string
 }
 
+interface ArtifactDescriptor {
+  key: string
+  label: string
+  path: string
+  kind: 'csv' | 'json' | 'md' | 'txt'
+  sizeBytes: number
+  checksumSha256: string
+  storageBucket?: string | null
+  storagePath?: string | null
+  storageStatus?: 'uploaded' | 'skipped' | 'failed'
+  storageError?: string | null
+  downloadUrl?: string | null
+}
+
+interface ArtifactValidation {
+  ok: boolean
+  fileCount: number
+  totalBytes: number
+  verifiedAt: string
+  missingFiles: string[]
+}
+
+interface SchedulerSnapshot {
+  lastError?: string | null
+  lastRunAt?: string | null
+  lastSuccessAt?: string | null
+  lastAttemptAt?: string | null
+  isRunning: boolean
+}
+
+interface NBASyncSchedulerSnapshot extends SchedulerSnapshot {
+  mode: string
+  intervalMinutes: number
+  reason: string
+  lastSyncAt: string | null
+}
+
+interface DailyDigestSchedulerSnapshot extends SchedulerSnapshot {
+  cron: string
+  timezone: string
+  lastOutputDir: string | null
+}
+
+interface OperationSummaryEntry {
+  operation: string
+  category: 'routine' | 'messaging' | 'protection' | 'access'
+  label: string
+  lastRunAt: string | null
+  lastSuccessAt: string | null
+  lastError: string | null
+  lastStatus: 'success' | 'error' | null
+  totalRuns: number
+}
+
+interface AdminOperationRun {
+  id: string
+  operation: string
+  category: 'routine' | 'messaging' | 'protection' | 'access'
+  status: 'success' | 'error'
+  summary: string
+  startedAt: string
+  finishedAt: string
+  durationMs: number
+  targetDate: string | null
+  variant: string | null
+  outputDir: string | null
+  actor: {
+    adminUserId: string | null
+    adminParticipantId: string | null
+  }
+  artifacts: ArtifactDescriptor[]
+  metadata: Record<string, unknown>
+  error: string | null
+}
+
 interface HealthResponse {
   ok: boolean
   timestamp: string
+  uptime: number
+  scheduler: {
+    nbaSync: NBASyncSchedulerSnapshot
+    dailyDigest: DailyDigestSchedulerSnapshot
+  }
+  operations: {
+    updatedAt: string
+    summary: OperationSummaryEntry[]
+    recentCount: number
+  }
 }
 
 interface DailyReminderGame {
@@ -45,45 +130,159 @@ interface DailyReminderGame {
   picked: number
 }
 
-interface DailyReminderResponse {
-  ok: boolean
-  result: {
-    targetDate: string
-    generatedAt: string
-    whatsappText: string
+interface DailyReminderResult {
+  targetDate: string
+  generatedAt: string
+  variant: 'full' | 'pending-only'
+  whatsappText: string
+  summary: {
     todayGames: number
     totalParticipants: number
-    gamesWithMissingPicks: DailyReminderGame[]
+    fullyPickedGames: number
+    gamesNeedingAttention: number
+    participantsPendingToday: number
+    totalMissingEntries: number
+  }
+  gamesWithMissingPicks: DailyReminderGame[]
+  outputDir: string
+  validation: ArtifactValidation
+  artifacts: ArtifactDescriptor[]
+  files: {
+    whatsappTxt: string
+    summaryMd: string
+    payloadJson: string
+    manifestJson: string
   }
 }
+
+type DailyReminderPreviewResult = Omit<DailyReminderResult, 'outputDir' | 'validation' | 'artifacts' | 'files'>
+
+interface DailyReminderResponse {
+  ok: boolean
+  result: DailyReminderResult
+}
+
+interface DailyReminderPreviewResponse {
+  ok: boolean
+  result: DailyReminderPreviewResult
+}
+
+interface DailyDigestGame {
+  gameId: string
+  gameNumber: number
+  matchup: string
+  tipOff: string
+  totalPicks: number
+  missingCount: number
+  picks: string[]
+}
+
+interface DailyDigestSeries {
+  seriesId: string
+  roundLabel: string
+  matchup: string
+  totalPicks: number
+  missingCount: number
+  picks: string[]
+}
+
+interface DailyDigestResult {
+  outputDir: string
+  targetDate: string
+  generatedAt: string
+  variant: 'full' | 'compact'
+  whatsappText: string
+  summary: {
+    todayGames: number
+    activeSeries: number
+    totalParticipants: number
+    totalGamePicksToday: number
+    totalSeriesPicksOpen: number
+    gamesWithoutPicks: number
+    activeSeriesWithoutPicks: number
+  }
+  games: DailyDigestGame[]
+  series: DailyDigestSeries[]
+  validation: ArtifactValidation
+  artifacts: ArtifactDescriptor[]
+  files: {
+    whatsappTxt: string
+    summaryMd: string
+    payloadJson: string
+    manifestJson: string
+  }
+}
+
+type DailyDigestPreviewResult = Omit<DailyDigestResult, 'outputDir' | 'validation' | 'artifacts' | 'files'>
 
 interface DailyDigestResponse {
   ok: boolean
   message: string
-  result: {
-    outputDir: string
-    targetDate: string
-    whatsappText: string
-    files: {
-      whatsappTxt: string
-      summaryMd: string
-      payloadJson: string
-    }
+  result: DailyDigestResult
+}
+
+interface DailyDigestPreviewResponse {
+  ok: boolean
+  result: DailyDigestPreviewResult
+}
+
+interface BackupResult {
+  backupId: string
+  generatedAt: string
+  outputDir: string
+  metrics: {
+    participants: number
+    admins: number
+    teams: number
+    seriesTotal: number
+    seriesCompleted: number
+    gamesTotal: number
+    gamesOpen: number
+    seriesPicks: number
+    gamePicks: number
+  }
+  validation: ArtifactValidation
+  artifacts: ArtifactDescriptor[]
+  files: {
+    seriesPicksCsv: string
+    gamePicksCsv: string
+    rankingCsv: string
+    summaryMd: string
+    payloadJson: string
+    manifestJson: string
   }
 }
 
 interface BackupResponse {
   ok: boolean
   message: string
-  result: {
-    outputDir: string
-    files: {
-      seriesPicksCsv: string
-      gamePicksCsv: string
-      rankingCsv: string
-      summaryMd: string
-    }
-  }
+  result: BackupResult
+}
+
+interface VerifiedArtifact extends ArtifactDescriptor {
+  localExists: boolean
+  sizeMatches: boolean
+  checksumMatches: boolean
+  storageOk: boolean | null
+  problems: string[]
+}
+
+interface BackupVerificationResult {
+  ok: boolean
+  backupId: string
+  outputDir: string
+  verifiedAt: string
+  manifestPath: string
+  artifactsChecked: number
+  storageArtifactsChecked: number
+  problems: string[]
+  artifacts: VerifiedArtifact[]
+}
+
+interface BackupVerificationResponse {
+  ok: boolean
+  message: string
+  result: BackupVerificationResult
 }
 
 interface ResetPicksResponse {
@@ -168,14 +367,24 @@ interface ToggleAdminResponse {
   message: string
 }
 
-interface ActivityItem {
-  id: string
-  label: string
+interface OperationsResponse {
+  ok: boolean
   timestamp: string
-  tone: 'info' | 'success' | 'danger'
+  operations: {
+    updatedAt: string
+    runs: AdminOperationRun[]
+    summary: OperationSummaryEntry[]
+  }
 }
 
-const ACTIVITY_STORAGE_KEY = 'nba-bolao-admin-activity'
+interface ConfirmDialogState {
+  title: string
+  description: string
+  confirmLabel: string
+  tone: 'default' | 'danger'
+  confirmationText?: string
+  onConfirm: (typedConfirmation: string) => Promise<void>
+}
 
 const card: React.CSSProperties = {
   background: 'var(--nba-surface)',
@@ -204,22 +413,78 @@ function formatTimestamp(value: string | null) {
   }).format(new Date(value))
 }
 
-function loadActivity(): ActivityItem[] {
-  if (typeof window === 'undefined') return []
+function getTodayInputDate() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: BRT_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(new Date())
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  )
 
-  try {
-    const raw = window.localStorage.getItem(ACTIVITY_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as ActivityItem[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return `${parts.year}-${parts.month}-${parts.day}`
 }
 
-function persistActivity(items: ActivityItem[]) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(items))
+function formatDuration(durationMs: number) {
+  if (durationMs < 1000) return `${durationMs} ms`
+  if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)} s`
+  return `${(durationMs / 60_000).toFixed(1)} min`
+}
+
+function operationTone(status: 'success' | 'error' | null | undefined) {
+  if (status === 'error') return 'var(--nba-danger)'
+  if (status === 'success') return 'var(--nba-success)'
+  return 'var(--nba-gold)'
+}
+
+function artifactBadgeTone(validation: ArtifactValidation | null | undefined) {
+  return validation?.ok ? 'var(--nba-success)' : 'var(--nba-danger)'
+}
+
+function artifactStorageTone(status: ArtifactDescriptor['storageStatus']) {
+  if (status === 'uploaded') return 'var(--nba-success)'
+  if (status === 'failed') return 'var(--nba-danger)'
+  return 'var(--nba-text-muted)'
+}
+
+function artifactStorageLabel(status: ArtifactDescriptor['storageStatus']) {
+  if (status === 'uploaded') return 'Espelhado no Storage'
+  if (status === 'failed') return 'Falha no Storage'
+  if (status === 'skipped') return 'Storage não disponível'
+  return 'Sem Storage'
+}
+
+function findOperationSummary(entries: OperationSummaryEntry[], operation: string) {
+  return entries.find((entry) => entry.operation === operation) ?? null
+}
+
+function findLatestOperationRun(runs: AdminOperationRun[] | null | undefined, operation: string, status?: 'success' | 'error') {
+  return (runs ?? []).find((entry) => entry.operation === operation && (!status || entry.status === status)) ?? null
+}
+
+function getMetadataString(metadata: Record<string, unknown> | null | undefined, key: string) {
+  const value = metadata?.[key]
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+function getMetadataStringArray(metadata: Record<string, unknown> | null | undefined, key: string) {
+  const value = metadata?.[key]
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0) : []
+}
+
+function formatBytes(totalBytes: number) {
+  if (totalBytes < 1024) return `${totalBytes} B`
+  if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`
+  return `${(totalBytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
+function getOperationHelperText(run: AdminOperationRun | null) {
+  if (!run) return 'Ainda sem execuções registradas.'
+  return `${run.summary} • ${formatTimestamp(run.finishedAt)}`
 }
 
 function modeLabel(mode: string) {
@@ -231,40 +496,39 @@ function modeLabel(mode: string) {
 
 export function Admin({ participantId }: Props) {
   const { addToast } = useUIStore()
+  const todayInputDate = useMemo(() => getTodayInputDate(), [])
   const [participants, setParticipants] = useState<Participant[]>([])
   const [allowedEmails, setAllowedEmails] = useState<string[]>([])
   const [overview, setOverview] = useState<OverviewResponse['overview'] | null>(null)
-  const [healthTimestamp, setHealthTimestamp] = useState<string | null>(null)
+  const [health, setHealth] = useState<HealthResponse | null>(null)
+  const [operationsSnapshot, setOperationsSnapshot] = useState<OperationsResponse['operations'] | null>(null)
   const [participantsQuery, setParticipantsQuery] = useState('')
   const [allowedEmailInput, setAllowedEmailInput] = useState('')
   const [loadingParticipants, setLoadingParticipants] = useState(true)
   const [loadingAllowedEmails, setLoadingAllowedEmails] = useState(true)
   const [loadingOverview, setLoadingOverview] = useState(true)
+  const [loadingOperations, setLoadingOperations] = useState(true)
   const [busyAction, setBusyAction] = useState<string | null>(null)
-  const [activity, setActivity] = useState<ActivityItem[]>(() => loadActivity())
+  const [digestTargetDate, setDigestTargetDate] = useState(todayInputDate)
+  const [digestVariant, setDigestVariant] = useState<'full' | 'compact'>('full')
+  const [digestPreview, setDigestPreview] = useState<DailyDigestPreviewResult | null>(null)
+  const [loadingDigestPreview, setLoadingDigestPreview] = useState(false)
   const [digestModalOpen, setDigestModalOpen] = useState(false)
   const [latestDigest, setLatestDigest] = useState<DailyDigestResponse['result'] | null>(null)
+  const [reminderTargetDate, setReminderTargetDate] = useState(todayInputDate)
+  const [reminderVariant, setReminderVariant] = useState<'full' | 'pending-only'>('full')
+  const [reminderPreview, setReminderPreview] = useState<DailyReminderPreviewResult | null>(null)
+  const [loadingReminderPreview, setLoadingReminderPreview] = useState(false)
   const [reminderModalOpen, setReminderModalOpen] = useState(false)
   const [latestReminder, setLatestReminder] = useState<DailyReminderResponse['result'] | null>(null)
   const [backupModalOpen, setBackupModalOpen] = useState(false)
   const [latestBackup, setLatestBackup] = useState<BackupResponse['result'] | null>(null)
+  const [backupVerificationModalOpen, setBackupVerificationModalOpen] = useState(false)
+  const [latestBackupVerification, setLatestBackupVerification] = useState<BackupVerificationResult | null>(null)
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [latestReset, setLatestReset] = useState<ResetPicksResponse['deleted'] | null>(null)
-
-  function pushActivity(label: string, tone: ActivityItem['tone']) {
-    const next = [
-      {
-        id: crypto.randomUUID(),
-        label,
-        tone,
-        timestamp: new Date().toISOString(),
-      },
-      ...activity,
-    ].slice(0, 12)
-
-    setActivity(next)
-    persistActivity(next)
-  }
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
+  const [confirmInput, setConfirmInput] = useState('')
 
   async function loadParticipants() {
     setLoadingParticipants(true)
@@ -307,10 +571,87 @@ export function Admin({ participantId }: Props) {
     }
   }
 
+  async function loadHealth() {
+    try {
+      const payload = await adminGet<HealthResponse>('/admin/health')
+      setHealth(payload)
+    } catch {
+      setHealth(null)
+    }
+  }
+
+  async function loadOperations() {
+    setLoadingOperations(true)
+    try {
+      const payload = await adminGet<OperationsResponse>('/admin/operations?limit=24')
+      setOperationsSnapshot(payload.operations)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+    } finally {
+      setLoadingOperations(false)
+    }
+  }
+
+  async function loadDigestPreview(targetDate = digestTargetDate, variant = digestVariant) {
+    setLoadingDigestPreview(true)
+    try {
+      const payload = await adminGet<DailyDigestPreviewResponse>(
+        `/admin/daily-digest/preview?targetDate=${encodeURIComponent(targetDate)}&variant=${encodeURIComponent(variant)}`
+      )
+      setDigestPreview(payload.result)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      setDigestPreview(null)
+    } finally {
+      setLoadingDigestPreview(false)
+    }
+  }
+
+  async function loadReminderPreview(targetDate = reminderTargetDate, variant = reminderVariant) {
+    setLoadingReminderPreview(true)
+    try {
+      const payload = await adminGet<DailyReminderPreviewResponse>(
+        `/admin/daily-reminder/preview?targetDate=${encodeURIComponent(targetDate)}&variant=${encodeURIComponent(variant)}`
+      )
+      setReminderPreview(payload.result)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      setReminderPreview(null)
+    } finally {
+      setLoadingReminderPreview(false)
+    }
+  }
+
+  async function refreshOperationalData() {
+    await Promise.all([loadHealth(), loadOperations()])
+  }
+
+  function closeConfirmDialog() {
+    setConfirmDialog(null)
+    setConfirmInput('')
+  }
+
+  function openConfirmDialog(dialog: ConfirmDialogState) {
+    setConfirmInput('')
+    setConfirmDialog(dialog)
+  }
+
+  async function submitConfirmDialog() {
+    if (!confirmDialog) return
+
+    try {
+      await confirmDialog.onConfirm(confirmInput)
+    } finally {
+      closeConfirmDialog()
+    }
+  }
+
   useEffect(() => {
     loadParticipants()
     loadAllowedEmails()
     loadOverview()
+    loadHealth()
+    loadOperations()
 
     const sub = supabase
       .channel('admin-participants')
@@ -330,10 +671,12 @@ export function Admin({ participantId }: Props) {
   }, [])
 
   useEffect(() => {
-    adminGet<HealthResponse>('/admin/health')
-      .then((payload) => setHealthTimestamp(payload.timestamp))
-      .catch(() => setHealthTimestamp(null))
-  }, [overview])
+    loadDigestPreview(digestTargetDate, digestVariant)
+  }, [digestTargetDate, digestVariant])
+
+  useEffect(() => {
+    loadReminderPreview(reminderTargetDate, reminderVariant)
+  }, [reminderTargetDate, reminderVariant])
 
   const duplicateNameSet = useMemo(() => {
     const counts = new Map<string, number>()
@@ -373,11 +716,10 @@ export function Admin({ participantId }: Props) {
     try {
       await runAdminAction('rescore', () => adminPost('/admin/rescore'))
       addToast('Recalculo do ranking concluído.', 'success')
-      pushActivity('Ranking recalculado manualmente', 'success')
-      await loadOverview()
+      await Promise.all([loadOverview(), refreshOperationalData()])
     } catch (error) {
       addToast((error as Error).message, 'error')
-      pushActivity('Falha ao recalcular ranking', 'danger')
+      await refreshOperationalData()
     }
   }
 
@@ -385,73 +727,116 @@ export function Admin({ participantId }: Props) {
     try {
       const payload = await runAdminAction('backup', () => adminPost<BackupResponse>('/admin/backup'))
       setLatestBackup(payload.result)
+      setLatestBackupVerification(null)
       setBackupModalOpen(true)
       addToast('Backup operacional gerado com sucesso.', 'success')
-      pushActivity('Backup operacional gerado', 'success')
+      await refreshOperationalData()
     } catch (error) {
       addToast((error as Error).message, 'error')
-      pushActivity('Falha ao gerar backup operacional', 'danger')
+      await refreshOperationalData()
+    }
+  }
+
+  async function handleVerifyBackup(source?: { backupId?: string | null; outputDir?: string | null }) {
+    const fallbackRun = findLatestOperationRun(operationsSnapshot?.runs, 'backup', 'success')
+    const backupId = source?.backupId ?? latestBackup?.backupId ?? getMetadataString(fallbackRun?.metadata, 'backupId')
+    const outputDir = source?.outputDir ?? latestBackup?.outputDir ?? fallbackRun?.outputDir ?? null
+
+    if (!backupId && !outputDir) {
+      addToast('Nenhum backup recente encontrado para validar.', 'info')
+      return
+    }
+
+    try {
+      const payload = await runAdminAction('verify-backup', () =>
+        adminPost<BackupVerificationResponse>('/admin/backup/verify', {
+          backupId,
+          outputDir,
+        })
+      )
+
+      setLatestBackupVerification(payload.result)
+      setBackupVerificationModalOpen(true)
+      addToast(
+        payload.result.ok
+          ? 'Backup verificado com sucesso.'
+          : 'Backup verificado com alertas. Confira o relatório.',
+        payload.result.ok ? 'success' : 'info'
+      )
+      await refreshOperationalData()
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      await refreshOperationalData()
     }
   }
 
   async function handleDailyDigest() {
     try {
       const payload = await runAdminAction('daily-digest', () =>
-        adminPost<DailyDigestResponse>('/admin/daily-digest')
+        adminPost<DailyDigestResponse>('/admin/daily-digest', {
+          targetDate: digestTargetDate,
+          variant: digestVariant,
+        })
       )
 
       setLatestDigest(payload.result)
       setDigestModalOpen(true)
       addToast('Resumo do grupo gerado com sucesso.', 'success')
-      pushActivity(`Resumo diário gerado para ${payload.result.targetDate}`, 'success')
+      await refreshOperationalData()
     } catch (error) {
       addToast((error as Error).message, 'error')
-      pushActivity('Falha ao gerar resumo diário do grupo', 'danger')
+      await refreshOperationalData()
     }
   }
 
   async function handleDailyReminder() {
     try {
       const payload = await runAdminAction('daily-reminder', () =>
-        adminPost<DailyReminderResponse>('/admin/daily-reminder')
+        adminPost<DailyReminderResponse>('/admin/daily-reminder', {
+          targetDate: reminderTargetDate,
+          variant: reminderVariant,
+        })
       )
       setLatestReminder(payload.result)
       setReminderModalOpen(true)
       addToast('Lembrete do dia gerado com sucesso.', 'success')
-      pushActivity(`Lembrete gerado para ${payload.result.targetDate}`, 'info')
+      await refreshOperationalData()
     } catch (error) {
       addToast((error as Error).message, 'error')
-      pushActivity('Falha ao gerar lembrete diário', 'danger')
+      await refreshOperationalData()
     }
   }
 
   async function handleResetPicks() {
     const totalOfficial = (overview?.stats.series_picks ?? 0) + (overview?.stats.game_picks ?? 0)
     const totalSimulation = (overview?.stats.simulation_series_picks ?? 0) + (overview?.stats.simulation_game_picks ?? 0)
-    const confirmation = window.prompt(
-      `Essa ação vai zerar todos os palpites salvos antes da largada.\n\nOficiais: ${totalOfficial}\nSimulação: ${totalSimulation}\n\nUm backup operacional será gerado antes.\n\nDigite exatamente ZERAR PALPITES para continuar.`
-    )
+    openConfirmDialog({
+      title: 'Confirmar reset pré-largada',
+      description: `Essa ação vai zerar todos os palpites salvos antes da largada.\n\nOficiais: ${totalOfficial}\nSimulação: ${totalSimulation}\n\nUm backup operacional validado será gerado antes.\n\nDigite exatamente ZERAR PALPITES para continuar.`,
+      confirmLabel: 'Executar reset',
+      tone: 'danger',
+      confirmationText: 'ZERAR PALPITES',
+      onConfirm: async (typedConfirmation) => {
+        try {
+          const payload = await runAdminAction('reset-picks', () =>
+            adminPost<ResetPicksResponse>('/admin/reset-picks', {
+              confirmation: typedConfirmation,
+            })
+          )
 
-    if (confirmation == null) return
-
-    try {
-      const payload = await runAdminAction('reset-picks', () =>
-        adminPost<ResetPicksResponse>('/admin/reset-picks', {
-          confirmation,
-        })
-      )
-
-      setLatestBackup(payload.backup)
-      setLatestReset(payload.deleted)
-      setBackupModalOpen(true)
-      setResetModalOpen(true)
-      addToast('Palpites zerados com sucesso.', 'success')
-      pushActivity('Reset pré-largada dos palpites executado', 'danger')
-      await loadOverview()
-    } catch (error) {
-      addToast((error as Error).message, 'error')
-      pushActivity('Falha ao zerar palpites antes da largada', 'danger')
-    }
+          setLatestBackup(payload.backup)
+          setLatestBackupVerification(null)
+          setLatestReset(payload.deleted)
+          setBackupModalOpen(true)
+          setResetModalOpen(true)
+          addToast('Palpites zerados com sucesso.', 'success')
+          await Promise.all([loadOverview(), refreshOperationalData()])
+        } catch (error) {
+          addToast((error as Error).message, 'error')
+          await refreshOperationalData()
+        }
+      },
+    })
   }
 
   async function handleCopyDigest() {
@@ -469,10 +854,10 @@ export function Admin({ participantId }: Props) {
     try {
       await runAdminAction('sync', () => adminPost('/admin/sync'))
       addToast('Sync manual disparado com sucesso.', 'success')
-      pushActivity('Sync manual da NBA disparado', 'success')
+      await refreshOperationalData()
     } catch (error) {
       addToast((error as Error).message, 'error')
-      pushActivity('Falha ao disparar sync manual', 'danger')
+      await refreshOperationalData()
     }
   }
 
@@ -489,86 +874,91 @@ export function Admin({ participantId }: Props) {
       )
       setAllowedEmailInput('')
       addToast('Email liberado com sucesso.', 'success')
-      pushActivity(`Email liberado: ${email}`, 'success')
-      await Promise.all([loadAllowedEmails(), loadOverview()])
+      await Promise.all([loadAllowedEmails(), loadOverview(), refreshOperationalData()])
     } catch (error) {
       addToast((error as Error).message, 'error')
-      pushActivity(`Falha ao liberar email: ${email}`, 'danger')
+      await refreshOperationalData()
     }
   }
 
   async function handleRemoveAllowedEmail(email: string) {
-    const confirmed = window.confirm(`Remover ${email} da lista de acesso?`)
-    if (!confirmed) return
-
-    try {
-      await runAdminAction(`remove-email:${email}`, () =>
-        adminPost('/admin/allowed-emails/remove', { email })
-      )
-      addToast('Email removido da lista de acesso.', 'success')
-      pushActivity(`Email removido da whitelist: ${email}`, 'info')
-      await Promise.all([loadAllowedEmails(), loadOverview()])
-    } catch (error) {
-      addToast((error as Error).message, 'error')
-      pushActivity(`Falha ao remover email: ${email}`, 'danger')
-    }
+    openConfirmDialog({
+      title: 'Remover email da lista de acesso',
+      description: `Remover ${email} da whitelist do bolão?`,
+      confirmLabel: 'Remover email',
+      tone: 'danger',
+      onConfirm: async () => {
+        try {
+          await runAdminAction(`remove-email:${email}`, () =>
+            adminPost('/admin/allowed-emails/remove', { email })
+          )
+          addToast('Email removido da lista de acesso.', 'success')
+          await Promise.all([loadAllowedEmails(), loadOverview(), refreshOperationalData()])
+        } catch (error) {
+          addToast((error as Error).message, 'error')
+          await refreshOperationalData()
+        }
+      },
+    })
   }
 
   async function handleToggleAdmin(participant: Participant) {
     const nextIsAdmin = !participant.is_admin
-    const confirmed = window.confirm(
-      nextIsAdmin
+    openConfirmDialog({
+      title: nextIsAdmin ? 'Promover participante' : 'Remover privilégio admin',
+      description: nextIsAdmin
         ? `Promover ${participant.name} para admin?`
-        : `Remover privilégio de admin de ${participant.name}?`
-    )
+        : `Remover privilégio de admin de ${participant.name}?`,
+      confirmLabel: nextIsAdmin ? 'Promover admin' : 'Remover admin',
+      tone: nextIsAdmin ? 'default' : 'danger',
+      onConfirm: async () => {
+        try {
+          const payload = await runAdminAction(
+            `toggle-admin:${participant.id}`,
+            () =>
+              adminPost<ToggleAdminResponse>('/admin/participants/set-admin', {
+                participantId: participant.id,
+                isAdmin: nextIsAdmin,
+              })
+          )
 
-    if (!confirmed) return
-
-    try {
-      const payload = await runAdminAction(
-        `toggle-admin:${participant.id}`,
-        () =>
-          adminPost<ToggleAdminResponse>('/admin/participants/set-admin', {
-            participantId: participant.id,
-            isAdmin: nextIsAdmin,
-          })
-      )
-
-      addToast(payload.message, 'success')
-      pushActivity(payload.message, nextIsAdmin ? 'success' : 'info')
-      await Promise.all([loadParticipants(), loadOverview()])
-    } catch (error) {
-      addToast((error as Error).message, 'error')
-      pushActivity(`Falha ao alterar admin de ${participant.name}`, 'danger')
-    }
+          addToast(payload.message, 'success')
+          await Promise.all([loadParticipants(), loadOverview(), refreshOperationalData()])
+        } catch (error) {
+          addToast((error as Error).message, 'error')
+          await refreshOperationalData()
+        }
+      },
+    })
   }
 
   async function handleRemoveParticipant(participant: Participant) {
-    const confirmed = window.confirm(
-      `Remover ${participant.name} do bolão por completo?\n\nIsso vai apagar palpites, vínculo em participants e acesso em allowed_emails.`
-    )
+    openConfirmDialog({
+      title: 'Remover participante do bolão',
+      description: `Remover ${participant.name} do bolão por completo?\n\nIsso vai apagar palpites, vínculo em participants e acesso em allowed_emails.`,
+      confirmLabel: 'Remover participante',
+      tone: 'danger',
+      onConfirm: async () => {
+        try {
+          const payload = await runAdminAction(
+            `remove:${participant.id}`,
+            () =>
+              adminPost<RemoveParticipantResponse>('/admin/participants/remove', {
+                participantId: participant.id,
+              })
+          )
 
-    if (!confirmed) return
-
-    try {
-      const payload = await runAdminAction(
-        `remove:${participant.id}`,
-        () =>
-          adminPost<RemoveParticipantResponse>('/admin/participants/remove', {
-            participantId: participant.id,
-          })
-      )
-
-      addToast(
-        `${payload.result.participant.name} removido. ${payload.result.deleted.series_picks} séries e ${payload.result.deleted.game_picks} jogos apagados.`,
-        'success'
-      )
-      pushActivity(`Participante removido: ${payload.result.participant.name}`, 'danger')
-      await Promise.all([loadParticipants(), loadAllowedEmails(), loadOverview()])
-    } catch (error) {
-      addToast((error as Error).message, 'error')
-      pushActivity(`Falha ao remover participante ${participant.name}`, 'danger')
-    }
+          addToast(
+            `${payload.result.participant.name} removido. ${payload.result.deleted.series_picks} séries e ${payload.result.deleted.game_picks} jogos apagados.`,
+            'success'
+          )
+          await Promise.all([loadParticipants(), loadAllowedEmails(), loadOverview(), refreshOperationalData()])
+        } catch (error) {
+          addToast((error as Error).message, 'error')
+          await refreshOperationalData()
+        }
+      },
+    })
   }
 
   const stats = overview?.stats
@@ -581,10 +971,121 @@ export function Admin({ participantId }: Props) {
       inconsistencies.orphaned_series_picks +
       inconsistencies.orphaned_game_picks
     : 0
-  const latestActivity = activity[0] ?? null
+  const healthTimestamp = health?.timestamp ?? null
+  const operationSummary = operationsSnapshot?.summary ?? health?.operations.summary ?? []
+  const latestRun = operationsSnapshot?.runs[0] ?? null
+  const backupSummary = findOperationSummary(operationSummary, 'backup')
+  const verifyBackupSummary = findOperationSummary(operationSummary, 'verify-backup')
+  const digestSummary = findOperationSummary(operationSummary, 'daily-digest')
+  const reminderSummary = findOperationSummary(operationSummary, 'daily-reminder')
+  const syncSummary = findOperationSummary(operationSummary, 'sync')
+  const rescoreSummary = findOperationSummary(operationSummary, 'rescore')
+  const resetSummary = findOperationSummary(operationSummary, 'reset-picks')
+  const latestBackupRun = findLatestOperationRun(operationsSnapshot?.runs, 'backup', 'success')
+  const latestBackupVerificationRun = findLatestOperationRun(operationsSnapshot?.runs, 'verify-backup')
 
   return (
     <>
+      {confirmDialog && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 16, 0.82)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            zIndex: 90,
+          }}
+          onClick={closeConfirmDialog}
+        >
+          <div
+            style={{
+              width: 'min(620px, 100%)',
+              borderRadius: 16,
+              border: `1px solid ${confirmDialog.tone === 'danger' ? 'rgba(231,76,60,0.22)' : 'rgba(200,150,60,0.18)'}`,
+              background: 'linear-gradient(180deg, rgba(18,23,34,0.98), rgba(10,13,20,0.98))',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+              overflow: 'hidden',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid rgba(200,150,60,0.10)' }}>
+              <div className="font-condensed" style={{ color: confirmDialog.tone === 'danger' ? 'var(--nba-danger)' : 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Confirmação operacional
+              </div>
+              <div style={{ color: 'var(--nba-text)', fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>
+                {confirmDialog.title}
+              </div>
+            </div>
+
+            <div style={{ padding: 20 }}>
+              <div style={{ color: 'var(--nba-text)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {confirmDialog.description}
+              </div>
+
+              {confirmDialog.confirmationText && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 8 }}>
+                    Digite <strong>{confirmDialog.confirmationText}</strong> para liberar a ação.
+                  </div>
+                  <input
+                    value={confirmInput}
+                    onChange={(event) => setConfirmInput(event.target.value)}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
+                <button
+                  onClick={closeConfirmDialog}
+                  style={{
+                    borderRadius: 10,
+                    border: '1px solid rgba(200,150,60,0.14)',
+                    background: 'rgba(255,255,255,0.03)',
+                    color: 'var(--nba-text)',
+                    padding: '10px 12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={submitConfirmDialog}
+                  disabled={Boolean(confirmDialog.confirmationText && confirmInput !== confirmDialog.confirmationText)}
+                  style={{
+                    borderRadius: 10,
+                    border: `1px solid ${confirmDialog.tone === 'danger' ? 'rgba(231,76,60,0.22)' : 'rgba(200,150,60,0.18)'}`,
+                    background: confirmDialog.tone === 'danger' ? 'rgba(231,76,60,0.10)' : 'rgba(200,150,60,0.10)',
+                    color: confirmDialog.tone === 'danger' ? 'var(--nba-danger)' : 'var(--nba-gold)',
+                    padding: '10px 12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    opacity: confirmDialog.confirmationText && confirmInput !== confirmDialog.confirmationText ? 0.6 : 1,
+                  }}
+                >
+                  {confirmDialog.confirmLabel}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {backupModalOpen && latestBackup && (
         <div
           style={{
@@ -632,6 +1133,9 @@ export function Admin({ participantId }: Props) {
                   Arquivos gerados com sucesso
                 </div>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+                  Backup #{latestBackup.backupId} · {latestBackup.generatedAt}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4 }}>
                   Pasta de saída: {latestBackup.outputDir}
                 </div>
               </div>
@@ -666,18 +1170,115 @@ export function Admin({ participantId }: Props) {
                   lineHeight: 1.55,
                 }}
               >
-                O backup não baixa automaticamente no navegador. Esses arquivos foram salvos no disco do backend e você pode abrir a pasta acima para acessar os CSVs e o resumo em Markdown.
+                O backup não baixa automaticamente no navegador. Esses arquivos foram salvos no disco do backend, e agora também tentam espelhar no Supabase Storage para auditoria, conferência e contingência operacional.
               </div>
 
-              <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+                <button
+                  onClick={() => handleVerifyBackup({ backupId: latestBackup.backupId, outputDir: latestBackup.outputDir })}
+                  disabled={busyAction === 'verify-backup'}
+                  style={{
+                    borderRadius: 10,
+                    border: '1px solid rgba(200,150,60,0.18)',
+                    background: 'rgba(200,150,60,0.10)',
+                    color: 'var(--nba-gold)',
+                    padding: '10px 12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {busyAction === 'verify-backup' ? 'Verificando...' : 'Verificar este backup'}
+                </button>
+                {latestBackupVerification?.backupId === latestBackup.backupId && (
+                  <button
+                    onClick={() => setBackupVerificationModalOpen(true)}
+                    style={{
+                      borderRadius: 10,
+                      border: `1px solid ${latestBackupVerification.ok ? 'rgba(46,204,113,0.18)' : 'rgba(231,76,60,0.18)'}`,
+                      background: latestBackupVerification.ok ? 'rgba(46,204,113,0.10)' : 'rgba(231,76,60,0.10)',
+                      color: latestBackupVerification.ok ? 'var(--nba-success)' : 'var(--nba-danger)',
+                      padding: '10px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {latestBackupVerification.ok ? 'Última verificação OK' : 'Última verificação com alertas'}
+                  </button>
+                )}
+              </div>
+
+              {latestBackupVerification?.backupId === latestBackup.backupId && (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: latestBackupVerification.ok ? 'rgba(46,204,113,0.08)' : 'rgba(231,76,60,0.08)',
+                    border: `1px solid ${latestBackupVerification.ok ? 'rgba(46,204,113,0.18)' : 'rgba(231,76,60,0.18)'}`,
+                    marginBottom: 14,
+                  }}
+                >
+                  <div style={{ color: latestBackupVerification.ok ? 'var(--nba-success)' : 'var(--nba-danger)', fontSize: '0.78rem', fontWeight: 700 }}>
+                    {latestBackupVerification.ok ? 'Verificação formal concluída sem alertas' : 'Verificação formal encontrou alertas'}
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 6, lineHeight: 1.5 }}>
+                    {latestBackupVerification.artifactsChecked} artefato(s) conferido(s) em {formatTimestamp(latestBackupVerification.verifiedAt)}
+                    {latestBackupVerification.storageArtifactsChecked > 0 ? ` · ${latestBackupVerification.storageArtifactsChecked} arquivo(s) também validados no Storage` : ''}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gap: 10, marginBottom: 14 }} className="md:grid-cols-3">
                 {[
-                  { label: 'Palpites de séries (.csv)', value: latestBackup.files.seriesPicksCsv },
-                  { label: 'Palpites jogo a jogo (.csv)', value: latestBackup.files.gamePicksCsv },
-                  { label: 'Ranking congelado (.csv)', value: latestBackup.files.rankingCsv },
-                  { label: 'Resumo da rodada (.md)', value: latestBackup.files.summaryMd },
+                  { label: 'Artefatos', value: String(latestBackup.validation.fileCount), tone: artifactBadgeTone(latestBackup.validation) },
+                  { label: 'Tamanho total', value: formatBytes(latestBackup.validation.totalBytes), tone: 'var(--nba-text)' },
+                  { label: 'Validação', value: latestBackup.validation.ok ? 'OK' : 'Falhou', tone: artifactBadgeTone(latestBackup.validation) },
                 ].map((item) => (
                   <div
                     key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(200,150,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 6 }}>{item.label}</div>
+                    <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.05rem' }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gap: 10, marginBottom: 14 }} className="md:grid-cols-3">
+                {[
+                  { label: 'Participantes', value: String(latestBackup.metrics.participants) },
+                  { label: 'Séries', value: `${latestBackup.metrics.seriesCompleted}/${latestBackup.metrics.seriesTotal}` },
+                  { label: 'Jogos abertos', value: String(latestBackup.metrics.gamesOpen) },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(200,150,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 6 }}>{item.label}</div>
+                    <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.05rem' }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                {latestBackup.artifacts.map((item) => (
+                  <div
+                    key={item.key}
                     style={{
                       padding: '12px 14px',
                       borderRadius: 12,
@@ -697,8 +1298,232 @@ export function Admin({ participantId }: Props) {
                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                       }}
                     >
+                      {item.path}
+                    </div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginTop: 8 }}>
+                      {item.kind.toUpperCase()} · {formatBytes(item.sizeBytes)} · sha256 {item.checksumSha256.slice(0, 12)}…
+                    </div>
+                    <div style={{ color: artifactStorageTone(item.storageStatus), fontSize: '0.7rem', marginTop: 6 }}>
+                      {artifactStorageLabel(item.storageStatus)}
+                      {item.storagePath ? ` · ${item.storagePath}` : ''}
+                    </div>
+                    {item.storageError && (
+                      <div style={{ color: 'var(--nba-danger)', fontSize: '0.7rem', marginTop: 4 }}>
+                        {item.storageError}
+                      </div>
+                    )}
+                    {item.downloadUrl && (
+                      <a
+                        href={item.downloadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          color: 'var(--nba-gold)',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          marginTop: 8,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <Link2 size={12} />
+                        Abrir cópia do Storage
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {backupVerificationModalOpen && latestBackupVerification && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 16, 0.82)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            zIndex: 82,
+          }}
+          onClick={() => setBackupVerificationModalOpen(false)}
+        >
+          <div
+            style={{
+              width: 'min(760px, 100%)',
+              maxHeight: '88vh',
+              overflow: 'hidden',
+              borderRadius: 16,
+              border: `1px solid ${latestBackupVerification.ok ? 'rgba(46,204,113,0.22)' : 'rgba(231,76,60,0.22)'}`,
+              background: 'linear-gradient(180deg, rgba(18,23,34,0.98), rgba(10,13,20,0.98))',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 16,
+                padding: '18px 20px 14px',
+                borderBottom: '1px solid rgba(200,150,60,0.12)',
+              }}
+            >
+              <div>
+                <div
+                  className="font-condensed"
+                  style={{
+                    color: latestBackupVerification.ok ? 'var(--nba-success)' : 'var(--nba-danger)',
+                    fontSize: '0.82rem',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Verificação operacional
+                </div>
+                <div style={{ color: 'var(--nba-text)', fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>
+                  Backup #{latestBackupVerification.backupId}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
+                  Conferido em {formatTimestamp(latestBackupVerification.verifiedAt)}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4 }}>
+                  Manifesto: {latestBackupVerification.manifestPath}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setBackupVerificationModalOpen(false)}
+                style={{
+                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: 'var(--nba-text)',
+                  borderRadius: 10,
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)' }}>
+              <div style={{ display: 'grid', gap: 10, marginBottom: 14 }} className="md:grid-cols-4">
+                {[
+                  { label: 'Status', value: latestBackupVerification.ok ? 'OK' : 'Alertas', tone: latestBackupVerification.ok ? 'var(--nba-success)' : 'var(--nba-danger)' },
+                  { label: 'Artefatos', value: String(latestBackupVerification.artifactsChecked), tone: 'var(--nba-text)' },
+                  { label: 'Storage checado', value: String(latestBackupVerification.storageArtifactsChecked), tone: 'var(--nba-text)' },
+                  { label: 'Problemas', value: String(latestBackupVerification.problems.length), tone: latestBackupVerification.problems.length > 0 ? 'var(--nba-danger)' : 'var(--nba-success)' },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(200,150,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 6 }}>{item.label}</div>
+                    <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.05rem' }}>
                       {item.value}
                     </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(200,150,60,0.10)',
+                  marginBottom: 14,
+                  color: 'var(--nba-text-muted)',
+                  fontSize: '0.76rem',
+                  lineHeight: 1.55,
+                }}
+              >
+                Diretório conferido: {latestBackupVerification.outputDir}
+              </div>
+
+              {latestBackupVerification.problems.length > 0 && (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: 'rgba(231,76,60,0.08)',
+                    border: '1px solid rgba(231,76,60,0.18)',
+                    marginBottom: 14,
+                  }}
+                >
+                  <div style={{ color: 'var(--nba-danger)', fontSize: '0.78rem', fontWeight: 700, marginBottom: 8 }}>
+                    Alertas encontrados
+                  </div>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {latestBackupVerification.problems.map((problem, index) => (
+                      <div key={`${problem}-${index}`} style={{ color: 'var(--nba-text)', fontSize: '0.76rem', lineHeight: 1.45 }}>
+                        {problem}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                {latestBackupVerification.artifacts.map((item) => (
+                  <div
+                    key={item.key}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${item.problems.length > 0 ? 'rgba(231,76,60,0.18)' : 'rgba(200,150,60,0.10)'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ color: 'var(--nba-gold)', fontSize: '0.75rem', fontWeight: 700 }}>{item.label}</div>
+                      <div style={{ color: item.problems.length > 0 ? 'var(--nba-danger)' : 'var(--nba-success)', fontSize: '0.72rem', fontWeight: 700 }}>
+                        {item.problems.length > 0 ? 'Com alerta' : 'Conferido'}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        color: 'var(--nba-text)',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.5,
+                        wordBreak: 'break-word',
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                        marginTop: 6,
+                      }}
+                    >
+                      {item.path}
+                    </div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginTop: 8, lineHeight: 1.5 }}>
+                      Local: {item.localExists ? 'arquivo presente' : 'arquivo ausente'} · tamanho {item.sizeMatches ? 'ok' : 'divergente'} · checksum {item.checksumMatches ? 'ok' : 'divergente'}
+                    </div>
+                    <div style={{ color: artifactStorageTone(item.storageStatus), fontSize: '0.7rem', marginTop: 4, lineHeight: 1.5 }}>
+                      {artifactStorageLabel(item.storageStatus)}
+                      {item.storageStatus === 'uploaded' ? ` · ${item.storageOk ? 'download validado' : 'falha ao baixar do Storage'}` : ''}
+                    </div>
+                    {item.problems.length > 0 && (
+                      <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
+                        {item.problems.map((problem, index) => (
+                          <div key={`${item.key}-${index}`} style={{ color: 'var(--nba-danger)', fontSize: '0.72rem' }}>
+                            {problem}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -838,7 +1663,10 @@ export function Admin({ participantId }: Props) {
                   Quem ainda não palpitou hoje
                 </div>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
-                  {latestReminder.todayGames} jogo(s) hoje · {latestReminder.totalParticipants} participantes · gerado às {latestReminder.generatedAt}
+                  {latestReminder.summary.todayGames} jogo(s) hoje · {latestReminder.summary.totalParticipants} participantes · gerado às {latestReminder.generatedAt}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4 }}>
+                  Variante: {latestReminder.variant} · atenção em {latestReminder.summary.gamesNeedingAttention} jogo(s)
                 </div>
               </div>
               <button
@@ -850,7 +1678,30 @@ export function Admin({ participantId }: Props) {
             </div>
 
             <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)', display: 'grid', gap: 14 }}>
-              {latestReminder.todayGames === 0 ? (
+              <div style={{ display: 'grid', gap: 10 }} className="md:grid-cols-3">
+                {[
+                  { label: 'Pendências totais', value: String(latestReminder.summary.totalMissingEntries) },
+                  { label: 'Participantes pendentes', value: String(latestReminder.summary.participantsPendingToday) },
+                  { label: 'Validação', value: latestReminder.validation.ok ? 'OK' : 'Falhou' },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(200,150,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 6 }}>{item.label}</div>
+                    <div className="font-condensed font-bold" style={{ color: item.label === 'Validação' ? artifactBadgeTone(latestReminder.validation) : 'var(--nba-text)', fontSize: '1.05rem' }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {latestReminder.summary.todayGames === 0 ? (
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.84rem', padding: '12px 0' }}>
                   Nenhum jogo pendente para hoje.
                 </div>
@@ -865,7 +1716,7 @@ export function Admin({ participantId }: Props) {
                         <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginLeft: 10 }}>{game.tipOff}</span>
                       </div>
                       <span className="font-condensed" style={{ color: game.missing.length === 0 ? 'var(--nba-success)' : 'var(--nba-gold)', fontSize: '0.84rem', fontWeight: 700, flexShrink: 0 }}>
-                        {game.picked}/{latestReminder.totalParticipants}
+                        {game.picked}/{latestReminder.summary.totalParticipants}
                       </span>
                     </div>
 
@@ -961,7 +1812,7 @@ export function Admin({ participantId }: Props) {
                   Mensagem pronta para WhatsApp
                 </div>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 6 }}>
-                  Data alvo: {latestDigest.targetDate}
+                  Data alvo: {latestDigest.targetDate} · Variante: {latestDigest.variant}
                 </div>
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4 }}>
                   Pasta gerada: {latestDigest.outputDir}
@@ -986,6 +1837,30 @@ export function Admin({ participantId }: Props) {
             </div>
 
             <div style={{ padding: 20, overflow: 'auto', maxHeight: 'calc(88vh - 92px)' }}>
+              <div style={{ display: 'grid', gap: 10, marginBottom: 14 }} className="md:grid-cols-4">
+                {[
+                  { label: 'Jogos do dia', value: String(latestDigest.summary.todayGames) },
+                  { label: 'Séries abertas', value: String(latestDigest.summary.activeSeries) },
+                  { label: 'Picks hoje', value: String(latestDigest.summary.totalGamePicksToday) },
+                  { label: 'Validação', value: latestDigest.validation.ok ? 'OK' : 'Falhou' },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(200,150,60,0.10)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 6 }}>{item.label}</div>
+                    <div className="font-condensed font-bold" style={{ color: item.label === 'Validação' ? artifactBadgeTone(latestDigest.validation) : 'var(--nba-text)', fontSize: '1.05rem' }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
                 <button
                   onClick={handleCopyDigest}
@@ -1066,7 +1941,11 @@ export function Admin({ participantId }: Props) {
               { label: 'Participantes', value: stats?.participants ?? participants.length, tone: 'var(--nba-text)' },
               { label: 'Admins', value: stats?.admins ?? participants.filter((item) => item.is_admin).length, tone: 'var(--nba-gold)' },
               { label: 'Modo atual', value: stats ? modeLabel(stats.mode) : '—', tone: 'var(--nba-east)' },
-              { label: 'Health backend', value: healthTimestamp ? 'Online' : 'Sem resposta', tone: healthTimestamp ? 'var(--nba-success)' : 'var(--nba-danger)' },
+              {
+                label: 'Health backend',
+                value: health?.scheduler.nbaSync.isRunning ? 'Sincronizando' : healthTimestamp ? 'Online' : 'Sem resposta',
+                tone: health?.scheduler.nbaSync.isRunning ? 'var(--nba-gold)' : healthTimestamp ? 'var(--nba-success)' : 'var(--nba-danger)',
+              },
             ].map((item) => (
               <div
                 key={item.label}
@@ -1087,7 +1966,7 @@ export function Admin({ participantId }: Props) {
         </div>
 
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 12 }}>
-          Último health check: {formatTimestamp(healthTimestamp)}
+          Último health check: {formatTimestamp(healthTimestamp)} · Operações atualizadas em {formatTimestamp(operationsSnapshot?.updatedAt ?? health?.operations.updatedAt ?? null)}
         </div>
       </section>
 
@@ -1114,10 +1993,10 @@ export function Admin({ participantId }: Props) {
           <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Última movimentação</div>
             <div className="font-condensed font-bold" style={{ color: 'var(--nba-east)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
-              {latestActivity ? latestActivity.label : 'Sem atividade registrada'}
+              {latestRun ? latestRun.summary : 'Sem atividade registrada'}
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
-              {latestActivity ? `Atualizado em ${formatTimestamp(latestActivity.timestamp)}.` : 'Ações administrativas recentes vão aparecer aqui como trilha operacional.'}
+              {latestRun ? `Atualizado em ${formatTimestamp(latestRun.finishedAt)} · ${formatDuration(latestRun.durationMs)}.` : 'Ações administrativas recentes vão aparecer aqui como trilha operacional.'}
             </div>
           </div>
 
@@ -1127,7 +2006,9 @@ export function Admin({ participantId }: Props) {
               {stats ? `${modeLabel(stats.mode)} · ${stats.participants} no jogo` : 'Aguardando overview'}
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
-              {healthTimestamp ? `Backend saudável desde ${formatTimestamp(healthTimestamp)}.` : 'Sem health check recente; vale conferir antes de uma ação crítica.'}
+              {health
+                ? `NBA sync: ${health.scheduler.nbaSync.mode} a cada ${health.scheduler.nbaSync.intervalMinutes} min.`
+                : 'Sem health check recente; vale conferir antes de uma ação crítica.'}
             </div>
           </div>
         </div>
@@ -1380,156 +2261,307 @@ export function Admin({ participantId }: Props) {
 
         <section style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
           <div style={card}>
-            <SectionTitle icon={<Activity size={14} />}>Operações</SectionTitle>
+            <SectionTitle icon={<Activity size={14} />}>Centro Operacional</SectionTitle>
 
-            <div style={{ display: 'grid', gap: 10 }}>
-              <button
-                onClick={handleSync}
-                disabled={busyAction === 'sync'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(200,150,60,0.14)',
-                  background: 'rgba(12,12,18,0.34)',
-                  color: 'var(--nba-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Link2 size={15} />
-                  Sincronizar dados da API
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                  {busyAction === 'sync' ? 'Sincronizando...' : 'Sync'}
-                </span>
-              </button>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.34)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700 }}>Resumo do dia</div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 4 }}>
+                      {digestSummary?.lastRunAt ? `Última execução: ${formatTimestamp(digestSummary.lastRunAt)}` : 'Ainda não gerado manualmente'}
+                    </div>
+                  </div>
+                  <div style={{ color: operationTone(digestSummary?.lastStatus), fontSize: '0.74rem', fontWeight: 700 }}>
+                    {digestSummary?.lastStatus === 'error' ? 'Última tentativa falhou' : 'Pronto para gerar'}
+                  </div>
+                </div>
 
-              <button
-                onClick={handleRescore}
-                disabled={busyAction === 'rescore'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(200,150,60,0.14)',
-                  background: 'rgba(12,12,18,0.34)',
-                  color: 'var(--nba-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <RefreshCw size={15} className={busyAction === 'rescore' ? 'animate-spin' : ''} />
-                  Recalcular ranking
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>Rescore</span>
-              </button>
+                <div style={{ display: 'grid', gap: 8 }} className="md:grid-cols-[1fr_170px_150px_auto]">
+                  <input
+                    type="date"
+                    value={digestTargetDate}
+                    onChange={(event) => setDigestTargetDate(event.target.value)}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                    }}
+                  />
+                  <select
+                    value={digestVariant}
+                    onChange={(event) => setDigestVariant(event.target.value as 'full' | 'compact')}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    <option value="full">Completo</option>
+                    <option value="compact">Compacto</option>
+                  </select>
+                  <button
+                    onClick={() => loadDigestPreview()}
+                    disabled={loadingDigestPreview}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {loadingDigestPreview ? 'Atualizando...' : 'Atualizar preview'}
+                  </button>
+                  <button
+                    onClick={handleDailyDigest}
+                    disabled={busyAction === 'daily-digest'}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.18)',
+                      background: 'rgba(200,150,60,0.10)',
+                      color: 'var(--nba-gold)',
+                      padding: '10px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {busyAction === 'daily-digest' ? 'Gerando...' : 'Gerar resumo'}
+                  </button>
+                </div>
 
-              <button
-                onClick={handleDailyDigest}
-                disabled={busyAction === 'daily-digest'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(200,150,60,0.14)',
-                  background: 'rgba(12,12,18,0.34)',
-                  color: 'var(--nba-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <MessageSquareShare size={15} />
-                  Gerar resumo do grupo
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                  {busyAction === 'daily-digest' ? 'Gerando...' : 'WhatsApp'}
-                </span>
-              </button>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 10 }}>
+                  {digestPreview
+                    ? `${digestPreview.summary.todayGames} jogos do dia · ${digestPreview.summary.activeSeries} séries abertas · ${digestPreview.summary.totalGamePicksToday} picks hoje.`
+                    : 'Sem preview carregado no momento.'}
+                </div>
+              </div>
 
-              <button
-                onClick={handleDailyReminder}
-                disabled={busyAction === 'daily-reminder'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(200,150,60,0.14)',
-                  background: 'rgba(12,12,18,0.34)',
-                  color: 'var(--nba-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <BellRing size={15} />
-                  Lembrete de palpites do dia
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                  {busyAction === 'daily-reminder' ? 'Gerando...' : 'Reminder'}
-                </span>
-              </button>
+              <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.34)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700 }}>Lembrete de palpites</div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 4 }}>
+                      {reminderSummary?.lastRunAt ? `Última execução: ${formatTimestamp(reminderSummary.lastRunAt)}` : 'Ainda não gerado manualmente'}
+                    </div>
+                  </div>
+                  <div style={{ color: operationTone(reminderSummary?.lastStatus), fontSize: '0.74rem', fontWeight: 700 }}>
+                    {reminderSummary?.lastStatus === 'error' ? 'Última tentativa falhou' : 'Pronto para gerar'}
+                  </div>
+                </div>
 
-              <button
-                onClick={handleBackup}
-                disabled={busyAction === 'backup'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(200,150,60,0.14)',
-                  background: 'rgba(12,12,18,0.34)',
-                  color: 'var(--nba-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <DatabaseBackup size={15} />
-                  Gerar backup operacional
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                  {busyAction === 'backup' ? 'Gerando...' : 'Backup'}
-                </span>
-              </button>
+                <div style={{ display: 'grid', gap: 8 }} className="md:grid-cols-[1fr_190px_150px_auto]">
+                  <input
+                    type="date"
+                    value={reminderTargetDate}
+                    onChange={(event) => setReminderTargetDate(event.target.value)}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                    }}
+                  />
+                  <select
+                    value={reminderVariant}
+                    onChange={(event) => setReminderVariant(event.target.value as 'full' | 'pending-only')}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    <option value="full">Completo</option>
+                    <option value="pending-only">Só pendentes</option>
+                  </select>
+                  <button
+                    onClick={() => loadReminderPreview()}
+                    disabled={loadingReminderPreview}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.14)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--nba-text)',
+                      padding: '10px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {loadingReminderPreview ? 'Atualizando...' : 'Atualizar preview'}
+                  </button>
+                  <button
+                    onClick={handleDailyReminder}
+                    disabled={busyAction === 'daily-reminder'}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid rgba(200,150,60,0.18)',
+                      background: 'rgba(200,150,60,0.10)',
+                      color: 'var(--nba-gold)',
+                      padding: '10px 12px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {busyAction === 'daily-reminder' ? 'Gerando...' : 'Gerar lembrete'}
+                  </button>
+                </div>
 
-              <button
-                onClick={handleResetPicks}
-                disabled={busyAction === 'reset-picks'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(231,76,60,0.18)',
-                  background: 'rgba(231,76,60,0.08)',
-                  color: 'var(--nba-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <RotateCcw size={15} />
-                  Zerar palpites pré-largada
-                </span>
-                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
-                  {busyAction === 'reset-picks' ? 'Limpando...' : 'Reset'}
-                </span>
-              </button>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 10 }}>
+                  {reminderPreview
+                    ? `${reminderPreview.summary.gamesNeedingAttention} jogo(s) pedindo atenção · ${reminderPreview.summary.participantsPendingToday} participante(s) pendente(s).`
+                    : 'Sem preview carregado no momento.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.34)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700 }}>Backup operacional</div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 4 }}>
+                      {backupSummary?.lastRunAt ? `Última execução: ${formatTimestamp(backupSummary.lastRunAt)}` : 'Nenhum backup manual recente'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleVerifyBackup({
+                        backupId: latestBackup?.backupId ?? getMetadataString(latestBackupRun?.metadata, 'backupId'),
+                        outputDir: latestBackup?.outputDir ?? latestBackupRun?.outputDir ?? null,
+                      })}
+                      disabled={busyAction === 'verify-backup' || (!latestBackup && !latestBackupRun)}
+                      style={{
+                        borderRadius: 10,
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: 'rgba(255,255,255,0.03)',
+                        color: 'var(--nba-text)',
+                        padding: '10px 12px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {busyAction === 'verify-backup' ? 'Verificando...' : 'Verificar último'}
+                    </button>
+                    <button
+                      onClick={handleBackup}
+                      disabled={busyAction === 'backup'}
+                      style={{
+                        borderRadius: 10,
+                        border: '1px solid rgba(200,150,60,0.18)',
+                        background: 'rgba(200,150,60,0.10)',
+                        color: 'var(--nba-gold)',
+                        padding: '10px 12px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {busyAction === 'backup' ? 'Gerando...' : 'Gerar backup'}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.5 }}>
+                  {backupSummary?.lastError
+                    ? `Último erro: ${backupSummary.lastError}`
+                    : latestBackupVerification
+                    ? `Última verificação: ${latestBackupVerification.ok ? 'ok' : 'com alertas'} em ${formatTimestamp(latestBackupVerification.verifiedAt)}.`
+                    : verifyBackupSummary?.lastError
+                    ? `Última verificação falhou: ${verifyBackupSummary.lastError}`
+                    : 'Gera CSVs, payload bruto, resumo em Markdown, manifesto validado e tenta espelhar os artefatos no Storage.'}
+                </div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', lineHeight: 1.5, marginTop: 8 }}>
+                  {latestBackupVerificationRun?.finishedAt
+                    ? `Última checagem rastreada: ${formatTimestamp(latestBackupVerificationRun.finishedAt)}.`
+                    : latestBackupRun
+                    ? `Último backup rastreado: ${getMetadataString(latestBackupRun.metadata, 'backupId') ?? 'sem id'}`
+                    : 'Quando houver um backup concluído, este bloco também libera verificação formal do manifesto e da cópia no Storage.'}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }} className="md:grid-cols-3">
+                {[
+                  {
+                    key: 'sync',
+                    label: 'Sincronizar API',
+                    helper: syncSummary?.lastRunAt ? `Última: ${formatTimestamp(syncSummary.lastRunAt)}` : getOperationHelperText(null),
+                    busy: busyAction === 'sync',
+                    onClick: handleSync,
+                    icon: <Link2 size={15} />,
+                    tone: 'rgba(200,150,60,0.14)',
+                  },
+                  {
+                    key: 'rescore',
+                    label: 'Recalcular ranking',
+                    helper: rescoreSummary?.lastRunAt ? `Última: ${formatTimestamp(rescoreSummary.lastRunAt)}` : getOperationHelperText(null),
+                    busy: busyAction === 'rescore',
+                    onClick: handleRescore,
+                    icon: <RefreshCw size={15} className={busyAction === 'rescore' ? 'animate-spin' : ''} />,
+                    tone: 'rgba(200,150,60,0.14)',
+                  },
+                  {
+                    key: 'reset',
+                    label: 'Reset pré-largada',
+                    helper: resetSummary?.lastRunAt ? `Última: ${formatTimestamp(resetSummary.lastRunAt)}` : 'Uso excepcional antes da abertura.',
+                    busy: busyAction === 'reset-picks',
+                    onClick: handleResetPicks,
+                    icon: <RotateCcw size={15} />,
+                    tone: 'rgba(231,76,60,0.18)',
+                  },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={item.onClick}
+                    disabled={item.busy}
+                    style={{
+                      textAlign: 'left',
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      border: `1px solid ${item.tone}`,
+                      background: item.key === 'reset' ? 'rgba(231,76,60,0.08)' : 'rgba(12,12,18,0.34)',
+                      color: 'var(--nba-text)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontWeight: 700 }}>
+                      {item.icon}
+                      {item.busy ? 'Executando...' : item.label}
+                    </div>
+                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem' }}>{item.helper}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(255,255,255,0.03)' }}>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 8 }}>Scheduler e observabilidade</div>
+                <div style={{ display: 'grid', gap: 8 }} className="md:grid-cols-2">
+                  <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                    NBA sync em <strong>{health?.scheduler.nbaSync.mode ?? '—'}</strong> · {health?.scheduler.nbaSync.intervalMinutes ?? '—'} min
+                    <div style={{ color: 'var(--nba-text-muted)' }}>{health?.scheduler.nbaSync.reason ?? 'Sem snapshot do scheduler.'}</div>
+                  </div>
+                  <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                    Resumo automático: {health?.scheduler.dailyDigest.cron ?? '—'}
+                    <div style={{ color: 'var(--nba-text-muted)' }}>
+                      Último sucesso: {formatTimestamp(health?.scheduler.dailyDigest.lastSuccessAt ?? null)}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1636,28 +2668,50 @@ export function Admin({ participantId }: Props) {
 
           <div style={card}>
             <SectionTitle icon={<Clock3 size={14} />}>Atividade Recente</SectionTitle>
-            {activity.length === 0 ? (
-              <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem' }}>As próximas ações administrativas feitas por você aparecem aqui.</p>
+            {loadingOperations ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+                <LoadingBasketball size={24} />
+              </div>
+            ) : (operationsSnapshot?.runs.length ?? 0) === 0 ? (
+              <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem' }}>As próximas execuções administrativas aparecerão aqui com duração, data e status real.</p>
             ) : (
               <div style={{ display: 'grid', gap: 8 }}>
-                {activity.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      background: 'rgba(12,12,18,0.34)',
-                      border: '1px solid rgba(200,150,60,0.12)',
-                    }}
-                  >
-                    <div style={{ color: item.tone === 'danger' ? 'var(--nba-danger)' : item.tone === 'success' ? 'var(--nba-success)' : 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700 }}>
-                      {item.label}
+                {operationsSnapshot?.runs.map((item) => {
+                  const backupId = getMetadataString(item.metadata, 'backupId')
+                  const problemCount = getMetadataStringArray(item.metadata, 'problems').length
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        background: 'rgba(12,12,18,0.34)',
+                        border: '1px solid rgba(200,150,60,0.12)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ color: operationTone(item.status), fontSize: '0.78rem', fontWeight: 700 }}>
+                          {item.summary}
+                        </div>
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {item.category}
+                        </div>
+                      </div>
+                      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginTop: 4 }}>
+                        {formatTimestamp(item.finishedAt)} · {formatDuration(item.durationMs)}{item.targetDate ? ` · ${item.targetDate}` : ''}{item.variant ? ` · ${item.variant}` : ''}{backupId ? ` · ${backupId}` : ''}
+                      </div>
+                      {(item.artifacts.length > 0 || item.outputDir || item.error || problemCount > 0) && (
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 6, lineHeight: 1.5 }}>
+                          {item.artifacts.length > 0 ? `${item.artifacts.length} artefato(s)` : 'Sem artefatos anexados'}
+                          {problemCount > 0 ? ` · ${problemCount} alerta(s)` : ''}
+                          {item.outputDir ? ` · ${item.outputDir}` : ''}
+                          {item.error ? ` · ${item.error}` : ''}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem', marginTop: 4 }}>
-                      {formatTimestamp(item.timestamp)}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

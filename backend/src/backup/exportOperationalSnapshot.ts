@@ -3,7 +3,16 @@ import path from 'path'
 import { supabase } from '../lib/supabase'
 import { inferRoundFromSeriesId } from '../utils/bracket'
 import { calculateGamePickPoints, calculateSeriesPickPoints, compareRankingEntries } from '../scoring/rules'
-import { BRT_TIMEZONE } from '../lib/constants'
+import {
+  describeArtifact,
+  describeArtifacts,
+  formatTimestampParts,
+  getRepoRoot,
+  validateArtifacts,
+  writeJsonFile,
+} from '../lib/operationalArtifacts'
+import type { ArtifactDescriptor, ArtifactValidation } from '../lib/operationalArtifacts'
+import { enrichArtifactsWithStorage } from '../admin/operationalStorage'
 
 interface ParticipantRow {
   id: string
@@ -84,40 +93,43 @@ interface BackupData {
   gamePicks: GamePickRow[]
 }
 
-interface BackupResult {
+interface BackupMetrics {
+  participants: number
+  admins: number
+  teams: number
+  seriesTotal: number
+  seriesCompleted: number
+  gamesTotal: number
+  gamesOpen: number
+  seriesPicks: number
+  gamePicks: number
+}
+
+export interface BackupManifest {
+  kind: 'operational-backup'
+  backupId: string
+  generatedAt: string
   outputDir: string
+  metrics: BackupMetrics
+  validation: ArtifactValidation
+  artifacts: ArtifactDescriptor[]
+}
+
+export interface BackupResult {
+  backupId: string
+  generatedAt: string
+  outputDir: string
+  metrics: BackupMetrics
+  validation: ArtifactValidation
+  artifacts: ArtifactDescriptor[]
   files: {
     seriesPicksCsv: string
     gamePicksCsv: string
     rankingCsv: string
     summaryMd: string
+    payloadJson: string
+    manifestJson: string
   }
-}
-
-function formatTimestampParts(date: Date) {
-  const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: BRT_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  })
-
-  const parts = Object.fromEntries(
-    formatter
-      .formatToParts(date)
-      .filter((part) => part.type !== 'literal')
-      .map((part) => [part.type, part.value])
-  )
-
-  const dateStamp = `${parts.year}-${parts.month}-${parts.day}`
-  const timeStamp = `${parts.hour}-${parts.minute}-${parts.second}`
-  const human = `${dateStamp} ${parts.hour}:${parts.minute}:${parts.second} BRT`
-
-  return { dateStamp, timeStamp, human }
 }
 
 function csvCell(value: string | number | boolean | null | undefined): string {
@@ -142,15 +154,6 @@ function teamLabel(teamId: string | null | undefined, teamsById: Record<string, 
   return teamsById[teamId]?.abbreviation ?? teamId
 }
 
-function teamName(teamId: string | null | undefined, teamsById: Record<string, TeamRow | undefined>): string {
-  if (!teamId) return 'A definir'
-  return teamsById[teamId]?.name ?? teamId
-}
-
-function seriesMatchup(series: SeriesRow, teamsById: Record<string, TeamRow | undefined>): string {
-  return `${teamLabel(series.home_team_id, teamsById)} vs ${teamLabel(series.away_team_id, teamsById)}`
-}
-
 function roundLabel(round: number | null | undefined): string {
   switch (round) {
     case 1: return 'R1'
@@ -159,6 +162,10 @@ function roundLabel(round: number | null | undefined): string {
     case 4: return 'NBA Finals'
     default: return '—'
   }
+}
+
+function seriesMatchup(series: SeriesRow, teamsById: Record<string, TeamRow | undefined>): string {
+  return `${teamLabel(series.home_team_id, teamsById)} vs ${teamLabel(series.away_team_id, teamsById)}`
 }
 
 async function fetchBackupData(): Promise<BackupData> {
@@ -413,7 +420,27 @@ function buildRankingCsv(rows: RankingBackupRow[]): string {
   )
 }
 
-function buildSummaryMarkdown(data: BackupData, rankingRows: RankingBackupRow[], generatedAt: string): string {
+function buildBackupMetrics(data: BackupData): BackupMetrics {
+  return {
+    participants: data.participants.length,
+    admins: data.participants.filter((participant) => participant.is_admin).length,
+    teams: data.teams.length,
+    seriesTotal: data.series.length,
+    seriesCompleted: data.series.filter((series) => series.is_complete).length,
+    gamesTotal: data.games.length,
+    gamesOpen: data.games.filter((game) => !game.played).length,
+    seriesPicks: data.seriesPicks.length,
+    gamePicks: data.gamePicks.length,
+  }
+}
+
+function buildSummaryMarkdown(
+  data: BackupData,
+  rankingRows: RankingBackupRow[],
+  generatedAt: string,
+  metrics: BackupMetrics,
+  validation?: ArtifactValidation
+) {
   const teamsById = Object.fromEntries(data.teams.map((team) => [team.id, team]))
   const completedSeries = data.series.filter((series) => series.is_complete)
   const openGames = data.games
@@ -446,13 +473,22 @@ function buildSummaryMarkdown(data: BackupData, rankingRows: RankingBackupRow[],
     '',
     '## Resumo rapido',
     '',
-    `- Participantes: ${data.participants.length}`,
-    `- Series cadastradas: ${data.series.length}`,
-    `- Series concluidas: ${completedSeries.length}`,
-    `- Jogos cadastrados: ${data.games.length}`,
-    `- Jogos ainda abertos: ${data.games.filter((game) => !game.played).length}`,
-    `- Palpites de series exportados: ${data.seriesPicks.length}`,
-    `- Palpites de jogos exportados: ${data.gamePicks.length}`,
+    `- Participantes: ${metrics.participants}`,
+    `- Admins: ${metrics.admins}`,
+    `- Teams cadastrados: ${metrics.teams}`,
+    `- Series cadastradas: ${metrics.seriesTotal}`,
+    `- Series concluidas: ${metrics.seriesCompleted}`,
+    `- Jogos cadastrados: ${metrics.gamesTotal}`,
+    `- Jogos ainda abertos: ${metrics.gamesOpen}`,
+    `- Palpites de series exportados: ${metrics.seriesPicks}`,
+    `- Palpites de jogos exportados: ${metrics.gamePicks}`,
+    ...(validation
+      ? [
+          `- Verificacao: ${validation.ok ? 'OK' : 'falhou'}`,
+          `- Arquivos conferidos: ${validation.fileCount}`,
+          `- Tamanho total: ${validation.totalBytes} bytes`,
+        ]
+      : []),
     '',
     '## Ranking consolidado',
     '',
@@ -472,12 +508,12 @@ function buildSummaryMarkdown(data: BackupData, rankingRows: RankingBackupRow[],
     '| --- | --- | --- | --- | --- |',
     ...(nextGamesRows.length > 0 ? nextGamesRows : ['| - | - | - | Nenhum jogo aberto encontrado | - |']),
     '',
-    '## Como continuar o bolao manualmente',
+    '## Continuidade operacional',
     '',
-    '- Use `palpites-series-*.csv` para consultar e validar os vencedores e numero de jogos escolhidos por cada participante.',
-    '- Use `palpites-jogos-*.csv` para conferir os palpites jogo a jogo, inclusive em caso de desempate ou conferencia manual.',
-    '- Use `ranking-*.csv` como placar oficial congelado daquele momento.',
-    '- Se o app cair, compartilhe este resumo no grupo e use os CSVs como fonte de verdade para conferir os palpites.',
+    '- Use o payload JSON para restaurar ou auditar o estado bruto do bolao.',
+    '- Use os CSVs para consultas rapidas por participante e conferencia manual.',
+    '- Use o ranking congelado como placar oficial daquele instante.',
+    '- Use o manifesto para validar integridade e tamanho dos artefatos antes de qualquer reset.',
     '',
   ].join('\n')
 }
@@ -485,11 +521,12 @@ function buildSummaryMarkdown(data: BackupData, rankingRows: RankingBackupRow[],
 export async function exportOperationalSnapshot(): Promise<BackupResult> {
   const data = await fetchBackupData()
   const rankingRows = buildRankingRows(data)
+  const metrics = buildBackupMetrics(data)
   const now = new Date()
   const { dateStamp, timeStamp, human } = formatTimestampParts(now)
 
-  const repoRoot = path.resolve(__dirname, '../../..')
-  const outputDir = path.join(repoRoot, 'backups', `${dateStamp}_${timeStamp}`)
+  const backupId = `${dateStamp}_${timeStamp}`
+  const outputDir = path.join(getRepoRoot(), 'backups', backupId)
   await mkdir(outputDir, { recursive: true })
 
   const files = {
@@ -497,14 +534,75 @@ export async function exportOperationalSnapshot(): Promise<BackupResult> {
     gamePicksCsv: path.join(outputDir, `palpites-jogos-${dateStamp}.csv`),
     rankingCsv: path.join(outputDir, `ranking-${dateStamp}.csv`),
     summaryMd: path.join(outputDir, `resumo-rodada-${dateStamp}.md`),
+    payloadJson: path.join(outputDir, `snapshot-operacional-${dateStamp}.json`),
+    manifestJson: path.join(outputDir, `manifesto-operacional-${dateStamp}.json`),
+  }
+
+  const payload = {
+    backupId,
+    generatedAt: human,
+    metrics,
+    data,
+    ranking: rankingRows,
   }
 
   await Promise.all([
     writeFile(files.seriesPicksCsv, buildSeriesPicksCsv(data), 'utf8'),
     writeFile(files.gamePicksCsv, buildGamePicksCsv(data), 'utf8'),
     writeFile(files.rankingCsv, buildRankingCsv(rankingRows), 'utf8'),
-    writeFile(files.summaryMd, buildSummaryMarkdown(data, rankingRows, human), 'utf8'),
+    writeJsonFile(files.payloadJson, payload),
   ])
 
-  return { outputDir, files }
+  const describedPrimaryArtifacts = await describeArtifacts([
+    { key: 'seriesPicksCsv', label: 'Palpites de series (.csv)', path: files.seriesPicksCsv, kind: 'csv' },
+    { key: 'gamePicksCsv', label: 'Palpites jogo a jogo (.csv)', path: files.gamePicksCsv, kind: 'csv' },
+    { key: 'rankingCsv', label: 'Ranking congelado (.csv)', path: files.rankingCsv, kind: 'csv' },
+    { key: 'payloadJson', label: 'Payload bruto do snapshot (.json)', path: files.payloadJson, kind: 'json' },
+  ])
+  const primaryArtifacts = await enrichArtifactsWithStorage(`backups/${backupId}`, describedPrimaryArtifacts)
+
+  const primaryValidation = validateArtifacts(primaryArtifacts)
+  await writeFile(files.summaryMd, buildSummaryMarkdown(data, rankingRows, human, metrics, primaryValidation), 'utf8')
+
+  const describedSummaryArtifact = await describeArtifact({
+    key: 'summaryMd',
+    label: 'Resumo operacional (.md)',
+    path: files.summaryMd,
+    kind: 'md',
+  })
+  const [summaryArtifact] = await enrichArtifactsWithStorage(`backups/${backupId}`, [describedSummaryArtifact])
+
+  const dataArtifacts = [...primaryArtifacts, summaryArtifact]
+  const validation = validateArtifacts(dataArtifacts)
+
+  const finalManifest: BackupManifest = {
+    kind: 'operational-backup',
+    backupId,
+    generatedAt: human,
+    outputDir,
+    metrics,
+    validation,
+    artifacts: dataArtifacts,
+  }
+  await writeJsonFile(files.manifestJson, finalManifest)
+
+  const describedManifestArtifact = await describeArtifact({
+    key: 'manifestJson',
+    label: 'Manifesto do backup (.json)',
+    path: files.manifestJson,
+    kind: 'json',
+  })
+  const [manifestArtifact] = await enrichArtifactsWithStorage(`backups/${backupId}`, [describedManifestArtifact])
+
+  const artifacts = [...dataArtifacts, manifestArtifact]
+
+  return {
+    backupId,
+    generatedAt: human,
+    outputDir,
+    metrics,
+    validation,
+    artifacts,
+    files,
+  }
 }

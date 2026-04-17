@@ -1,5 +1,17 @@
+import { mkdir, writeFile } from 'fs/promises'
+import path from 'path'
 import { supabase } from '../lib/supabase'
+import {
+  describeArtifact,
+  describeArtifacts,
+  formatTimestampParts,
+  getRepoRoot,
+  validateArtifacts,
+  writeJsonFile,
+} from '../lib/operationalArtifacts'
+import type { ArtifactDescriptor, ArtifactValidation } from '../lib/operationalArtifacts'
 import { BRT_TIMEZONE } from '../lib/constants'
+import { enrichArtifactsWithStorage } from '../admin/operationalStorage'
 
 interface ParticipantRow {
   id: string
@@ -26,20 +38,45 @@ interface GamePickRow {
   game_id: string
 }
 
-export interface DailyReminderResult {
-  targetDate: string
-  generatedAt: string
-  whatsappText: string
+export type DailyReminderVariant = 'full' | 'pending-only'
+
+export interface DailyReminderGameSummary {
+  gameId: string
+  gameNumber: number
+  matchup: string
+  tipOff: string
+  missing: string[]
+  picked: number
+}
+
+export interface DailyReminderSummary {
   todayGames: number
   totalParticipants: number
-  gamesWithMissingPicks: Array<{
-    gameId: string
-    gameNumber: number
-    matchup: string
-    tipOff: string
-    missing: string[]
-    picked: number
-  }>
+  fullyPickedGames: number
+  gamesNeedingAttention: number
+  participantsPendingToday: number
+  totalMissingEntries: number
+}
+
+export interface DailyReminderPreview {
+  targetDate: string
+  generatedAt: string
+  variant: DailyReminderVariant
+  whatsappText: string
+  summary: DailyReminderSummary
+  gamesWithMissingPicks: DailyReminderGameSummary[]
+}
+
+export interface DailyReminderResult extends DailyReminderPreview {
+  outputDir: string
+  validation: ArtifactValidation
+  artifacts: ArtifactDescriptor[]
+  files: {
+    whatsappTxt: string
+    summaryMd: string
+    payloadJson: string
+    manifestJson: string
+  }
 }
 
 function getBrtDateKey(date: Date): string {
@@ -57,7 +94,7 @@ function getBrtDateKey(date: Date): string {
 }
 
 function formatTipOff(value: string | null): string {
-  if (!value) return 'Sem horário'
+  if (!value) return 'Sem horario'
   return new Intl.DateTimeFormat('pt-BR', {
     timeZone: BRT_TIMEZONE,
     hour: '2-digit',
@@ -74,7 +111,41 @@ function formatHumanDate(isoDate: string): string {
   }).format(new Date(`${isoDate}T12:00:00Z`))
 }
 
-export async function exportDailyReminder(targetDate = getBrtDateKey(new Date())): Promise<DailyReminderResult> {
+function buildMarkdownSummary(preview: DailyReminderPreview, validation?: ArtifactValidation) {
+  return [
+    '# Lembrete diario de palpites',
+    '',
+    `Data-alvo: ${preview.targetDate}`,
+    `Variante: ${preview.variant}`,
+    `Gerado em: ${preview.generatedAt}`,
+    '',
+    '## Painel rapido',
+    '',
+    `- Jogos monitorados: ${preview.summary.todayGames}`,
+    `- Participantes: ${preview.summary.totalParticipants}`,
+    `- Jogos completos: ${preview.summary.fullyPickedGames}`,
+    `- Jogos pedindo atencao: ${preview.summary.gamesNeedingAttention}`,
+    `- Participantes pendentes hoje: ${preview.summary.participantsPendingToday}`,
+    `- Lacunas totais de picks: ${preview.summary.totalMissingEntries}`,
+    ...(validation
+      ? [
+          `- Verificacao: ${validation.ok ? 'OK' : 'falhou'}`,
+          `- Artefatos conferidos: ${validation.fileCount}`,
+          `- Volume total: ${validation.totalBytes} bytes`,
+        ]
+      : []),
+    '',
+    '```text',
+    preview.whatsappText,
+    '```',
+    '',
+  ].join('\n')
+}
+
+export async function buildDailyReminderPreview(
+  targetDate = getBrtDateKey(new Date()),
+  variant: DailyReminderVariant = 'full'
+): Promise<DailyReminderPreview> {
   const [
     { data: participants },
     { data: teams },
@@ -88,24 +159,22 @@ export async function exportDailyReminder(targetDate = getBrtDateKey(new Date())
   ])
 
   if (!participants || !teams || !games || !gamePicks) {
-    throw new Error('Não foi possível carregar os dados para gerar o lembrete.')
+    throw new Error('Nao foi possivel carregar os dados para gerar o lembrete.')
   }
 
-  const teamsById = Object.fromEntries((teams as TeamRow[]).map((t) => [t.id, t]))
+  const teamsById = Object.fromEntries((teams as TeamRow[]).map((team) => [team.id, team]))
+  const participantList = participants as ParticipantRow[]
+  const pickSet = new Set((gamePicks as GamePickRow[]).map((pick) => `${pick.participant_id}:${pick.game_id}`))
   const abbr = (id: string | null) => (id ? teamsById[id]?.abbreviation ?? id : '?')
 
-  // Games of the target date that haven't been played yet
   const todayGames = (games as GameRow[]).filter(
-    (g) => g.tip_off_at && getBrtDateKey(new Date(g.tip_off_at)) === targetDate && !g.played
+    (game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === targetDate && !game.played
   )
-
-  const participantList = participants as ParticipantRow[]
-  const pickSet = new Set((gamePicks as GamePickRow[]).map((p) => `${p.participant_id}:${p.game_id}`))
 
   const gamesWithMissingPicks = todayGames.map((game) => {
     const missing = participantList
-      .filter((p) => !pickSet.has(`${p.id}:${game.id}`))
-      .map((p) => p.name)
+      .filter((participant) => !pickSet.has(`${participant.id}:${game.id}`))
+      .map((participant) => participant.name)
 
     return {
       gameId: game.id,
@@ -117,47 +186,130 @@ export async function exportDailyReminder(targetDate = getBrtDateKey(new Date())
     }
   })
 
+  const pendingNames = new Set(gamesWithMissingPicks.flatMap((game) => game.missing))
+  const summary: DailyReminderSummary = {
+    todayGames: todayGames.length,
+    totalParticipants: participantList.length,
+    fullyPickedGames: gamesWithMissingPicks.filter((game) => game.missing.length === 0).length,
+    gamesNeedingAttention: gamesWithMissingPicks.filter((game) => game.missing.length > 0).length,
+    participantsPendingToday: pendingNames.size,
+    totalMissingEntries: gamesWithMissingPicks.reduce((sum, game) => sum + game.missing.length, 0),
+  }
+
   const humanDate = formatHumanDate(targetDate)
-  const now = new Date()
   const generatedAt = new Intl.DateTimeFormat('pt-BR', {
     timeZone: BRT_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',
     month: '2-digit',
-  }).format(now)
+  }).format(new Date())
 
-  // Build WhatsApp text
   const lines: string[] = [
-    `⏰ *Lembrete do Bolão NBA – ${humanDate}*`,
-    `_Gerado às ${generatedAt} BRT_`,
+    `⏰ *Lembrete do Bolao NBA - ${humanDate}*`,
+    `_Gerado as ${generatedAt} BRT_`,
     '',
   ]
 
   if (todayGames.length === 0) {
     lines.push('Nenhum jogo pendente para hoje.')
   } else {
-    for (const g of gamesWithMissingPicks) {
-      lines.push(`*Jogo ${g.gameNumber} – ${g.matchup}* (${g.tipOff})`)
-      lines.push(`Palpites: ${g.picked}/${participantList.length}`)
+    const visibleGames = variant === 'pending-only'
+      ? gamesWithMissingPicks.filter((game) => game.missing.length > 0)
+      : gamesWithMissingPicks
 
-      if (g.missing.length === 0) {
-        lines.push('✅ Todos palpitaram!')
-      } else {
-        lines.push(`⚠️ Faltam: ${g.missing.join(', ')}`)
+    if (visibleGames.length === 0) {
+      lines.push('✅ Todos ja palpitaram nos jogos de hoje.')
+    } else {
+      for (const game of visibleGames) {
+        lines.push(`*Jogo ${game.gameNumber} - ${game.matchup}* (${game.tipOff})`)
+        lines.push(`Palpites: ${game.picked}/${participantList.length}`)
+
+        if (game.missing.length === 0) {
+          lines.push('✅ Todos palpitaram!')
+        } else {
+          lines.push(`⚠️ Faltam: ${game.missing.join(', ')}`)
+        }
+        lines.push('')
       }
-      lines.push('')
     }
   }
-
-  const whatsappText = lines.join('\n').trimEnd()
 
   return {
     targetDate,
     generatedAt,
-    whatsappText,
-    todayGames: todayGames.length,
-    totalParticipants: participantList.length,
+    variant,
+    whatsappText: lines.join('\n').trimEnd(),
+    summary,
     gamesWithMissingPicks,
+  }
+}
+
+export async function exportDailyReminder(
+  targetDate = getBrtDateKey(new Date()),
+  variant: DailyReminderVariant = 'full'
+): Promise<DailyReminderResult> {
+  const preview = await buildDailyReminderPreview(targetDate, variant)
+  const { dateStamp, timeStamp } = formatTimestampParts(new Date())
+  const outputDir = path.join(getRepoRoot(), 'backups', 'daily-reminders', `${dateStamp}_${timeStamp}`)
+  await mkdir(outputDir, { recursive: true })
+
+  const files = {
+    whatsappTxt: path.join(outputDir, `whatsapp-lembrete-${targetDate}.txt`),
+    summaryMd: path.join(outputDir, `whatsapp-lembrete-${targetDate}.md`),
+    payloadJson: path.join(outputDir, `whatsapp-lembrete-${targetDate}.json`),
+    manifestJson: path.join(outputDir, `manifesto-lembrete-${targetDate}.json`),
+  }
+
+  await Promise.all([
+    writeFile(files.whatsappTxt, preview.whatsappText, 'utf8'),
+    writeJsonFile(files.payloadJson, preview),
+  ])
+
+  const describedPrimaryArtifacts = await describeArtifacts([
+    { key: 'whatsappTxt', label: 'Mensagem do lembrete (.txt)', path: files.whatsappTxt, kind: 'txt' },
+    { key: 'payloadJson', label: 'Payload do lembrete (.json)', path: files.payloadJson, kind: 'json' },
+  ])
+  const primaryArtifacts = await enrichArtifactsWithStorage(`daily-reminders/${dateStamp}_${timeStamp}`, describedPrimaryArtifacts)
+
+  const primaryValidation = validateArtifacts(primaryArtifacts)
+  await writeFile(files.summaryMd, buildMarkdownSummary(preview, primaryValidation), 'utf8')
+
+  const describedSummaryArtifact = await describeArtifact({
+    key: 'summaryMd',
+    label: 'Resumo markdown (.md)',
+    path: files.summaryMd,
+    kind: 'md',
+  })
+  const [summaryArtifact] = await enrichArtifactsWithStorage(`daily-reminders/${dateStamp}_${timeStamp}`, [describedSummaryArtifact])
+
+  const dataArtifacts = [...primaryArtifacts, summaryArtifact]
+  const validation = validateArtifacts(dataArtifacts)
+
+  await writeJsonFile(files.manifestJson, {
+    kind: 'daily-reminder',
+    targetDate,
+    variant,
+    generatedAt: preview.generatedAt,
+    outputDir,
+    summary: preview.summary,
+    validation,
+    artifacts: dataArtifacts,
+  })
+
+  const describedManifestArtifact = await describeArtifact({
+    key: 'manifestJson',
+    label: 'Manifesto do lembrete (.json)',
+    path: files.manifestJson,
+    kind: 'json',
+  })
+  const [manifestArtifact] = await enrichArtifactsWithStorage(`daily-reminders/${dateStamp}_${timeStamp}`, [describedManifestArtifact])
+
+  return {
+    ...preview,
+    outputDir,
+    validation,
+    artifacts: [...dataArtifacts, manifestArtifact],
+    files,
   }
 }
