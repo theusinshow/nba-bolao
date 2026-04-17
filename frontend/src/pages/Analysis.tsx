@@ -163,6 +163,7 @@ function AnalysisHero({
 
   return (
     <section
+      id="analysis-hero-tour"
       style={{
         background: 'linear-gradient(135deg, rgba(74,144,217,0.16), rgba(200,150,60,0.10) 52%, rgba(19,19,26,1) 100%)',
         border: '1px solid rgba(200,150,60,0.22)',
@@ -351,6 +352,7 @@ function RecentResultsCard({
 
   return (
     <motion.div
+      id="analysis-injuries-tour"
       className="card-hover"
       variants={fadeUpItem}
       initial="hidden"
@@ -1151,6 +1153,7 @@ function AnalysisEditorialDeck({
 
   return (
     <motion.section
+      id="analysis-pressure-tour"
       variants={fadeUpItem}
       initial="hidden"
       animate="show"

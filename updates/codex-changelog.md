@@ -4724,6 +4724,18 @@ USING (
 
 ### Validação
 - `npm --prefix frontend run build`
+## 2026-04-17 11:25:00
+
+### Onboarding - tour global e mais completo
+- transformei o onboarding em um tour global multi-página em `frontend/src/components/OnboardingTour.tsx`, cobrindo `Home`, `Jogos`, `Ranking`, `Análise` e `Comparar`;
+- o tour agora navega entre rotas, mantém progresso da etapa atual durante a jornada e só marca como concluído no fechamento final ou skip;
+- movi a montagem do tour para `frontend/src/App.tsx`, para a primeira entrada do usuário funcionar no app inteiro e não só na `Home`;
+- ampliei os tipos locais de `driver.js` em `frontend/src/driverjs.d.ts` para suportar callbacks de próxima/anterior/fechar e controle de steps;
+- atualizei `frontend/src/hooks/useOnboarding.ts` para limpar também o progresso de rota ao reiniciar ou concluir o tour;
+- adicionei anchors de tutorial em `frontend/src/components/Nav.tsx`, `frontend/src/pages/Home.tsx`, `frontend/src/pages/Games.tsx`, `frontend/src/pages/Analysis.tsx`, `frontend/src/pages/Ranking.tsx` e `frontend/src/pages/Compare.tsx`, cobrindo os blocos principais de cada tela.
+
+### Validação
+- `npm --prefix frontend run build`
 ## 2026-04-17 03:49:25
 
 ### Home, Perfil e Comparar - nova camada de leitura executiva
@@ -4859,3 +4871,4 @@ USING (
 
 ### Validação
 - `npm --prefix frontend run build`
+- o tour de primeira entrada agora também termina na aba `Perfil`, usando o perfil do próprio participante autenticado para fechar o onboarding mostrando leitura competitiva e DNA da cartela.

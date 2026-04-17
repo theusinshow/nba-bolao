@@ -4,14 +4,12 @@ import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
-import { OnboardingTour } from '../components/OnboardingTour'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
 import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { type GameHighlightItem, useGameHighlights } from '../hooks/useGameHighlights'
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
-import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getTeamLogoUrl } from '../data/teams2025'
 import { BRT_TIMEZONE } from '../utils/constants'
@@ -1889,7 +1887,6 @@ export function Home({ participantId }: Props) {
   )
   const { highlights, loading: highlightsLoading, provider: highlightsProvider } = useGameHighlights(recentGameIds)
   const { injuries, loading: injuriesLoading, provider: injuriesProvider } = useInjuries()
-  const { show, complete } = useOnboarding()
   const highlightsByGameId = useMemo(
     () => Object.fromEntries(highlights.map((item) => [item.game_id, item])),
     [highlights]
@@ -2084,7 +2081,6 @@ export function Home({ participantId }: Props) {
       tone: 'var(--nba-east)',
     },
   ]
-  const canStartTour = !rankLoading && !seriesLoading && show
   const postRoundItems = useMemo(() => {
     const biggestRise = ranking
       .filter((entry) => entry.prev_rank != null && entry.prev_rank > entry.rank)
@@ -2143,7 +2139,6 @@ export function Home({ participantId }: Props) {
       initial="hidden"
       animate="show"
     >
-      {canStartTour && <OnboardingTour show={canStartTour} onComplete={complete} />}
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
         <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
@@ -2162,7 +2157,7 @@ export function Home({ participantId }: Props) {
             highlightsAvailable={highlightsProvider.available}
           />
         </motion.div>
-        <motion.div variants={scaleInItem}>
+        <motion.div id="home-summary-tour" variants={scaleInItem}>
           <HeroPanel
             myEntry={myEntry}
             pickedSeries={pickedSeries}
@@ -2190,14 +2185,16 @@ export function Home({ participantId }: Props) {
           <RecentSeriesCard series={series} />
         </div>
 
-        <OfficialBracketCard
-          series={series}
-          upcomingGames={upcomingGames}
-          participantCount={ranking.length}
-          injuries={homeInjuries}
-          injuriesLoading={injuriesLoading}
-          injuriesAvailable={injuriesProvider.available}
-        />
+        <div id="home-results-tour">
+          <OfficialBracketCard
+            series={series}
+            upcomingGames={upcomingGames}
+            participantCount={ranking.length}
+            injuries={homeInjuries}
+            injuriesLoading={injuriesLoading}
+            injuriesAvailable={injuriesProvider.available}
+          />
+        </div>
       </div>
 
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">

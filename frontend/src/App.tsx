@@ -5,10 +5,12 @@ import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
+import { OnboardingTour } from './components/OnboardingTour'
 import { Login } from './pages/Login'
 import { Unauthorized } from './pages/Unauthorized'
 import { LoadingBasketball } from './components/LoadingBasketball'
 import { premiumTween } from './lib/motion'
+import { useOnboarding } from './hooks/useOnboarding'
 
 // Patch <a> clicks inside BrowserRouter to use View Transitions API when available
 function ViewTransitionHandler() {
@@ -195,6 +197,7 @@ function AppRoutes({
 
 export default function App() {
   const { auth, signInWithGoogle, signOut, enterAsGuest } = useAuth()
+  const { show, complete } = useOnboarding()
 
   if (auth.status === 'loading') {
     return (
@@ -229,6 +232,13 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
         <AppRoutes auth={auth} participantId={participantId} isAdmin={isAdmin} />
       </Suspense>
+      {auth.status === 'authorized' && show && (
+        <OnboardingTour
+          show={show}
+          onComplete={complete}
+          profilePath={`/profile/${participantId}`}
+        />
+      )}
       <Nav auth={auth} onSignOut={signOut} />
     </BrowserRouter>
   )

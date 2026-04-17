@@ -257,7 +257,15 @@ export function Nav({ auth, onSignOut }: Props) {
             <NavLink
               key={to}
               to={to}
-              id={to === '/ranking' ? 'ranking-nav' : undefined}
+              id={
+                to === '/' ? 'home-nav'
+                : to === '/games' ? 'games-nav'
+                : to === '/analysis' ? 'analysis-nav'
+                : to === '/ranking' ? 'ranking-nav'
+                : to === '/compare' ? 'compare-nav'
+                : to === '/official' ? 'official-nav'
+                : undefined
+              }
               end={to === '/'}
               style={({ isActive }) => ({
                 flex: 1,

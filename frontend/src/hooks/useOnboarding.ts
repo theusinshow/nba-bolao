@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'nba_bolao_onboarding_done'
+const ROUTE_KEY = 'nba_bolao_onboarding_route'
 const RESTART_EVENT = 'nba-bolao:restart-onboarding'
 
 export function useOnboarding() {
@@ -11,6 +12,7 @@ export function useOnboarding() {
   useEffect(() => {
     function handleRestartEvent() {
       localStorage.removeItem(STORAGE_KEY)
+      sessionStorage.removeItem(ROUTE_KEY)
       setShow(true)
     }
 
@@ -20,6 +22,7 @@ export function useOnboarding() {
 
   function complete() {
     localStorage.setItem(STORAGE_KEY, 'true')
+    sessionStorage.removeItem(ROUTE_KEY)
     setShow(false)
   }
 

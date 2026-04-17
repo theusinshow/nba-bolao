@@ -273,6 +273,7 @@ export function Profile() {
       </div>
 
       <div
+        id="profile-hero-tour"
         style={{
           background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 44%, rgba(200,150,60,0.08) 100%)',
           border: '1px solid rgba(200,150,60,0.18)',
@@ -321,8 +322,9 @@ export function Profile() {
       </div>
 
       {profileBadges.length > 0 && (
-        <div
-          style={{
+      <div
+        id="profile-competitive-tour"
+        style={{
             background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 50%, rgba(200,150,60,0.08) 100%)',
             border: '1px solid rgba(200,150,60,0.18)',
             borderRadius: 12,
@@ -359,6 +361,7 @@ export function Profile() {
       {/* Round accuracy chart */}
       {chartData.length > 0 && (
         <div
+          id="profile-dna-tour"
           style={{
             background: 'var(--nba-surface)',
             border: '1px solid var(--nba-border)',

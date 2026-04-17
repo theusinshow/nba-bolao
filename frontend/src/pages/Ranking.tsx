@@ -135,6 +135,7 @@ function RankingHero({
 
   return (
     <motion.div
+      id="ranking-hero-tour"
       variants={scaleInItem}
       initial="hidden"
       animate="show"
@@ -563,6 +564,7 @@ const navigate = useNavigate()
 
               {/* Chart card */}
               <motion.div
+                id="ranking-table-tour"
                 variants={fadeUpItem}
                 whileHover={{ y: -2, boxShadow: '0 18px 38px rgba(0,0,0,0.18)' }}
                 style={{

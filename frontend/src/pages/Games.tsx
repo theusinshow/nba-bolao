@@ -528,8 +528,8 @@ function AutoPickFAB({
     }
   }
 
-  // Posição base acima da barra de navegação
-  const fabBottom = 'calc(80px + 16px + env(safe-area-inset-bottom))'
+  // Posição base na lateral superior direita
+  const fabTop = 'calc(96px + env(safe-area-inset-top))'
   const popoverBottom = 'calc(80px + 16px + 52px + 12px + env(safe-area-inset-bottom))'
 
   return (
@@ -659,12 +659,13 @@ function AutoPickFAB({
 
       {/* Botão circular flutuante */}
       <button
+        id="games-autopick-tour"
         onClick={handleFabClick}
         disabled={!hasGames}
         title="Vai na fé — sortear palpites"
         style={{
           position: 'fixed',
-          bottom: fabBottom,
+          top: fabTop,
           right: 16,
           zIndex: 49,
           width: 52, height: 52,
@@ -2920,15 +2921,19 @@ export function Games({ participantId }: Props) {
 
   return (
     <div style={{ padding: '16px 16px 96px', maxWidth: 680, margin: '0 auto' }}>
-      <GamesHero
-        games={games}
-        picks={picks}
-        pendingSeries={filterCounts.pending}
-        urgentSeries={filterCounts.urgent}
-        seriesGroups={seriesGroups}
-        recentlySavedGameId={recentlySavedGameId}
-      />
-      <SmartAlertsPanel items={smartAlertItems} />
+      <div id="games-hero-tour">
+        <GamesHero
+          games={games}
+          picks={picks}
+          pendingSeries={filterCounts.pending}
+          urgentSeries={filterCounts.urgent}
+          seriesGroups={seriesGroups}
+          recentlySavedGameId={recentlySavedGameId}
+        />
+      </div>
+      <div id="games-alerts-tour">
+        <SmartAlertsPanel items={smartAlertItems} />
+      </div>
 
       <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
 

@@ -1125,6 +1125,7 @@ function CriticalLaneCard({
 
   return (
     <div
+      id="compare-selection-tour"
       style={{
         background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(224,92,58,0.08) 42%, rgba(74,144,217,0.08) 100%)',
         border: '1px solid rgba(200,150,60,0.18)',
@@ -1175,6 +1176,7 @@ function CriticalLaneCard({
 function Stat({ label, value, color, note }: { label: string; value: string; color: string; note: string }) {
   return (
     <div
+      id="compare-critical-tour"
       style={{
         flex: '1 1 80px',
         background: `${color}11`,
