@@ -4873,3 +4873,20 @@ USING (
 - `npm --prefix frontend run build`
 - o tour de primeira entrada agora também termina na aba `Perfil`, usando o perfil do próprio participante autenticado para fechar o onboarding mostrando leitura competitiva e DNA da cartela.
 - endureci a aba `Análise` com error boundaries por seção para evitar tela preta caso algum bloco receba dado inesperado em runtime.
+
+## 2026-04-17 - Bugfix: Tour de onboarding fechando prematuramente na aba Análise
+
+### Problema
+A aba `Análise` abria por ~1 segundo e fechava durante o tour de novos usuários. O driver.js era destruído logo após iniciar, sem interação do usuário.
+
+### Causa raiz
+Dois problemas encadeados:
+1. `complete()` em `frontend/src/hooks/useOnboarding.ts` era recriada a cada render do `App` por não estar em `useCallback`;
+2. `onComplete` estava no array de dependências do `useEffect` em `frontend/src/components/OnboardingTour.tsx` — qualquer re-render do `App` (incluindo o Suspense resolvendo o chunk lazy do `Analysis.tsx`, que é o maior bundle de página) recriava a referência, disparava o cleanup do efeito e destruía o driver antes de o tour completar.
+
+### Correção
+- `frontend/src/hooks/useOnboarding.ts`: envolveu `complete` em `useCallback([], [])` para garantir referência estável entre renders;
+- `frontend/src/components/OnboardingTour.tsx`: moveu `onComplete` para um `useRef` (`onCompleteRef`) e removeu a prop do array de dependências do `useEffect`, eliminando completamente o acoplamento entre re-renders do `App` e o ciclo de vida do driver.
+
+### Validação
+- `npm --prefix frontend run build`
