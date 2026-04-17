@@ -4854,6 +4854,21 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 
+## 2026-04-17 - UI: polimento final de Resultados reais + pendência do backup automático
+
+### Home - Resultados reais mais alinhados
+- refinei a seção `Resultados reais` em `frontend/src/pages/Home.tsx` para melhorar a hierarquia visual do topo, com CTA mais consistente junto ao título;
+- deixei os cards de status (`Concluídas`, `Em aberto`, `Campeão`) com altura e distribuição interna mais estáveis;
+- reancorei o bloco central do confronto (`VS` / status da série) entre os dois times;
+- corrigi o alinhamento do card do time da direita, prendendo melhor logo, sigla e textos auxiliares no eixo direito do confronto.
+
+### Pendência operacional registrada
+- ficou registrado como próximo passo ativar de fato o backup automático em produção;
+- para isso ainda falta configurar os secrets `BACKEND_BASE_URL` e `BACKUP_CRON_SECRET` no GitHub Actions e o `BACKUP_CRON_SECRET` no backend implantado, depois disparando o workflow `Operational Backup` manualmente uma vez para validação.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 - Ops: backup automático diário via GitHub Actions
 
 ### Automação operacional
