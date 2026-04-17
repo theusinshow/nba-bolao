@@ -678,6 +678,53 @@ function formatBrtTime(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: BRT_TIMEZONE, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 }
 
+function TeamMark({
+  abbr,
+  color,
+  align = 'left',
+  dimmed = false,
+}: {
+  abbr: string
+  color: string
+  align?: 'left' | 'right'
+  dimmed?: boolean
+}) {
+  const isRight = align === 'right'
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: isRight ? 'flex-end' : 'flex-start',
+        gap: 6,
+        minWidth: 58,
+        opacity: dimmed ? 0.4 : 1,
+        flexDirection: isRight ? 'row-reverse' : 'row',
+      }}
+    >
+      <img
+        src={getTeamLogoUrl(abbr)}
+        alt={abbr}
+        onError={(e) => (e.currentTarget.style.display = 'none')}
+        style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }}
+      />
+      <span
+        className="font-condensed font-bold"
+        style={{
+          color,
+          fontSize: '0.92rem',
+          lineHeight: 1,
+          minWidth: 32,
+          textAlign: isRight ? 'right' : 'left',
+        }}
+      >
+        {abbr}
+      </span>
+    </span>
+  )
+}
+
 // Map: seriesId → Map<winnerId, count>
 function useSeriesPickStats() {
   const [bySeriesId, setBySeriesId] = useState<Map<string, Map<string, number>>>(new Map())
@@ -861,15 +908,11 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
               const awayColor = g.away_team?.primary_color ?? 'var(--nba-text)'
               return (
                 <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}>
-                  <span className="font-condensed font-bold" style={{ color: homeColor, fontSize: '0.92rem', minWidth: 32 }}>
-                    {g.home_team?.abbreviation ?? g.home_team_id}
-                  </span>
+                  <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
                   <span className="font-condensed" style={{ flex: 1, textAlign: 'center', fontSize: '0.72rem', color: 'var(--nba-text-muted)', letterSpacing: '0.04em' }}>
                     {isLive ? '●' : formatBrtTime(g.tip_off_at)}
                   </span>
-                  <span className="font-condensed font-bold" style={{ color: awayColor, fontSize: '0.92rem', minWidth: 32, textAlign: 'right' }}>
-                    {g.away_team?.abbreviation ?? g.away_team_id}
-                  </span>
+                  <TeamMark abbr={g.away_team?.abbreviation ?? g.away_team_id} color={awayColor} align="right" />
                   <span style={{
                     fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
                     background: isLive ? 'rgba(46,204,113,0.18)' : 'rgba(200,150,60,0.12)',
@@ -945,17 +988,11 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span
-                            className="font-condensed font-bold"
-                            style={{
-                              color: homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor,
-                              fontSize: '0.92rem',
-                              minWidth: 32,
-                              opacity: awayWon ? 0.4 : 1,
-                            }}
-                          >
-                            {homeAbbr}
-                          </span>
+                          <TeamMark
+                            abbr={homeAbbr}
+                            color={homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor}
+                            dimmed={awayWon}
+                          />
 
                           <span
                             className="font-condensed font-bold"
@@ -970,18 +1007,12 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'vs'}
                           </span>
 
-                          <span
-                            className="font-condensed font-bold"
-                            style={{
-                              color: awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : awayColor,
-                              fontSize: '0.92rem',
-                              minWidth: 32,
-                              textAlign: 'right',
-                              opacity: homeWon ? 0.4 : 1,
-                            }}
-                          >
-                            {awayAbbr}
-                          </span>
+                          <TeamMark
+                            abbr={awayAbbr}
+                            color={awayWon ? awayColor : homeWon ? 'var(--nba-text-muted)' : awayColor}
+                            align="right"
+                            dimmed={homeWon}
+                          />
 
                           {s.is_complete ? (
                             <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
