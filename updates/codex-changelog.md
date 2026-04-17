@@ -1,5 +1,44 @@
 # Codex Changelog
 
+## 2026-04-17 - Fix: Rodada crítica de estabilidade em Análise, login mobile, Compare e Home
+
+### Contexto
+Entrou um pacote de contenção e correção para estabilizar o app antes da abertura do bolão. O foco foi eliminar a quebra da aba `Análise`, endurecer o login no mobile, fechar uma brecha competitiva na `Compare` e terminar o polimento mobile da seção `Resultados reais`.
+
+### `frontend/src/App.tsx`, `frontend/src/pages/Analysis.tsx`, `frontend/src/hooks/useAnalysisInsights.ts`, `frontend/src/hooks/useInjuries.ts`
+- A aba `Análise` deixou de derrubar o app inteiro quando recebia payload torto ou reabria subscriptions em duplicidade.
+- Entrou isolamento da rota com fallback de erro, normalização defensiva dos dados de insights/lesões e proteção adicional nos blocos mais sensíveis.
+- A causa raiz do crash foi corrigida removendo a segunda assinatura de autenticação dentro da `Analysis` e reaproveitando a instância central de `auth` já criada no `App`.
+
+### `frontend/src/components/OnboardingTour.tsx`, `frontend/src/hooks/useOnboarding.ts`, `frontend/src/pages/Analysis.tsx`
+- O tour foi temporariamente desligado durante a investigação da regressão e depois reativado.
+- O timing do onboarding ficou mais robusto para a navegação entre rotas, especialmente na ida para `Análise`.
+- O resultado final é que o tour voltou a funcionar sem ser o causador do crash da aba.
+
+### `frontend/src/hooks/useAuth.ts`, `frontend/src/pages/AuthCallback.tsx`, `frontend/src/pages/Login.tsx`, `frontend/src/lib/supabase.ts`, `frontend/.env.example`, `frontend/vercel.json`
+- O bootstrap de autenticação ganhou timeout de segurança para evitar loading infinito antes da tela de login.
+- O login com Google no mobile passou a usar callback explícita em `/auth/callback`, com rota própria para finalizar a sessão e reportar erro com mais clareza.
+- O fluxo mobile foi endurecido para redes lentas, estados intermediários e navegadores embutidos.
+- A tela de login passou a orientar melhor quando o OAuth estiver sendo aberto em browser embutido.
+- O cliente Supabase foi ajustado de volta para `implicit`, priorizando compatibilidade prática no mobile.
+- Entrou também um rewrite em `frontend/vercel.json` para permitir proxy de chamadas do Supabase via infraestrutura da Vercel quando necessário.
+
+### `frontend/src/pages/Compare.tsx`
+- A comparação agora só abre por completo depois que todas as séries da `1ª rodada` estiverem travadas.
+- Enquanto isso não acontecer, a página mostra estado bloqueado com progresso de travamento e próximo lock previsto.
+- Depois da liberação, a aba continua exibindo apenas séries e jogos já fechados para edição.
+- Summary, highlights, divergências, dots de jogos e brackets lado a lado foram alinhados ao mesmo filtro, para não vazar leitura antecipada por blocos secundários.
+
+### `frontend/src/pages/Home.tsx`
+- A seção `Resultados reais` recebeu mais uma rodada de ajuste específico para mobile.
+- Os cards passaram a respeitar melhor a largura curta do celular, com confronto mais estável e leitura menos desalinhada.
+- O card central de `VS` voltou a ficar entre os dois times no mobile, em vez de subir isolado para o topo do confronto.
+- O badge ambíguo `2/6` passou a aparecer como `2/6 picks`, deixando claro que se trata de quantidade de palpites salvos naquela série.
+- O botão `Ver playoff real da NBA` foi movido para o topo da seção, facilitando o acesso no mobile.
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso após os ajustes de `Analysis`, `Auth`, `Compare` e `Home`
+
 ## 2026-04-17 - Feature: Fechamento do roadmap com alertas, pulso social, badges e admin premium
 
 ### Contexto

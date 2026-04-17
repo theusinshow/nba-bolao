@@ -1128,6 +1128,33 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
     <div className="px-3 py-4 sm:p-[1.35rem]" style={{ ...card, background: 'linear-gradient(145deg, rgba(224,92,58,0.16), rgba(200,150,60,0.10) 42%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 18, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 42px rgba(0,0,0,0.16)' }}>
       <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
 
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+        <Link
+          to="/official"
+          className="w-full sm:w-auto"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '16px 22px',
+            minHeight: 56,
+            borderRadius: 14,
+            textDecoration: 'none',
+            background: 'linear-gradient(135deg, rgba(200,150,60,0.20), rgba(224,92,58,0.10))',
+            border: '1px solid rgba(200,150,60,0.24)',
+            color: 'var(--nba-gold)',
+            fontWeight: 700,
+            fontSize: '1rem',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            letterSpacing: '0.05em',
+          }}
+        >
+          Ver playoff real da NBA
+          <ChevronRight size={15} />
+        </Link>
+      </div>
+
       <div
         className="rounded-2xl p-[14px] sm:p-[18px]"
         style={{
@@ -1279,7 +1306,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             injury={!s.is_complete ? homeInjury : undefined}
                           />
 
-                          <div className="order-first grid min-w-0 content-center justify-items-center gap-2 rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3 sm:order-none sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0" style={{ minWidth: 0 }}>
+                          <div className="mx-auto grid min-w-0 content-center justify-items-center gap-2 rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3 sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0" style={{ minWidth: 0 }}>
                             <span
                               className="font-condensed font-bold"
                               style={{
@@ -1311,11 +1338,11 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                               </span>
                             ) : inProgress ? (
                               <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
-                                {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'em série'}
+                                {totalPicked > 0 ? `${totalPicked}/${participantCount} picks` : 'em série'}
                               </span>
                             ) : (
                               <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
-                                {totalPicked > 0 ? `${totalPicked}/${participantCount}` : 'pendente'}
+                                {totalPicked > 0 ? `${totalPicked}/${participantCount} picks` : 'pendente'}
                               </span>
                             )}
                           </div>
@@ -1385,32 +1412,6 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
         </div>
       )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
-          <Link
-            to="/official"
-            className="w-full sm:w-auto"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '16px 22px',
-            minHeight: 56,
-            borderRadius: 14,
-            textDecoration: 'none',
-            background: 'linear-gradient(135deg, rgba(200,150,60,0.20), rgba(224,92,58,0.10))',
-            border: '1px solid rgba(200,150,60,0.24)',
-            color: 'var(--nba-gold)',
-            fontWeight: 700,
-            fontSize: '1rem',
-            fontFamily: "'Barlow Condensed', sans-serif",
-            letterSpacing: '0.05em',
-          }}
-        >
-          Ver playoff real da NBA
-          <ChevronRight size={15} />
-        </Link>
-      </div>
     </div>
   )
 }

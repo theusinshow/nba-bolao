@@ -312,15 +312,31 @@ function isPastDate(dateValue: string | null | undefined): boolean {
   return new Date(dateValue).getTime() <= Date.now()
 }
 
+function formatShortDateTime(dateValue: string | null | undefined): string {
+  if (!dateValue) return 'sem horário definido'
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateValue))
+}
+
+function isSeriesPickLockedForCompare(series: Series): boolean {
+  return series.is_complete || isPastDate(series.tip_off_at)
+}
+
 function isGameComparisonVisible(game: Game): boolean {
   return game.played || isPastDate(game.tip_off_at)
 }
 
-function isSeriesComparisonVisible(series: Series, allGames: Game[]): boolean {
-  if (series.is_complete) return true
-  return allGames.some(
-    (game) => game.series_id === series.id && isGameComparisonVisible(game)
-  )
+function isSeriesComparisonVisible(series: Series): boolean {
+  return isSeriesPickLockedForCompare(series)
+}
+
+function isCompareUnlockedForRoundOne(series: Series[]): boolean {
+  const roundOneSeries = series.filter((item) => item.round === 1)
+  return roundOneSeries.length > 0 && roundOneSeries.every(isSeriesPickLockedForCompare)
 }
 
 const ROUND_LABEL: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'CF', 4: 'Finals' }
@@ -1887,11 +1903,43 @@ export function Compare() {
 
   const bothSelected  = !!leftId && !!rightId
   const sameSelected  = leftId && rightId && leftId === rightId
+  const roundOneSeries = useMemo(
+    () => series.filter((item) => item.round === 1),
+    [series]
+  )
+  const compareUnlocked = useMemo(
+    () => isCompareUnlockedForRoundOne(series),
+    [series]
+  )
+  const lockedRoundOneSeries = useMemo(
+    () => roundOneSeries.filter(isSeriesPickLockedForCompare),
+    [roundOneSeries]
+  )
+  const nextRoundOneLock = useMemo(
+    () =>
+      [...roundOneSeries]
+        .filter((item) => !isSeriesPickLockedForCompare(item) && item.tip_off_at)
+        .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0] ?? null,
+    [roundOneSeries]
+  )
+  const compareBlockedMessage = useMemo(() => {
+    if (roundOneSeries.length === 0) {
+      return 'A comparação libera quando a chave oficial da primeira rodada estiver montada e pronta para travar.'
+    }
+    if (nextRoundOneLock?.tip_off_at) {
+      return `${lockedRoundOneSeries.length}/${roundOneSeries.length} séries da 1ª rodada já fecharam. Próximo lock em ${formatShortDateTime(nextRoundOneLock.tip_off_at)}.`
+    }
+    return `${lockedRoundOneSeries.length}/${roundOneSeries.length} séries da 1ª rodada já fecharam. A comparação abre quando todos os picks da rodada estiverem travados.`
+  }, [lockedRoundOneSeries.length, nextRoundOneLock, roundOneSeries.length])
   const visibleSeriesIds = new Set(
-    series.filter((item) => isSeriesComparisonVisible(item, games)).map((item) => item.id)
+    compareUnlocked
+      ? series.filter((item) => isSeriesComparisonVisible(item)).map((item) => item.id)
+      : []
   )
   const visibleGameIds = new Set(
-    games.filter((game) => isGameComparisonVisible(game)).map((game) => game.id)
+    compareUnlocked
+      ? games.filter((game) => isGameComparisonVisible(game)).map((game) => game.id)
+      : []
   )
   const visibleSeries = series.filter((item) => visibleSeriesIds.has(item.id))
   const visibleGames = games.filter((game) => visibleGameIds.has(game.id))
@@ -1902,16 +1950,16 @@ export function Compare() {
   const insights = useMemo(
     () =>
       computeCompareInsights({
-        series,
-        games,
-        picks1: leftPicks,
-        picks2: rightPicks,
-        gamePicks1: leftGamePicks,
-        gamePicks2: rightGamePicks,
+        series: visibleSeries,
+        games: visibleGames,
+        picks1: visibleLeftPicks,
+        picks2: visibleRightPicks,
+        gamePicks1: visibleLeftGamePicks,
+        gamePicks2: visibleRightGamePicks,
         pts1,
         pts2,
       }),
-    [series, games, leftPicks, rightPicks, leftGamePicks, rightGamePicks, pts1, pts2]
+    [visibleSeries, visibleGames, visibleLeftPicks, visibleRightPicks, visibleLeftGamePicks, visibleRightGamePicks, pts1, pts2]
   )
 
   return (
@@ -1969,129 +2017,159 @@ export function Compare() {
       {/* Main comparison */}
       {bothSelected && !sameSelected && p1 && p2 && (
         <>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 14px',
-              background: 'rgba(200,150,60,0.08)',
-              border: '1px solid rgba(200,150,60,0.2)',
-              borderRadius: 8,
-              marginBottom: 16,
-              color: 'var(--nba-text)',
-              fontSize: '0.82rem',
-            }}
-          >
-            <ShieldCheck size={16} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
-            A comparação só revela palpites de jogos e séries que já fecharam para novos picks.
-          </div>
-
-          {/* Summary card */}
-          <SummaryCard
-            p1={p1} p2={p2}
-            pts1={pts1} pts2={pts2}
-            insights={insights}
-          />
-
-          <CriticalLaneCard insights={insights} p1={p1} p2={p2} />
-
-          {/* Histórico de acertos jogo a jogo */}
-          {(leftGamePicks.length > 0 || rightGamePicks.length > 0) && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-                marginBottom: 16,
-                padding: '14px 16px',
-                background: 'var(--nba-surface)',
-                border: '1px solid var(--nba-border)',
-                borderRadius: 8,
-              }}
-            >
-              <div>
-                <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {p1.name} — Jogos
-                </div>
-                <GamePickDots
-                  dots={computeCompareDots(leftGamePicks, games)}
-                  variant="grouped"
-                />
-                {leftGamePicks.length === 0 && (
-                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Sem palpites de jogo</span>
-                )}
+          {!compareUnlocked ? (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 14px',
+                  background: 'rgba(231,76,60,0.08)',
+                  border: '1px solid rgba(231,76,60,0.22)',
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  color: 'var(--nba-text)',
+                  fontSize: '0.82rem',
+                }}
+              >
+                <AlertTriangle size={16} style={{ color: 'var(--nba-danger)', flexShrink: 0 }} />
+                A comparação completa só abre depois que todos os palpites de série da 1ª rodada travarem.
               </div>
-              <div>
-                <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {p2.name} — Jogos
-                </div>
-                <GamePickDots
-                  dots={computeCompareDots(rightGamePicks, games)}
-                  variant="grouped"
-                />
-                {rightGamePicks.length === 0 && (
-                  <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Sem palpites de jogo</span>
-                )}
+
+              <EmptyState
+                icon={<ShieldCheck size={36} style={{ opacity: 0.3 }} />}
+                title="Comparação bloqueada até o lock completo da primeira rodada"
+                sub={compareBlockedMessage}
+              />
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 14px',
+                  background: 'rgba(200,150,60,0.08)',
+                  border: '1px solid rgba(200,150,60,0.2)',
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  color: 'var(--nba-text)',
+                  fontSize: '0.82rem',
+                }}
+              >
+                <ShieldCheck size={16} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
+                A comparação já está liberada, mas continua escondendo palpites de jogos e séries que ainda seguem editáveis.
               </div>
-            </div>
+
+              {/* Summary card */}
+              <SummaryCard
+                p1={p1} p2={p2}
+                pts1={pts1} pts2={pts2}
+                insights={insights}
+              />
+
+              <CriticalLaneCard insights={insights} p1={p1} p2={p2} />
+
+              {/* Histórico de acertos jogo a jogo */}
+              {(visibleLeftGamePicks.length > 0 || visibleRightGamePicks.length > 0) && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                    marginBottom: 16,
+                    padding: '14px 16px',
+                    background: 'var(--nba-surface)',
+                    border: '1px solid var(--nba-border)',
+                    borderRadius: 8,
+                  }}
+                >
+                  <div>
+                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {p1.name} — Jogos
+                    </div>
+                    <GamePickDots
+                      dots={computeCompareDots(visibleLeftGamePicks, visibleGames)}
+                      variant="grouped"
+                    />
+                    {visibleLeftGamePicks.length === 0 && (
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Sem palpites de jogo visíveis</span>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {p2.name} — Jogos
+                    </div>
+                    <GamePickDots
+                      dots={computeCompareDots(visibleRightGamePicks, visibleGames)}
+                      variant="grouped"
+                    />
+                    {visibleRightGamePicks.length === 0 && (
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem' }}>Sem palpites de jogo visíveis</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <DivergenceSpotlightCard insights={insights} p1={p1} p2={p2} />
+
+              {/* Legend */}
+              <CompareLegend />
+
+              <GameComparisonBoard
+                games={visibleGames}
+                series={visibleSeries}
+                picks1={visibleLeftGamePicks}
+                picks2={visibleRightGamePicks}
+                p1={p1}
+                p2={p2}
+              />
+
+              {/* Brackets — side by side on desktop, stacked on mobile */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr',
+                  gap: 18,
+                }}
+                className="min-[900px]:grid-cols-2"
+              >
+                {/* Left bracket */}
+                <div>
+                  <ParticipantHeader
+                    participant={p1}
+                    totalPoints={pts1}
+                    side="left"
+                    isWinning={pts1 > pts2}
+                  />
+                  <BracketSVG
+                    series={visibleSeries}
+                    picks={visibleLeftPicks}
+                    comparePicks={visibleRightPicks}
+                    onSeriesHover={handleHover}
+                  />
+                </div>
+
+                {/* Right bracket */}
+                <div>
+                  <ParticipantHeader
+                    participant={p2}
+                    totalPoints={pts2}
+                    side="right"
+                    isWinning={pts2 > pts1}
+                  />
+                  <BracketSVG
+                    series={visibleSeries}
+                    picks={visibleRightPicks}
+                    comparePicks={visibleLeftPicks}
+                    onSeriesHover={handleHover}
+                  />
+                </div>
+              </div>
+            </>
           )}
-
-          <DivergenceSpotlightCard insights={insights} p1={p1} p2={p2} />
-
-          {/* Legend */}
-          <CompareLegend />
-
-          <GameComparisonBoard
-            games={visibleGames}
-            series={visibleSeries}
-            picks1={visibleLeftGamePicks}
-            picks2={visibleRightGamePicks}
-            p1={p1}
-            p2={p2}
-          />
-
-          {/* Brackets — side by side on desktop, stacked on mobile */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr',
-              gap: 18,
-            }}
-            className="min-[900px]:grid-cols-2"
-          >
-            {/* Left bracket */}
-            <div>
-              <ParticipantHeader
-                participant={p1}
-                totalPoints={pts1}
-                side="left"
-                isWinning={pts1 > pts2}
-              />
-              <BracketSVG
-                series={visibleSeries}
-                picks={visibleLeftPicks}
-                comparePicks={visibleRightPicks}
-                onSeriesHover={handleHover}
-              />
-            </div>
-
-            {/* Right bracket */}
-            <div>
-              <ParticipantHeader
-                participant={p2}
-                totalPoints={pts2}
-                side="right"
-                isWinning={pts2 > pts1}
-              />
-              <BracketSVG
-                series={visibleSeries}
-                picks={visibleRightPicks}
-                comparePicks={visibleLeftPicks}
-                onSeriesHover={handleHover}
-              />
-            </div>
-          </div>
         </>
       )}
 
