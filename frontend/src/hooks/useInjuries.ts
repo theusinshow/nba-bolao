@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 const backendUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3001'
 
 export interface InjuriesProviderState {
-  provider: 'sportsdataio'
+  provider: 'rapidapi-nba-injuries'
   configured: boolean
   available: boolean
   reason?: string
@@ -16,6 +16,7 @@ export interface InjuryItem {
   status: string
   detail: string | null
   position: string | null
+  impact: 'high' | 'medium' | 'low'
 }
 
 interface InjuriesResponse {
@@ -31,7 +32,7 @@ export function useInjuries() {
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
   const [injuries, setInjuries] = useState<InjuryItem[]>([])
   const [provider, setProvider] = useState<InjuriesProviderState>({
-    provider: 'sportsdataio',
+    provider: 'rapidapi-nba-injuries',
     configured: false,
     available: false,
     reason: 'Ainda não carregado.',

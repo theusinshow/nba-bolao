@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Activity, ChevronRight, Clock, Database, HeartPulse, Newspaper, Sparkles, TrendingUp } from 'lucide-react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -605,6 +606,156 @@ function getInjuryStyle(status: string) {
   return INJURY_STATUS_STYLE[status] ?? { color: 'var(--nba-text-muted)', label: status }
 }
 
+function getImpactStyle(impact: InjuryItem['impact']) {
+  if (impact === 'high') {
+    return {
+      label: 'Impacto alto',
+      color: '#ff8a65',
+      background: 'rgba(255,138,101,0.12)',
+      border: 'rgba(255,138,101,0.28)',
+    }
+  }
+  if (impact === 'medium') {
+    return {
+      label: 'Impacto médio',
+      color: 'var(--nba-gold)',
+      background: 'rgba(200,150,60,0.12)',
+      border: 'rgba(200,150,60,0.24)',
+    }
+  }
+  return {
+    label: 'Monitorar',
+    color: 'var(--nba-text-muted)',
+    background: 'rgba(136,136,153,0.10)',
+    border: 'rgba(136,136,153,0.18)',
+  }
+}
+
+function getTeamNameFromAbbr(abbr: string | null) {
+  if (!abbr) return null
+  return TEAMS_2025.find((team) => team.abbreviation === abbr)?.name ?? abbr
+}
+
+function InjuriesRadar({ injuries }: { injuries: InjuryItem[] }) {
+  const highImpact = injuries.filter((item) => item.impact === 'high')
+  const mediumOrHigher = injuries.filter((item) => item.impact !== 'low')
+
+  const teamsByVolume = Object.entries(
+    injuries.reduce<Record<string, number>>((acc, item) => {
+      if (!item.team) return acc
+      acc[item.team] = (acc[item.team] ?? 0) + 1
+      return acc
+    }, {})
+  )
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
+    .slice(0, 3)
+
+  const headlineItems = highImpact.length > 0 ? highImpact.slice(0, 3) : mediumOrHigher.slice(0, 3)
+
+  return (
+    <div
+      style={{
+        borderRadius: 12,
+        padding: '12px 14px',
+        background: 'linear-gradient(135deg, rgba(231,76,60,0.10), rgba(200,150,60,0.10) 55%, rgba(19,19,26,1) 100%)',
+        border: '1px solid rgba(200,150,60,0.18)',
+        display: 'grid',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <span className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Radar da rodada
+        </span>
+        <span style={{ color: highImpact.length > 0 ? '#ff8a65' : 'var(--nba-gold)', fontSize: '0.72rem', fontWeight: 700 }}>
+          {highImpact.length} impacto alto
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gap: 8 }} className="grid-cols-2">
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(255,138,101,0.16)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 5 }}>Casos monitorados</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.35rem', lineHeight: 1 }}>
+            {injuries.length}
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)' }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 5 }}>Times afetados</div>
+          <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1.35rem', lineHeight: 1 }}>
+            {teamsByVolume.length}
+          </div>
+        </div>
+      </div>
+
+      {teamsByVolume.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {teamsByVolume.map(([team, count]) => (
+            <span
+              key={team}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 8px',
+                borderRadius: 999,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.14)',
+                color: 'var(--nba-text)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+              }}
+            >
+              {team}
+              <span style={{ color: 'var(--nba-text-muted)' }}>{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {headlineItems.length > 0 && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {headlineItems.map((item) => {
+            const impactStyle = getImpactStyle(item.impact)
+            const statusStyle = getInjuryStyle(item.status)
+            return (
+              <div
+                key={`headline-${item.id}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  background: 'rgba(12,12,18,0.38)',
+                  border: '1px solid rgba(200,150,60,0.12)',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.86rem', lineHeight: 1 }}>
+                    {item.player_name}
+                  </div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
+                    {item.team ?? 'Sem time'}{item.detail ? ` • ${truncateText(item.detail, 72)}` : ''}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <span style={{ color: impactStyle.color, fontSize: '0.62rem', fontWeight: 700 }}>
+                    {impactStyle.label}
+                  </span>
+                  <span style={{ color: statusStyle.color, fontSize: '0.62rem', fontWeight: 700 }}>
+                    {statusStyle.label}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function InjuriesCard({
   injuries,
   loading,
@@ -614,12 +765,35 @@ function InjuriesCard({
   loading: boolean
   reason?: string
 }) {
+  const [selectedTeam, setSelectedTeam] = useState<string>('ALL')
+
   // Ordena: Out → Doubtful → Questionable → Probable → outros
   const ORDER = ['Out', 'Doubtful', 'Day-To-Day', 'Questionable', 'Probable']
   const sorted = [...injuries].sort((a, b) => {
     const ia = ORDER.indexOf(a.status)
     const ib = ORDER.indexOf(b.status)
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
+
+  const availableTeams = useMemo(() => (
+    Array.from(new Set(sorted.map((item) => item.team).filter((team): team is string => !!team))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  ), [sorted])
+
+  const filtered = selectedTeam === 'ALL'
+    ? sorted
+    : sorted.filter((item) => item.team === selectedTeam)
+
+  const groupedByTeam = filtered.reduce<Record<string, InjuryItem[]>>((acc, item) => {
+    const key = item.team ?? 'SEM_TIME'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(item)
+    return acc
+  }, {})
+
+  const groupedEntries = Object.entries(groupedByTeam).sort(([teamA], [teamB]) => {
+    if (teamA === 'SEM_TIME') return 1
+    if (teamB === 'SEM_TIME') return -1
+    return teamA.localeCompare(teamB, 'pt-BR')
   })
 
   return (
@@ -631,81 +805,196 @@ function InjuriesCard({
           <LoadingBasketball size={20} />
         </div>
       ) : sorted.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {sorted.map((item, index) => {
-            const style = getInjuryStyle(item.status)
-            const teamData = TEAMS_2025.find((t) => t.abbreviation === item.team)
+        <div style={{ display: 'grid', gap: 12 }}>
+          <InjuriesRadar injuries={sorted} />
 
-            return (
-              <div key={item.id}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.4 }}>
+              Principais ausências e dúvidas da rodada, priorizadas por time.
+            </div>
+            <span style={{ color: 'var(--nba-gold)', fontSize: '0.72rem', fontWeight: 700 }}>
+              {filtered.length} caso{filtered.length !== 1 ? 's' : ''} em foco
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSelectedTeam('ALL')}
+              style={{
+                borderRadius: 999,
+                padding: '6px 10px',
+                border: selectedTeam === 'ALL' ? '1px solid rgba(200,150,60,0.28)' : '1px solid rgba(200,150,60,0.12)',
+                background: selectedTeam === 'ALL' ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+                color: selectedTeam === 'ALL' ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Todos
+            </button>
+            {availableTeams.map((teamAbbr) => (
+              <button
+                key={teamAbbr}
+                onClick={() => setSelectedTeam(teamAbbr)}
+                style={{
+                  borderRadius: 999,
+                  padding: '6px 10px',
+                  border: selectedTeam === teamAbbr ? '1px solid rgba(200,150,60,0.28)' : '1px solid rgba(200,150,60,0.12)',
+                  background: selectedTeam === teamAbbr ? 'rgba(200,150,60,0.12)' : 'rgba(12,12,18,0.34)',
+                  color: selectedTeam === teamAbbr ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {teamAbbr}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gap: 10 }}>
+            {groupedEntries.map(([teamKey, teamItems]) => {
+              const teamData = TEAMS_2025.find((t) => t.abbreviation === teamKey)
+
+              return (
                 <div
+                  key={teamKey}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '7px 4px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(200,150,60,0.14)',
+                    background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.05) 50%, rgba(200,150,60,0.06) 100%)',
+                    overflow: 'hidden',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    {item.team && (
-                      <img
-                        src={getTeamLogoUrl(item.team)}
-                        alt={item.team}
-                        onError={(e) => (e.currentTarget.style.display = 'none')}
-                        style={{
-                          width: 22,
-                          height: 22,
-                          objectFit: 'contain',
-                          flexShrink: 0,
-                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
-                        }}
-                      />
-                    )}
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        className="font-condensed font-bold"
-                        style={{ color: 'var(--nba-text)', fontSize: '0.88rem', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                      >
-                        {item.player_name}
-                      </div>
-                      {item.detail && (
-                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', lineHeight: 1.3, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.detail}
-                        </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: '10px 12px',
+                      borderBottom: '1px solid rgba(200,150,60,0.10)',
+                      background: 'rgba(12,12,18,0.28)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      {teamData && (
+                        <img
+                          src={getTeamLogoUrl(teamData.abbreviation)}
+                          alt={teamData.abbreviation}
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                          style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0 }}
+                        />
                       )}
+                      <div style={{ minWidth: 0 }}>
+                        <div className="font-condensed font-bold" style={{ color: teamData?.primary_color ?? 'var(--nba-text)', fontSize: '0.95rem', lineHeight: 1 }}>
+                          {teamKey === 'SEM_TIME' ? 'Sem time associado' : teamKey}
+                        </div>
+                        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 2 }}>
+                          {teamKey === 'SEM_TIME' ? 'Relatório sem associação de franquia' : getTeamNameFromAbbr(teamKey)}
+                        </div>
+                      </div>
                     </div>
+                    <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>
+                      {teamItems.length} alerta{teamItems.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-                    <span
-                      style={{
-                        background: `${style.color}22`,
-                        color: style.color,
-                        borderRadius: 4,
-                        padding: '1px 7px',
-                        fontSize: '0.65rem',
-                        fontWeight: 700,
-                        whiteSpace: 'nowrap',
-                        border: `1px solid ${style.color}44`,
-                      }}
-                    >
-                      {style.label}
-                    </span>
-                    {item.position && (
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem' }}>
-                        {item.position}
-                        {teamData && (
-                          <span style={{ color: teamData.primary_color, marginLeft: 4 }}>• {item.team}</span>
-                        )}
-                      </span>
-                    )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '2px 0' }}>
+                    {teamItems.map((item, index) => {
+                      const style = getInjuryStyle(item.status)
+                      const impactStyle = getImpactStyle(item.impact)
+
+                      return (
+                        <div key={item.id}>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr auto',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '8px 12px',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flexWrap: 'wrap' }}>
+                                <div
+                                  className="font-condensed font-bold"
+                                  style={{ color: item.impact === 'high' ? '#fff1eb' : 'var(--nba-text)', fontSize: '0.9rem', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >
+                                  {item.player_name}
+                                </div>
+                                {item.impact !== 'low' && (
+                                  <span
+                                    style={{
+                                      background: impactStyle.background,
+                                      color: impactStyle.color,
+                                      borderRadius: 999,
+                                      padding: '2px 7px',
+                                      fontSize: '0.6rem',
+                                      fontWeight: 700,
+                                      whiteSpace: 'nowrap',
+                                      border: `1px solid ${impactStyle.border}`,
+                                    }}
+                                  >
+                                    {impactStyle.label}
+                                  </span>
+                                )}
+                              </div>
+                              {item.detail && (
+                                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.69rem', lineHeight: 1.35, marginTop: 2 }}>
+                                  {item.detail}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                              <span
+                                style={{
+                                  background: `${style.color}22`,
+                                  color: style.color,
+                                  borderRadius: 4,
+                                  padding: '1px 7px',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  whiteSpace: 'nowrap',
+                                  border: `1px solid ${style.color}44`,
+                                }}
+                              >
+                                {style.label}
+                              </span>
+                              {item.position && (
+                                <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.62rem' }}>
+                                  {item.position}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {index < teamItems.length - 1 && <Divider />}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-                {index < sorted.length - 1 && <Divider />}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
+
+          {filtered.length === 0 && (
+            <div
+              style={{
+                color: 'var(--nba-text-muted)',
+                fontSize: '0.8rem',
+                lineHeight: 1.5,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.12)',
+              }}
+            >
+              Nenhuma lesão relevante encontrada para o filtro atual.
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', lineHeight: 1.5 }}>

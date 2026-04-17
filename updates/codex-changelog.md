@@ -1,5 +1,139 @@
 # Codex Changelog
 
+## 2026-04-16 - Feature: Radar editorial no topo do relatório de injuries
+
+### Contexto
+Para fechar a trilha da nova seção de lesões, a UI ganhou um bloco-resumo no topo do card. A ideia foi transformar a área em um radar escaneável da rodada, e não apenas uma listagem agrupada.
+
+### `frontend/src/pages/Analysis.tsx`
+- Foi adicionado um bloco `Radar da rodada` no topo da seção de lesões
+- O radar agora resume:
+  - quantidade de casos de impacto alto
+  - número total de casos monitorados
+  - quantidade de times afetados
+  - times mais impactados
+  - principais nomes em alerta
+- Os headlines do radar priorizam primeiro casos de impacto alto
+- Quando não há impacto alto, o radar sobe os casos médios mais relevantes
+- O resultado final deixa a leitura muito mais rápida e editorial
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso
+
+## 2026-04-16 - Feature: Destaque visual por impacto no relatório de injuries
+
+### Contexto
+Depois de refinar a curadoria no backend, a UI ainda precisava comunicar melhor quais lesões realmente pesam na leitura da rodada. Nesta etapa, o nível de impacto calculado internamente passou a atravessar o contrato e ganhar destaque visual na aba `Análise`.
+
+### `backend/src/lib/injuries.ts`
+- O contrato de `AnalysisInjuryItem` passou a incluir `impact`
+- O campo agora é devolvido no payload final com três níveis:
+  - `high`
+  - `medium`
+  - `low`
+
+### `frontend/src/hooks/useInjuries.ts`
+- Tipagem atualizada para aceitar o novo campo `impact`
+
+### `frontend/src/pages/Analysis.tsx`
+- O card de lesões agora exibe selo de impacto para casos relevantes
+- Casos de impacto alto e médio ganharam leitura visual mais forte
+- Isso ajuda a separar ausência realmente importante de monitoramento secundário
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
+
+## 2026-04-16 - Feature: Curadoria reforçada de jogadores-chave no relatório de injuries
+
+### Contexto
+Depois da troca de provedor e do agrupamento por time, o próximo ganho real de qualidade estava em decidir melhor quais nomes entram no relatório. Nesta etapa, a lógica de relevância no backend foi refinada para priorizar ainda mais os jogadores que realmente mudam a leitura da rodada.
+
+### `backend/src/lib/injuries.ts`
+- A lista manual de jogadores-chave por time foi expandida e ordenada por prioridade
+- Cada franquia agora tem uma ordem interna mais útil para o radar de lesões
+- A lógica passou a calcular prioridade por:
+  - ranking manual do jogador dentro do time
+  - severidade do status
+  - impacto estimado (`high`, `medium`, `low`) para uso interno
+- A regra de corte por time ficou mais agressiva contra ruído:
+  - jogadores-chave continuam entrando normalmente
+  - jogadores secundários só entram com muito mais restrição
+  - quando já existe nome importante lesionado, o backend evita poluir o relatório com secundários questionáveis
+- O resultado final ficou mais editorial e mais próximo do que interessa para leitura rápida do bolão
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
+
+## 2026-04-16 - Feature: Fase 2 da seção de injuries com agrupamento por time
+
+### Contexto
+Depois de trocar a fonte de lesões no backend, a UI da aba `Análise` ainda mostrava uma lista corrida. Nesta fase, a seção foi transformada em um painel mais editorial, agrupado por time e com filtro rápido.
+
+### `frontend/src/pages/Analysis.tsx`
+- A seção `Relatório de Lesões` agora mostra uma visão mais útil da rodada
+- Os casos passaram a ser agrupados por time, em vez de lista única
+- Foi adicionado filtro rápido com chips:
+  - `Todos`
+  - um chip por time presente no relatório atual
+- O card agora mostra:
+  - cabeçalho do time com logo e nome
+  - quantidade de alertas por franquia
+  - jogadores relevantes daquele time
+  - badge de status por lesão
+- Foi incluído estado vazio honesto para quando o filtro selecionado não tiver lesões relevantes
+- A seção também ganhou texto de contexto para deixar claro que o relatório está priorizando os casos mais importantes
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso
+
+### Próximo passo recomendado
+- Refinar a curadoria manual de jogadores-chave por time
+- Se quiser, incluir mais inteligência no backend para destacar “impacto alto” visualmente na UI
+
+## 2026-04-16 - Feature: Fase 1 da nova integração de injuries via RapidAPI
+
+### Contexto
+A seção de lesões da aba `Análise` estava dependente de um feed anterior que podia vir embaralhado (`scrambled`) e também trazia muita coisa pouco útil para leitura rápida. Nesta fase, a base foi trocada para uma nova API da RapidAPI e o backend passou a filtrar relevância antes de entregar os dados ao frontend.
+
+### `backend/src/lib/injuries.ts`
+- A integração antiga com SportsDataIO foi substituída por `RapidAPI NBA Injuries Reports`
+- O backend agora consulta o endpoint diário `GET /injuries/nba/{date}` usando a data atual em BRT
+- Status irrelevantes deixaram de entrar no relatório:
+  - `Available`
+  - `Probable`
+- O backend agora aceita por padrão apenas:
+  - `Out`
+  - `Questionable`
+  - `Doubtful`
+- Razões operacionais pouco úteis para o bolão passaram a ser excluídas, como:
+  - `G League`
+  - `Two-Way`
+  - `Not With Team`
+- Times vindos por nome completo da API agora são normalizados para abreviações do app (`BOS`, `LAL`, `OKC`, etc.)
+- Foi adicionada uma primeira camada manual de relevância por time com lista de jogadores-chave
+- A saída final passou a priorizar:
+  - jogadores-chave lesionados
+  - e, na ausência deles, no máximo os 2 casos mais relevantes por time
+
+### `frontend/src/hooks/useInjuries.ts`
+- Tipagem do provider alinhada com o novo backend (`rapidapi-nba-injuries`)
+
+### `backend/.env.example`
+- Documentada a nova variável:
+  - `RAPIDAPI_NBA_INJURIES_KEY`
+- Variáveis antigas da SportsDataIO foram removidas do exemplo de configuração
+
+### Validações
+- `backend`: `npm run build` concluído com sucesso
+- `frontend`: `npm run build` concluído com sucesso
+
+### Próximo passo recomendado
+- Agrupar a UI por time
+- Adicionar filtro `Todos` + chips por time
+- Refinar a lista manual de jogadores-chave com base nos times que realmente importam no bolão
+
 ## 2026-04-16 - Feature: Segunda rodada de motion premium com continuidade de rota e números animados
 
 ### Contexto
