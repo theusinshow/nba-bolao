@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react'
 import { LoadingBasketball } from '../components/LoadingBasketball'
 import { supabase } from '../lib/supabase'
 
+const AUTH_RESULT_WAIT_MS = 5000
+const AUTH_RESULT_POLL_MS = 250
+
+function getUrlParams(url: URL) {
+  const hash = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash)
+
+  return {
+    code: url.searchParams.get('code'),
+    accessToken: hash.get('access_token'),
+    refreshToken: hash.get('refresh_token'),
+    providerError: url.searchParams.get('error_description')
+      ?? url.searchParams.get('error')
+      ?? hash.get('error_description')
+      ?? hash.get('error'),
+  }
+}
+
 export function AuthCallback() {
   const [error, setError] = useState<string | null>(null)
 
@@ -10,8 +27,7 @@ export function AuthCallback() {
 
     async function completeAuth() {
       const currentUrl = new URL(window.location.href)
-      const code = currentUrl.searchParams.get('code')
-      const providerError = currentUrl.searchParams.get('error_description') ?? currentUrl.searchParams.get('error')
+      const { code, accessToken, refreshToken, providerError } = getUrlParams(currentUrl)
 
       if (providerError) {
         if (active) setError(providerError)
@@ -19,25 +35,32 @@ export function AuthCallback() {
       }
 
       try {
-        if (!code) {
+        const hasAuthPayload = Boolean(code || accessToken || refreshToken)
+
+        if (!hasAuthPayload) {
           window.location.replace('/login')
           return
         }
 
-        let session = null
+        const waitForSession = async () => {
+          const startedAt = Date.now()
 
-        if (code) {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) throw exchangeError
-          session = data.session
+          while (Date.now() - startedAt < AUTH_RESULT_WAIT_MS) {
+            const { data, error: sessionError } = await supabase.auth.getSession()
+            if (sessionError) throw sessionError
+            if (data.session) return data.session
+            await new Promise((resolve) => window.setTimeout(resolve, AUTH_RESULT_POLL_MS))
+          }
+
+          return null
         }
 
-        for (let attempt = 0; !session && attempt < 6; attempt += 1) {
-          const { data, error: sessionError } = await supabase.auth.getSession()
-          if (sessionError) throw sessionError
-          session = data.session
-          if (session) break
-          await new Promise((resolve) => window.setTimeout(resolve, 250))
+        let session = await waitForSession()
+
+        if (!session && code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) throw exchangeError
+          session = data.session ?? (await waitForSession())
         }
 
         if (!session) {
