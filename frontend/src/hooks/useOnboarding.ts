@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 const STORAGE_KEY = 'nba_bolao_onboarding_done'
 const ROUTE_KEY = 'nba_bolao_onboarding_route'
 const RESTART_EVENT = 'nba-bolao:restart-onboarding'
-const ONBOARDING_TOUR_DISABLED = true
+const ONBOARDING_TOUR_DISABLED = false
 
 export function useOnboarding() {
   const [show, setShow] = useState(() => {
