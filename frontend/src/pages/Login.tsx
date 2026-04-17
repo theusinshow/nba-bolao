@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 interface Props {
   onSignIn: () => void
   onEnterAsGuest: () => void
@@ -5,14 +7,61 @@ interface Props {
 
 function getEmbeddedBrowser() {
   if (typeof navigator === 'undefined') return null
-
-  const userAgent = navigator.userAgent
-
-  if (/WhatsApp/i.test(userAgent)) return 'WhatsApp'
-  if (/Instagram/i.test(userAgent)) return 'Instagram'
-  if (/FBAN|FBAV|FB_IAB|Messenger/i.test(userAgent)) return 'Facebook'
-
+  const ua = navigator.userAgent
+  if (/WhatsApp/i.test(ua)) return 'WhatsApp'
+  if (/Instagram/i.test(ua)) return 'Instagram'
+  if (/FBAN|FBAV|FB_IAB|Messenger/i.test(ua)) return 'Facebook'
   return null
+}
+
+function EmbeddedBrowserWarning({ browser }: { browser: string }) {
+  const [copied, setCopied] = useState(false)
+  const appUrl = window.location.origin
+
+  function copyLink() {
+    navigator.clipboard.writeText(appUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    }).catch(() => {
+      // fallback: select a hidden input
+    })
+  }
+
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{
+        padding: '14px 16px', borderRadius: 12,
+        border: '1px solid rgba(255,138,101,0.3)',
+        background: 'rgba(255,138,101,0.08)',
+      }}>
+        <div style={{ color: '#ffb4a2', fontWeight: 700, fontSize: '0.85rem', marginBottom: 6 }}>
+          📵 Login bloqueado no {browser}
+        </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+          O Google não permite login dentro do {browser}. Abra o link no <strong style={{ color: 'var(--nba-text)' }}>Safari</strong> ou <strong style={{ color: 'var(--nba-text)' }}>Chrome</strong>.
+        </div>
+      </div>
+
+      {/* Copy link button */}
+      <button
+        onClick={copyLink}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          width: '100%', padding: '13px 16px', borderRadius: 10,
+          border: `1px solid ${copied ? 'rgba(46,204,113,0.5)' : 'rgba(200,150,60,0.35)'}`,
+          background: copied ? 'rgba(46,204,113,0.1)' : 'rgba(200,150,60,0.1)',
+          color: copied ? '#2ecc71' : 'var(--nba-gold)',
+          fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+      >
+        {copied ? '✓ Link copiado!' : '🔗 Copiar link do app'}
+      </button>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', textAlign: 'center', lineHeight: 1.4 }}>
+        Cole no Safari ou Chrome e faça login por lá
+      </div>
+    </div>
+  )
 }
 
 export function Login({ onSignIn, onEnterAsGuest }: Props) {
@@ -91,26 +140,7 @@ export function Login({ onSignIn, onEnterAsGuest }: Props) {
         >
           <p className="text-nba-muted text-sm max-w-[240px]">Acesso restrito aos participantes do bolão</p>
 
-          {embeddedBrowser && (
-            <div
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: 10,
-                border: '1px solid rgba(255,138,101,0.28)',
-                background: 'rgba(255,138,101,0.10)',
-                color: 'var(--nba-text)',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ color: '#ffb4a2', fontWeight: 700, fontSize: '0.82rem', marginBottom: 4 }}>
-                Abra no navegador do celular
-              </div>
-              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
-                O login com Google não funciona bem no navegador interno do {embeddedBrowser}. Abra este link no Safari ou Chrome e tente novamente.
-              </div>
-            </div>
-          )}
+          {embeddedBrowser && <EmbeddedBrowserWarning browser={embeddedBrowser} />}
 
           <button
             onClick={onSignIn}
