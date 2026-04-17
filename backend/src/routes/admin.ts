@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import type { Request, Response, NextFunction } from 'express'
+import { timingSafeEqual } from 'crypto'
 import { syncNBA } from '../jobs/syncNBA'
 import { recalculateAllScores } from '../scoring/engine'
 import { supabase } from '../lib/supabase'
@@ -51,6 +52,21 @@ function getAdminActor(req: Request) {
     adminUserId: adminRequest.adminUserId ?? null,
     adminParticipantId: adminRequest.adminParticipantId ?? null,
   }
+}
+
+function hasValidBackupCronSecret(req: Request) {
+  const expectedSecret = process.env.BACKUP_CRON_SECRET?.trim() ?? ''
+  const providedSecret = typeof req.headers['x-backup-cron-secret'] === 'string'
+    ? req.headers['x-backup-cron-secret'].trim()
+    : ''
+
+  if (!expectedSecret || !providedSecret) return false
+
+  const expectedBuffer = Buffer.from(expectedSecret)
+  const providedBuffer = Buffer.from(providedSecret)
+  if (expectedBuffer.length !== providedBuffer.length) return false
+
+  return timingSafeEqual(expectedBuffer, providedBuffer)
 }
 
 interface TrackedOperationOptions<TResult> {
@@ -265,6 +281,91 @@ async function snapshotTable(table: 'series_picks' | 'game_picks' | 'simulation_
   if (error) throw new Error(`Failed snapshotting ${table}: ${error.message}`)
   return (data ?? []) as Record<string, unknown>[]
 }
+
+// POST /admin/internal/backup/run — internal automation entrypoint for scheduled backups
+router.post('/internal/backup/run', async (req, res) => {
+  if (!process.env.BACKUP_CRON_SECRET?.trim()) {
+    return res.status(503).json({
+      ok: false,
+      error: 'BACKUP_CRON_SECRET não configurado no backend.',
+    })
+  }
+
+  if (!hasValidBackupCronSecret(req)) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Invalid internal backup secret.',
+    })
+  }
+
+  try {
+    const shouldVerify = req.body?.verify !== false
+
+    const backup = await executeTrackedOperation(
+      {
+        req,
+        operation: 'backup',
+        summary: (result) => `Backup operacional automático ${result.backupId} gerado com ${result.validation.fileCount} artefatos validados.`,
+        errorSummary: 'Falha ao gerar backup operacional automático',
+        outputDir: (result) => result.outputDir,
+        artifacts: (result) => result.artifacts,
+        metadata: (result) => ({
+          backupId: result.backupId,
+          automated: true,
+          trigger: 'github-actions',
+          metrics: result.metrics,
+          validation: result.validation,
+        }),
+      },
+      () => exportOperationalSnapshot()
+    )
+
+    const verification = shouldVerify
+      ? await executeTrackedOperation(
+          {
+            req,
+            operation: 'verify-backup',
+            summary: (result) => (
+              result.ok
+                ? `Backup automático ${result.backupId} verificado sem alertas.`
+                : `Backup automático ${result.backupId} verificado com ${result.problems.length} alerta(s).`
+            ),
+            errorSummary: 'Falha ao verificar backup operacional automático',
+            outputDir: (result) => result.outputDir,
+            artifacts: (result) => result.artifacts,
+            metadata: (result) => ({
+              backupId: result.backupId,
+              automated: true,
+              trigger: 'github-actions',
+              manifestPath: result.manifestPath,
+              problems: result.problems,
+              ok: result.ok,
+              artifactsChecked: result.artifactsChecked,
+              storageArtifactsChecked: result.storageArtifactsChecked,
+            }),
+          },
+          () => verifyOperationalSnapshot({
+            backupId: backup.backupId,
+            outputDir: backup.outputDir,
+          })
+        )
+      : null
+
+    res.json({
+      ok: true,
+      message: shouldVerify
+        ? 'Backup automático e verificação concluídos.'
+        : 'Backup automático concluído.',
+      result: {
+        backup,
+        verification,
+      },
+    })
+  } catch (err: unknown) {
+    console.error('[admin/internal/backup/run] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
 
 router.use(requireAdmin)
 

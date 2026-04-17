@@ -4854,6 +4854,21 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 
+## 2026-04-17 - Ops: backup automático diário via GitHub Actions
+
+### Automação operacional
+- adicionei a rota interna `POST /admin/internal/backup/run` em `backend/src/routes/admin.ts`, protegida por `BACKUP_CRON_SECRET`;
+- essa rota gera `backup` e, por padrão, já roda `verify-backup` em sequência, registrando tudo na trilha operacional;
+- deixei `backend/.env.example` atualizado com a nova env `BACKUP_CRON_SECRET`.
+
+### GitHub Actions
+- criei o workflow [operational-backup.yml](C:\Dev\pessoal\projetos\nba-bolao\.github\workflows\operational-backup.yml);
+- ele roda diariamente e também aceita disparo manual por `workflow_dispatch`;
+- o job chama o backend com `BACKEND_BASE_URL` e `BACKUP_CRON_SECRET`, sem depender de login humano.
+
+### Validação
+- `npm --prefix backend run build`
+
 ## 2026-04-17 - UX: Playbook operacional incorporado ao Admin
 
 ### Admin - roteiro de uso por cenário
