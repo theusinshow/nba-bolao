@@ -864,14 +864,16 @@ function TeamMark({
 
   return (
     <span
+      className="min-w-0"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: isRight ? 'flex-end' : 'flex-start',
         gap: 8,
-        minWidth: 82,
+        minWidth: 0,
         opacity: dimmed ? 0.4 : 1,
         flexDirection: isRight ? 'row-reverse' : 'row',
+        flex: '1 1 0',
       }}
     >
       <img
@@ -914,6 +916,7 @@ function TeamShowcase({
 
   return (
     <div
+      className="gap-3 sm:gap-[10px]"
       style={{
         minWidth: 0,
         display: 'grid',
@@ -1123,7 +1126,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
   }, [enhancedRoundGroups])
 
   return (
-    <div style={{ ...card, padding: '1.35rem', background: 'linear-gradient(145deg, rgba(224,92,58,0.16), rgba(200,150,60,0.10) 42%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 18, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 42px rgba(0,0,0,0.16)' }}>
+    <div className="px-3 py-4 sm:p-[1.35rem]" style={{ ...card, background: 'linear-gradient(145deg, rgba(224,92,58,0.16), rgba(200,150,60,0.10) 42%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 18, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 42px rgba(0,0,0,0.16)' }}>
       <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
 
       <div
@@ -1144,7 +1147,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
       </div>
 
       {/* 3 chips */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Concluídas', value: `${completedSeries}/${series.length}`, color: completedSeries > 0 ? 'var(--nba-success)' : 'var(--nba-text-muted)' },
           { label: 'Em aberto', value: String(openSeries), color: openSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)' },
@@ -1173,9 +1176,13 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
               const homeColor = g.home_team?.primary_color ?? 'var(--nba-text)'
               const awayColor = g.away_team?.primary_color ?? 'var(--nba-text)'
               return (
-                <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}>
+                <div
+                  key={g.id}
+                  className="flex flex-wrap items-center sm:flex-nowrap"
+                  style={{ gap: 10, padding: '12px 14px', borderRadius: 12, background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}
+                >
                   <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
-                  <span className="font-condensed" style={{ flex: 1, textAlign: 'center', fontSize: '0.82rem', color: 'var(--nba-text-muted)', letterSpacing: '0.08em' }}>
+                  <span className="font-condensed order-3 w-full text-left sm:order-none sm:w-auto" style={{ flex: '0 0 auto', textAlign: 'center', fontSize: '0.82rem', color: 'var(--nba-text-muted)', letterSpacing: '0.08em' }}>
                     {isLive ? '●' : formatBrtTime(g.tip_off_at)}
                   </span>
                   <TeamMark abbr={g.away_team?.abbreviation ?? g.away_team_id} color={awayColor} align="right" />
@@ -1242,6 +1249,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                     return (
                       <div
                         key={s.id}
+                        className="gap-3 sm:gap-[14px]"
                         style={{
                           display: 'grid',
                           gap: 14,
@@ -1264,7 +1272,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
                         }}
                       >
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'stretch', gap: 14 }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" style={{ alignItems: 'stretch', gap: 14 }}>
                           <TeamShowcase
                             abbr={homeAbbr}
                             color={homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor}
@@ -1272,14 +1280,14 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             injury={!s.is_complete ? homeInjury : undefined}
                           />
 
-                          <div style={{ display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 8, minWidth: 96 }}>
+                          <div className="order-first sm:order-none" style={{ display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 8, minWidth: 0 }}>
                             <span
                               className="font-condensed font-bold"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                minWidth: 78,
+                                minWidth: 72,
                                 padding: s.is_complete ? '8px 14px' : '7px 13px',
                                 borderRadius: 999,
                                 background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
@@ -1381,12 +1389,13 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
-        <Link
-          to="/official"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
+          <Link
+            to="/official"
+            className="w-full sm:w-auto"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
             padding: '16px 22px',
