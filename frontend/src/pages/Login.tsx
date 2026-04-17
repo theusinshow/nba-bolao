@@ -3,7 +3,22 @@ interface Props {
   onEnterAsGuest: () => void
 }
 
+function getEmbeddedBrowser() {
+  if (typeof navigator === 'undefined') return null
+
+  const userAgent = navigator.userAgent
+
+  if (/WhatsApp/i.test(userAgent)) return 'WhatsApp'
+  if (/Instagram/i.test(userAgent)) return 'Instagram'
+  if (/FBAN|FBAV|FB_IAB|Messenger/i.test(userAgent)) return 'Facebook'
+
+  return null
+}
+
 export function Login({ onSignIn, onEnterAsGuest }: Props) {
+  const embeddedBrowser = getEmbeddedBrowser()
+  const shouldBlockOAuth = Boolean(embeddedBrowser)
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-8"
@@ -76,9 +91,31 @@ export function Login({ onSignIn, onEnterAsGuest }: Props) {
         >
           <p className="text-nba-muted text-sm max-w-[240px]">Acesso restrito aos participantes do bolão</p>
 
+          {embeddedBrowser && (
+            <div
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 10,
+                border: '1px solid rgba(255,138,101,0.28)',
+                background: 'rgba(255,138,101,0.10)',
+                color: 'var(--nba-text)',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ color: '#ffb4a2', fontWeight: 700, fontSize: '0.82rem', marginBottom: 4 }}>
+                Abra no navegador do celular
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                O login com Google não funciona bem no navegador interno do {embeddedBrowser}. Abra este link no Safari ou Chrome e tente novamente.
+              </div>
+            </div>
+          )}
+
           <button
             onClick={onSignIn}
-            className="flex items-center gap-3 bg-white text-gray-800 font-semibold px-6 py-3.5 rounded-lg hover:bg-gray-100 transition-colors w-full justify-center"
+            disabled={shouldBlockOAuth}
+            className="flex items-center gap-3 bg-white text-gray-800 font-semibold px-6 py-3.5 rounded-lg hover:bg-gray-100 transition-colors w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {/* Google logo */}
             <svg width="18" height="18" viewBox="0 0 18 18">
@@ -87,7 +124,7 @@ export function Login({ onSignIn, onEnterAsGuest }: Props) {
               <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
             </svg>
-            Entrar com Google
+            {shouldBlockOAuth ? 'Abra no Safari/Chrome para entrar' : 'Entrar com Google'}
           </button>
 
           <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10 }}>
