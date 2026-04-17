@@ -1379,7 +1379,15 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
   )
 }
 
-function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['series']; picks: ReturnType<typeof useSeries>['picks'] }) {
+function MyPicksCard({
+  series,
+  picks,
+  injuries,
+}: {
+  series: ReturnType<typeof useSeries>['series']
+  picks: ReturnType<typeof useSeries>['picks']
+  injuries: InjuryItem[]
+}) {
   const recent = [...picks].slice(-3).reverse().map((p) => {
     const s = series.find((sr) => sr.id === p.series_id)
     const pickedTeam = s?.home_team?.id === p.winner_id ? s?.home_team : s?.away_team
@@ -1393,6 +1401,33 @@ function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['
     return !!currentSeries?.is_complete
   }).length
   const pendingSeries = Math.max(picks.length - completedSeries, 0)
+  const correctSeries = picks.filter((pick) => {
+    const currentSeries = series.find((item) => item.id === pick.series_id)
+    return !!currentSeries?.is_complete && currentSeries.winner_id === pick.winner_id
+  }).length
+  const readySeries = series.filter(isSeriesReadyForPick)
+  const unpickedReadySeries = readySeries.filter((item) => !picks.some((pick) => pick.series_id === item.id))
+  const nextLockSeries = [...unpickedReadySeries]
+    .filter((item) => item.tip_off_at)
+    .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]
+  const opportunitySeries = unpickedReadySeries.find((item) => {
+    const homeAlert = injuries.find((injury) => injury.team === item.home_team_id && injury.impact === 'high')
+    const awayAlert = injuries.find((injury) => injury.team === item.away_team_id && injury.impact === 'high')
+    return homeAlert || awayAlert
+  })
+  const insightTitle =
+    unpickedReadySeries.length > 0
+      ? `${unpickedReadySeries.length} janela${unpickedReadySeries.length !== 1 ? 's' : ''} para atacar`
+      : pendingSeries > 0
+      ? 'Seus picks seguem vivos'
+      : 'Cartela em ordem'
+  const insightDetail = opportunitySeries
+    ? `${opportunitySeries.home_team?.abbreviation ?? opportunitySeries.home_team_id} x ${opportunitySeries.away_team?.abbreviation ?? opportunitySeries.away_team_id} já abre com contexto sensível de elenco.`
+    : nextLockSeries
+    ? `Próximo lock: ${nextLockSeries.home_team?.abbreviation ?? nextLockSeries.home_team_id} x ${nextLockSeries.away_team?.abbreviation ?? nextLockSeries.away_team_id} em ${formatShortDateTime(nextLockSeries.tip_off_at)}.`
+    : correctSeries > 0
+    ? `Você já converteu ${correctSeries} série${correctSeries !== 1 ? 's' : ''} em acerto até aqui.`
+    : 'Sua cartela está coberta por enquanto. Agora é acompanhar a rodada e esperar a próxima abertura.'
 
   return (
     <div className="card-hover" style={card}>
@@ -1410,6 +1445,29 @@ function MyPicksCard({ series, picks }: { series: ReturnType<typeof useSeries>['
           <div className="font-condensed font-bold" style={{ color: pendingSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '1.25rem', lineHeight: 1 }}>
             {pendingSeries}
           </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginBottom: 12,
+          padding: '12px 14px',
+          borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(74,144,217,0.10), rgba(200,150,60,0.08))',
+          border: '1px solid rgba(200,150,60,0.16)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+          <Sparkles size={13} style={{ color: 'var(--nba-gold)', flexShrink: 0 }} />
+          <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.8rem', letterSpacing: '0.08em' }}>
+            Inteligência do bolão
+          </span>
+        </div>
+        <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.05rem', lineHeight: 1.05, marginBottom: 6 }}>
+          {insightTitle}
+        </div>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', lineHeight: 1.45 }}>
+          {insightDetail}
         </div>
       </div>
 
@@ -1671,7 +1729,7 @@ export function Home({ participantId }: Props) {
         <motion.div className="xl:hidden" variants={fadeUpItem}><HomeQuickDeck /></motion.div>
 
         <div className="xl:hidden flex flex-col gap-4">
-          <MyPicksCard series={series} picks={picks} />
+          <MyPicksCard series={series} picks={picks} injuries={homeInjuries} />
           <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
           <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
           <RecentSeriesCard series={series} />
@@ -1688,7 +1746,7 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
-        <MyPicksCard series={series} picks={picks} />
+        <MyPicksCard series={series} picks={picks} injuries={homeInjuries} />
         <RecentSeriesCard series={series} />
       </div>
     </motion.div>

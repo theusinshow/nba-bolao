@@ -4682,6 +4682,16 @@ USING (
 
 ### Validação
 - `npm --prefix frontend run build`
+
+## 2026-04-17 01:34:22
+
+### Home / Jogos / Ranking - nova camada de inteligência operacional
+- transformei `Meus Palpites` em um bloco mais estratégico em `frontend/src/pages/Home.tsx`, com leitura de janelas de ataque, próximo lock e oportunidades sensíveis por contexto de elenco;
+- expandi o hero de `frontend/src/pages/Games.tsx` com radar de ação, cobertura dos jogos de hoje e confirmação do último movimento salvo;
+- adicionei `CompetitivePulse` em `frontend/src/pages/Ranking.tsx` para reforçar leitura de pódio, rival imediato e nome quente da corrida.
+
+### Validação
+- `npm --prefix frontend run build`
 ## 2026-04-17 01:15:03
 
 ### Análise - microinterações refinadas nos cards

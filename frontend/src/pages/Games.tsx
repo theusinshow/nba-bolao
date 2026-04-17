@@ -1943,11 +1943,15 @@ function GamesHero({
   picks,
   pendingSeries,
   urgentSeries,
+  seriesGroups,
+  recentlySavedGameId,
 }: {
   games: GameWithTeams[]
   picks: GamePick[]
   pendingSeries: number
   urgentSeries: number
+  seriesGroups: SeriesGroup[]
+  recentlySavedGameId: string | null
 }) {
   const openGames = games.filter((game) => !game.played)
   const lockedSoon = openGames.filter((game) => {
@@ -1961,6 +1965,22 @@ function GamesHero({
   const nextGame = openGames
     .filter((game) => game.tip_off_at)
     .sort((a, b) => new Date(a.tip_off_at!).getTime() - new Date(b.tip_off_at!).getTime())[0]
+  const todayKey = new Date().toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
+  const todayOpenGames = openGames.filter((game) => game.tip_off_at && dateKeyBRT(game.tip_off_at) === todayKey)
+  const todaySavedCount = todayOpenGames.filter((game) => pickedIds.has(game.id)).length
+  const nextUrgentSeries = seriesGroups.find((group) => group.openGames > 0 && isUrgentSeries(group))
+  const recentSavedGame = recentlySavedGameId ? games.find((game) => game.id === recentlySavedGameId) : null
+  const actionHeadline =
+    pendingPicks > 0
+      ? `${pendingPicks} jogo${pendingPicks !== 1 ? 's' : ''} ainda dependem do seu palpite.`
+      : urgentSeries > 0
+      ? `${urgentSeries} série${urgentSeries !== 1 ? 's' : ''} entram em zona crítica hoje.`
+      : 'Sua cartela do momento está sob controle.'
+  const actionDetail = nextUrgentSeries
+    ? `Pressão maior em ${nextUrgentSeries.teamA?.abbreviation ?? nextUrgentSeries.games[0]?.home_team_id} x ${nextUrgentSeries.teamB?.abbreviation ?? nextUrgentSeries.games[0]?.away_team_id}.`
+    : nextGame?.tip_off_at
+    ? `Próximo lock na agenda: ${formatTimeBRT(nextGame.tip_off_at)}.`
+    : 'Sem fechamento imediato no radar.'
 
   return (
     <div
@@ -2071,6 +2091,65 @@ function GamesHero({
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.7rem' }}>Séries urgentes</div>
             <div className="font-condensed font-bold" style={{ color: urgentSeries > 0 ? 'var(--nba-danger)' : 'var(--nba-text)', fontSize: '1.35rem', lineHeight: 1.1 }}>
               {urgentSeries}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 lg:grid-cols-3">
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Radar de ação</div>
+            <div className="font-condensed font-bold" style={{ color: pendingPicks > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {actionHeadline}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.45 }}>
+              {actionDetail}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(12,12,18,0.34)',
+              border: '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Cobertura de hoje</div>
+            <div className="font-condensed font-bold" style={{ color: todayOpenGames.length > 0 && todaySavedCount < todayOpenGames.length ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '1.35rem', lineHeight: 1 }}>
+              {todaySavedCount}/{todayOpenGames.length}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 6, lineHeight: 1.45 }}>
+              {todayOpenGames.length > 0
+                ? 'Jogos de hoje já cobertos com pick salvo.'
+                : 'Nenhum jogo aberto hoje para travar na cartela.'}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: recentSavedGame ? 'rgba(46,204,113,0.08)' : 'rgba(12,12,18,0.34)',
+              border: recentSavedGame ? '1px solid rgba(46,204,113,0.18)' : '1px solid rgba(200,150,60,0.16)',
+            }}
+          >
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Último movimento</div>
+            <div className="font-condensed font-bold" style={{ color: recentSavedGame ? 'var(--nba-success)' : 'var(--nba-text)', fontSize: '1.02rem', lineHeight: 1.05, marginBottom: 6 }}>
+              {recentSavedGame
+                ? `${recentSavedGame.team_a?.abbreviation ?? recentSavedGame.home_team_id} x ${recentSavedGame.team_b?.abbreviation ?? recentSavedGame.away_team_id}`
+                : 'Nenhum pick salvo agora'}
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.45 }}>
+              {recentSavedGame
+                ? 'Seu último palpite já está refletido na rodada e destacado na lista abaixo.'
+                : 'Assim que você salvar um novo palpite, ele aparece aqui para confirmar o movimento.'}
             </div>
           </div>
         </div>
@@ -2764,6 +2843,8 @@ export function Games({ participantId }: Props) {
         picks={picks}
         pendingSeries={filterCounts.pending}
         urgentSeries={filterCounts.urgent}
+        seriesGroups={seriesGroups}
+        recentlySavedGameId={recentlySavedGameId}
       />
 
       <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />

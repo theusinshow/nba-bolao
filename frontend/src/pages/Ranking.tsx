@@ -558,6 +558,7 @@ const navigate = useNavigate()
                 gap: 16,
               }}
             >
+              <CompetitivePulse ranking={ranking} participantId={participantId} />
               <motion.div variants={fadeUpItem}><TopThreeCards ranking={ranking} participantId={participantId} /></motion.div>
 
               {/* Chart card */}
@@ -695,6 +696,97 @@ const navigate = useNavigate()
         </>
       )}
 
+    </motion.div>
+  )
+}
+
+function CompetitivePulse({
+  ranking,
+  participantId,
+}: {
+  ranking: ReturnType<typeof useRanking>['ranking']
+  participantId: string
+}) {
+  const myIndex = ranking.findIndex((entry) => entry.participant_id === participantId)
+  const myEntry = myIndex >= 0 ? ranking[myIndex] : null
+  const leader = ranking[0] ?? null
+  const podiumTarget = ranking[2] ?? null
+  const hunter = myIndex > 0 ? ranking[myIndex - 1] : null
+  const chaser = myIndex >= 0 && myIndex < ranking.length - 1 ? ranking[myIndex + 1] : null
+  const hottestEntry = [...ranking].sort((left, right) => {
+    const leftRise = (left.prev_rank ?? left.rank) - left.rank
+    const rightRise = (right.prev_rank ?? right.rank) - right.rank
+    return rightRise - leftRise
+  })[0]
+
+  const cards = [
+    {
+      label: 'Linha do pódio',
+      title: myEntry && podiumTarget
+        ? myEntry.rank <= 3
+          ? 'Você já está no top 3'
+          : `${Math.abs(podiumTarget.total_points - myEntry.total_points)} pts da zona do pódio`
+        : 'Pódio em formação',
+      detail: myEntry && podiumTarget
+        ? myEntry.rank <= 3
+          ? 'Agora a pressão é segurar a posição nas próximas séries.'
+          : `${podiumTarget.participant_name.split(' ')[0]} hoje fecha a referência do top 3.`
+        : 'A classificação vai ganhar corpo conforme as primeiras séries fecharem.',
+      tone: 'var(--nba-gold)',
+    },
+    {
+      label: 'Rival imediato',
+      title: hunter
+        ? `${hunter.participant_name.split(' ')[0]} está logo acima`
+        : myEntry?.rank === 1
+        ? 'Você dita o ritmo lá na frente'
+        : 'Ainda sem rival imediato',
+      detail: hunter && myEntry
+        ? `${Math.max(hunter.total_points - myEntry.total_points, 0)} ponto${Math.max(hunter.total_points - myEntry.total_points, 0) !== 1 ? 's' : ''} separam vocês hoje.`
+        : chaser && myEntry
+        ? `${Math.max(myEntry.total_points - chaser.total_points, 0)} ponto${Math.max(myEntry.total_points - chaser.total_points, 0) !== 1 ? 's' : ''} de margem para quem vem atrás.`
+        : 'A tabela ainda está muito curta para desenhar perseguição.',
+      tone: 'var(--nba-east)',
+    },
+    {
+      label: 'Momento quente',
+      title: hottestEntry
+        ? `${hottestEntry.participant_name.split(' ')[0]} é o nome em alta`
+        : 'Momento neutro',
+      detail: hottestEntry
+        ? (hottestEntry.prev_rank ?? hottestEntry.rank) > hottestEntry.rank
+          ? `Subiu ${Math.max((hottestEntry.prev_rank ?? hottestEntry.rank) - hottestEntry.rank, 1)} posição${Math.max((hottestEntry.prev_rank ?? hottestEntry.rank) - hottestEntry.rank, 1) !== 1 ? 'ões' : ''} no último movimento do ranking.`
+          : leader
+          ? `${leader.participant_name.split(' ')[0]} segue como referência da corrida.`
+          : 'A corrida ainda está começando.'
+        : 'A tabela ainda está estável.',
+      tone: 'var(--nba-success)',
+    },
+  ]
+
+  return (
+    <motion.div variants={fadeUpItem} initial="hidden" animate="show" style={{ display: 'grid', gap: 12, marginBottom: 16 }} className="grid-cols-1 lg:grid-cols-3">
+      {cards.map((card) => (
+        <motion.div
+          key={card.label}
+          variants={fadeUpItem}
+          whileHover={{ y: -2, scale: 1.01 }}
+          style={{
+            background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.06) 52%, rgba(200,150,60,0.06) 100%)',
+            border: '1px solid rgba(200,150,60,0.14)',
+            borderRadius: 12,
+            padding: '0.95rem',
+          }}
+        >
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 8 }}>{card.label}</div>
+          <div className="font-condensed font-bold" style={{ color: card.tone, fontSize: '1.05rem', lineHeight: 1.05, marginBottom: 8 }}>
+            {card.title}
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+            {card.detail}
+          </div>
+        </motion.div>
+      ))}
     </motion.div>
   )
 }
