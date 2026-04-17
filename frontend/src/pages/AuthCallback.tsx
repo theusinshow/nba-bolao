@@ -19,14 +19,28 @@ export function AuthCallback() {
       }
 
       try {
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) throw exchangeError
+        if (!code) {
+          window.location.replace('/login')
+          return
         }
 
-        const { data, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) throw sessionError
-        if (!data.session) {
+        let session = null
+
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) throw exchangeError
+          session = data.session
+        }
+
+        for (let attempt = 0; !session && attempt < 6; attempt += 1) {
+          const { data, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError) throw sessionError
+          session = data.session
+          if (session) break
+          await new Promise((resolve) => window.setTimeout(resolve, 250))
+        }
+
+        if (!session) {
           throw new Error('O retorno do login chegou sem uma sessão válida.')
         }
 
