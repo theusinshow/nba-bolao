@@ -983,6 +983,68 @@ export function Admin({ participantId }: Props) {
   const resetSummary = findOperationSummary(operationSummary, 'reset-picks')
   const latestBackupRun = findLatestOperationRun(operationsSnapshot?.runs, 'backup', 'success')
   const latestBackupVerificationRun = findLatestOperationRun(operationsSnapshot?.runs, 'verify-backup')
+  const playbookCards = [
+    {
+      key: 'pre-game',
+      title: 'Pré-jogo',
+      icon: <ShieldCheck size={14} />,
+      tone: 'var(--nba-success)',
+      status: backupSummary?.lastRunAt
+        ? `Último backup: ${formatTimestamp(backupSummary.lastRunAt)}`
+        : 'Comece sempre garantindo um backup recente.',
+      steps: [
+        '1. Conferir Saúde do Bolão e inconsistências abertas.',
+        '2. Gerar Backup operacional.',
+        '3. Rodar Verificar último antes de qualquer ação crítica.',
+        '4. Gerar Lembrete de palpites se houver jogo aberto no dia.',
+      ],
+    },
+    {
+      key: 'live-round',
+      title: 'Durante rodada',
+      icon: <Activity size={14} />,
+      tone: 'var(--nba-east)',
+      status: syncSummary?.lastRunAt
+        ? `Último sync: ${formatTimestamp(syncSummary.lastRunAt)}`
+        : 'Use sync manual só quando os dados da rodada pedirem intervenção.',
+      steps: [
+        '1. Rodar Sincronizar API se o feed da NBA atrasar.',
+        '2. Recalcular ranking depois de sync ou correção operacional.',
+        '3. Acompanhar Atividade Recente para validar status e alertas.',
+        '4. Evitar ações destrutivas no meio da rodada.',
+      ],
+    },
+    {
+      key: 'post-game',
+      title: 'Pós-jogo',
+      icon: <MessageSquareShare size={14} />,
+      tone: 'var(--nba-gold)',
+      status: digestSummary?.lastRunAt
+        ? `Último resumo: ${formatTimestamp(digestSummary.lastRunAt)}`
+        : 'Fechou o dia? Resumo e ranking são o próximo passo.',
+      steps: [
+        '1. Rodar sync se os jogos do dia já encerraram.',
+        '2. Recalcular ranking para congelar a leitura da rodada.',
+        '3. Gerar Resumo do dia e revisar o preview antes de copiar.',
+        '4. Usar o histórico operacional como trilha do que foi executado.',
+      ],
+    },
+    {
+      key: 'emergency',
+      title: 'Emergência',
+      icon: <AlertTriangle size={14} />,
+      tone: 'var(--nba-danger)',
+      status: latestBackupVerificationRun?.finishedAt
+        ? `Última verificação: ${formatTimestamp(latestBackupVerificationRun.finishedAt)}`
+        : 'Em dúvida, preserve o estado atual antes de mexer.',
+      steps: [
+        '1. Gerar Backup operacional imediatamente.',
+        '2. Rodar Verificar último e conferir alertas por artefato.',
+        '3. Só então executar reset, remoção ou correção estrutural.',
+        '4. Se algo falhar, use Atividade Recente e o backup validado como trilha de recuperação.',
+      ],
+    },
+  ]
 
   return (
     <>
@@ -2011,6 +2073,40 @@ export function Admin({ participantId }: Props) {
                 : 'Sem health check recente; vale conferir antes de uma ação crítica.'}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section style={card}>
+        <SectionTitle icon={<Shield size={14} />}>Playbook Operacional</SectionTitle>
+        <div style={{ display: 'grid', gap: 12 }} className="grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          {playbookCards.map((cardItem) => (
+            <div
+              key={cardItem.key}
+              style={{
+                padding: '14px 15px',
+                borderRadius: 14,
+                background: 'linear-gradient(180deg, rgba(12,12,18,0.40), rgba(12,12,18,0.26))',
+                border: `1px solid ${cardItem.tone === 'var(--nba-danger)' ? 'rgba(231,76,60,0.18)' : 'rgba(200,150,60,0.14)'}`,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ color: cardItem.tone, display: 'flex' }}>{cardItem.icon}</span>
+                <div className="font-condensed font-bold" style={{ color: cardItem.tone, fontSize: '0.96rem', lineHeight: 1 }}>
+                  {cardItem.title}
+                </div>
+              </div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', lineHeight: 1.5, marginBottom: 10 }}>
+                {cardItem.status}
+              </div>
+              <div style={{ display: 'grid', gap: 7 }}>
+                {cardItem.steps.map((step) => (
+                  <div key={step} style={{ color: 'var(--nba-text)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+                    {step}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

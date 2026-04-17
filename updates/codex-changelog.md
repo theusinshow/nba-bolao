@@ -4854,6 +4854,16 @@ USING (
 ### Validação
 - `npm --prefix frontend run build`
 
+## 2026-04-17 - UX: Playbook operacional incorporado ao Admin
+
+### Admin - roteiro de uso por cenário
+- adicionei uma seção `Playbook Operacional` em `frontend/src/pages/Admin.tsx`;
+- o painel agora orienta a operação em quatro frentes: `Pré-jogo`, `Durante rodada`, `Pós-jogo` e `Emergência`;
+- cada card traz sequência prática de ações e um pequeno status contextual puxado do próprio histórico operacional, reduzindo improviso em momentos críticos.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 - Feature: Endurecimento operacional com Storage, persistência Supabase e verificação formal de backup
 
 ### Centro operacional e persistência durável
