@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
 import { X, Check } from 'lucide-react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useSeriesContext } from '../hooks/useSeriesContext'
@@ -7,6 +8,7 @@ import { getTeam, getTeamLogoUrl } from '../data/teams2025'
 import { useUIStore } from '../store/useUIStore'
 import { getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 import { teamAbbrStyle } from '../utils/teamColors'
+import { premiumTween, pressMotion, softStaggerContainer, scaleInItem } from '../lib/motion'
 
 interface Props {
   series: Series
@@ -70,25 +72,39 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
   }
 
   return (
-    <div
+    <motion.div
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm modal-backdrop${closing ? ' closing' : ''}`}
       aria-hidden="true"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: closing ? 0 : 1 }}
+      transition={{ duration: 0.22 }}
     >
-      <div
+      <motion.div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         className={`card w-full max-w-sm p-6 relative modal-panel${closing ? ' closing' : ''}`}
+        initial={{ opacity: 0, y: 28, scale: 0.94, rotateX: 10 }}
+        animate={{
+          opacity: closing ? 0 : 1,
+          y: closing ? 18 : 0,
+          scale: closing ? 0.97 : 1,
+          rotateX: closing ? 6 : 0,
+        }}
+        transition={premiumTween}
         onAnimationEnd={() => { if (closing) onClose() }}
+        style={{ transformStyle: 'preserve-3d' }}
       >
-        <button
+        <motion.button
           onClick={handleClose}
           aria-label="Fechar"
           className="absolute top-4 right-4 text-nba-muted hover:text-nba-text"
+          whileHover={{ rotate: 90, scale: 1.08 }}
+          whileTap={pressMotion.tap}
         >
           <X size={20} />
-        </button>
+        </motion.button>
 
         <p className="text-nba-muted text-xs font-condensed uppercase mb-1">{confLabel} — {roundLabel}</p>
         <h2 id={titleId} className="title text-2xl text-nba-gold mb-4">Palpite da Série</h2>
@@ -116,17 +132,20 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
 
         {/* Team picker */}
         <p className="text-nba-muted text-xs mb-2">Quem vai vencer?</p>
-        <div className="flex gap-2 mb-5">
+        <motion.div variants={softStaggerContainer} initial="hidden" animate="show" className="flex gap-2 mb-5">
           {[teamA, teamB].map((team) => {
             if (!team) return null
             const isSelected = selectedWinner === team.id
             const isWinner = series.is_complete && series.winner_id === team.id
             const accentColor = team.secondary_color ?? team.primary_color
             return (
-              <button
+              <motion.button
                 key={team.id}
                 disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
                 onClick={() => setSelectedWinner(team.id)}
+                variants={scaleInItem}
+                whileHover={(readOnly || series.is_complete || !matchupReady || seriesLocked) ? undefined : { y: -3, scale: 1.02 }}
+                whileTap={(readOnly || series.is_complete || !matchupReady || seriesLocked) ? undefined : pressMotion.tap}
                 style={{
                   flex: 1,
                   padding: '18px 8px 14px',
@@ -187,10 +206,10 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                     <Check size={13} style={{ color: 'var(--nba-success)' }} />
                   </div>
                 )}
-              </button>
+              </motion.button>
             )
           })}
-        </div>
+        </motion.div>
 
         {/* Contexto de temporada regular */}
         {matchupReady && (
@@ -243,15 +262,18 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
 
         {/* Games picker */}
         <p className="text-nba-muted text-xs mb-2">Em quantos jogos?</p>
-        <div className="flex gap-2 mb-6">
+        <motion.div variants={softStaggerContainer} initial="hidden" animate="show" className="flex gap-2 mb-6">
           {GAMES_OPTIONS.map((n) => {
             const isSelected = selectedGames === n
             const isEdge = n === 4 || n === 7
             return (
-              <button
+              <motion.button
                 key={n}
                 disabled={readOnly || series.is_complete || !matchupReady || seriesLocked}
                 onClick={() => setSelectedGames(n)}
+                variants={scaleInItem}
+                whileHover={(readOnly || series.is_complete || !matchupReady || seriesLocked) ? undefined : { y: -2, scale: 1.02 }}
+                whileTap={(readOnly || series.is_complete || !matchupReady || seriesLocked) ? undefined : pressMotion.tap}
                 style={{
                   flex: 1,
                   paddingTop: 10,
@@ -296,10 +318,10 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                     {GAMES_HINTS[n]}
                   </span>
                 )}
-              </button>
+              </motion.button>
             )
           })}
-        </div>
+        </motion.div>
 
         {/* Result display */}
         {series.is_complete && (
@@ -331,15 +353,17 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
         )}
 
         {!readOnly && !series.is_complete && (
-          <button
+          <motion.button
             className="btn-primary w-full"
             onClick={handleSave}
             disabled={!canSave || saving}
+            whileHover={canSave && !saving ? { y: -1, scale: 1.01 } : undefined}
+            whileTap={canSave && !saving ? pressMotion.tap : undefined}
           >
             {saving ? 'Salvando...' : !matchupReady ? 'Aguardando definição do confronto' : seriesLocked ? 'Palpite travado' : existingPick ? 'Atualizar Palpite' : 'Salvar Palpite'}
-          </button>
+          </motion.button>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

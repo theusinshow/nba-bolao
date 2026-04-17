@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { Trophy } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
 import { getSeriesSlot, getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 import { teamAbbrStyle, teamAbbrSVGProps } from '../utils/teamColors'
 import { SkeletonCard } from './SkeletonCard'
+import { fadeUpItem, pressMotion, softStaggerContainer, staggerContainer } from '../lib/motion'
 
 // ─── Team logo helper ────────────────────────────────────────────────────────
 function teamLogoUrl(abbreviation: string): string {
@@ -116,6 +118,7 @@ function MobileSeriesCard({
   comparePick,
   myPick,
   isCompareMode,
+  freshlyCompleted,
   onClick,
 }: {
   s: Series
@@ -123,6 +126,7 @@ function MobileSeriesCard({
   comparePick?: SeriesPick
   myPick?: SeriesPick
   isCompareMode: boolean
+  freshlyCompleted?: boolean
   onClick?: () => void
 }) {
   const [logoErr, setLogoErr] = useState({ a: false, b: false })
@@ -181,10 +185,13 @@ function MobileSeriesCard({
     : `var(--nba-surface) padding-box, linear-gradient(var(--nba-border), var(--nba-border)) border-box`
 
   return (
-    <button
+    <motion.button
       onClick={onClick}
       disabled={!onClick}
       className="bracket-series-node"
+      variants={fadeUpItem}
+      whileHover={onClick ? { y: -4, scale: 1.01, boxShadow: '0 20px 36px rgba(0,0,0,0.22)' } : undefined}
+      whileTap={onClick ? pressMotion.tap : undefined}
       style={{
         width: '100%',
         background: cardBackground,
@@ -195,6 +202,7 @@ function MobileSeriesCard({
         textAlign: 'left',
         overflow: 'hidden',
         transition: 'background 0.2s, box-shadow 0.2s, filter 0.25s',
+        boxShadow: freshlyCompleted ? '0 0 0 1px rgba(46,204,113,0.3), 0 0 28px rgba(46,204,113,0.16)' : undefined,
       }}
     >
       {/* Teams row */}
@@ -364,7 +372,7 @@ function MobileSeriesCard({
           </span>
         )}
       </div>
-    </button>
+    </motion.button>
   )
 }
 
@@ -374,12 +382,14 @@ function MobileBracketView({
   series,
   picks,
   comparePicks,
+  freshlyCompletedIds = [],
   onSeriesClick,
   focusSection = 'full',
 }: {
   series: Series[]
   picks: SeriesPick[]
   comparePicks?: SeriesPick[]
+  freshlyCompletedIds?: string[]
   onSeriesClick?: (s: Series) => void
   focusSection?: 'west' | 'finals' | 'east' | 'full'
 }) {
@@ -388,6 +398,7 @@ function MobileBracketView({
     ? Object.fromEntries(comparePicks.map((p) => [p.series_id, p]))
     : null
   const isCompareMode = !!comparePicks
+  const freshlyCompletedSet = new Set(freshlyCompletedIds)
 
   const filteredSeries = series.filter((s) => {
     if (focusSection === 'full') return true
@@ -411,9 +422,9 @@ function MobileBracketView({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '4px 0 8px' }}>
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '4px 0 8px' }}>
       {rounds.map(({ round, label, items }) => (
-        <div key={round}>
+        <motion.div key={round} variants={softStaggerContainer}>
           {/* Round header */}
           <div
             style={{
@@ -449,7 +460,7 @@ function MobileBracketView({
           </div>
 
           {/* Series cards — 2-col grid on sm+ for R1/R2 */}
-          <div className={round <= 2 ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''} style={round > 2 ? { display: 'flex', flexDirection: 'column', gap: 12 } : {}}>
+          <motion.div variants={softStaggerContainer} className={round <= 2 ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''} style={round > 2 ? { display: 'flex', flexDirection: 'column', gap: 12 } : {}}>
             {items.map((s) => (
               <MobileSeriesCard
                 key={s.id}
@@ -458,13 +469,14 @@ function MobileBracketView({
                 comparePick={compareBySeriesId?.[s.id]}
                 myPick={pickBySeriesId[s.id]}
                 isCompareMode={isCompareMode}
+                freshlyCompleted={freshlyCompletedSet.has(s.id)}
                 onClick={onSeriesClick ? () => onSeriesClick(s) : undefined}
               />
             ))}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   )
 }
 
@@ -523,6 +535,8 @@ function BracketSkeleton({ mobile }: { mobile: boolean }) {
 export function BracketSVG({ series, picks = [], loading = false, onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full' }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const completedRef = useRef<Set<string>>(new Set())
+  const [freshlyCompletedIds, setFreshlyCompletedIds] = useState<string[]>([])
 
   useEffect(() => {
     function handleResize() {
@@ -532,11 +546,27 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    const latestCompleted = new Set(series.filter((item) => item.is_complete).map((item) => item.id))
+    const newCompletions = Array.from(latestCompleted).filter((id) => !completedRef.current.has(id))
+    completedRef.current = latestCompleted
+
+    if (newCompletions.length === 0) return
+
+    setFreshlyCompletedIds((current) => Array.from(new Set([...current, ...newCompletions])))
+    const timeout = window.setTimeout(() => {
+      setFreshlyCompletedIds((current) => current.filter((id) => !newCompletions.includes(id)))
+    }, 1600)
+
+    return () => window.clearTimeout(timeout)
+  }, [series])
+
   const seriesById     = Object.fromEntries(series.map((s) => [getSeriesSlot(s), s]))
   const pickBySeriesId = Object.fromEntries(picks.map((p) => [p.series_id, p]))
   const compareById    = comparePicks
     ? Object.fromEntries(comparePicks.map((p) => [p.series_id, p]))
     : null
+  const freshlyCompletedSet = new Set(freshlyCompletedIds)
 
   useEffect(() => {
     const container = scrollRef.current
@@ -568,6 +598,7 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
         series={series}
         picks={picks}
         comparePicks={comparePicks}
+        freshlyCompletedIds={freshlyCompletedIds}
         onSeriesClick={onSeriesClick}
         focusSection={focusSection}
       />
@@ -619,6 +650,7 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
     const homeDisplay = s ? getSeriesTeamDisplay(s, 'home') : { abbreviation: '—', name: '', isPlaceholder: true }
     const awayDisplay = s ? getSeriesTeamDisplay(s, 'away') : { abbreviation: '—', name: '', isPlaceholder: true }
     const isComplete  = s?.is_complete ?? false
+    const justCompleted = s ? freshlyCompletedSet.has(s.id) : false
     const isClickable = !!s && !!onSeriesClick
     const matchupReady = s ? isSeriesReadyForPick(s) : false
 
@@ -670,9 +702,19 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
           height={BOX_H}
           rx={7}
           fill="#13131a"
-          stroke={borderColor}
-          strokeWidth={1.5}
+          stroke={justCompleted ? '#2ecc71' : borderColor}
+          strokeWidth={justCompleted ? 2.2 : 1.5}
         />
+        {justCompleted && (
+          <rect
+            width={BOX_W}
+            height={BOX_H}
+            rx={7}
+            fill="rgba(46,204,113,0.05)"
+            stroke="rgba(46,204,113,0.24)"
+            strokeWidth={1}
+          />
+        )}
 
         {/* ── Team A ── */}
         {/* Secondary color left strip */}

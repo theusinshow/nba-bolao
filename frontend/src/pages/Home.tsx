@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
 import { OnboardingTour } from '../components/OnboardingTour'
@@ -12,6 +13,7 @@ import { useOnboarding } from '../hooks/useOnboarding'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getTeamLogoUrl } from '../data/teams2025'
 import { BRT_TIMEZONE } from '../utils/constants'
+import { fadeInItem, fadeUpItem, premiumTween, pressMotion, scaleInItem, softStaggerContainer, staggerContainer } from '../lib/motion'
 
 interface Props {
   participantId: string
@@ -134,7 +136,14 @@ function LastNightRecap({
   const countdown = useCountdown(nextRealGame?.tip_off_at)
 
   return (
-    <section style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}>
+    <motion.section
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -2, boxShadow: '0 20px 42px rgba(0,0,0,0.18)' }}
+      transition={premiumTween}
+      style={{ ...card, padding: '0.9rem 0', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.18)' }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '0 1rem', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: 'var(--nba-gold)', display: 'flex' }}>
@@ -261,7 +270,7 @@ function LastNightRecap({
         </div>
       )}
 
-    </section>
+    </motion.section>
   )
 }
 
@@ -290,7 +299,11 @@ function HeroPanel({
       : { to: '/games', label: 'Ver jogos do dia', description: 'Acompanhar os próximos movimentos do bolão', tone: 'var(--nba-success)' }
 
   return (
-    <section
+    <motion.section
+      variants={scaleInItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 24px 48px rgba(0,0,0,0.22)' }}
       style={{
         background: 'linear-gradient(135deg, rgba(200,150,60,0.18), rgba(74,144,217,0.10) 45%, rgba(19,19,26,1) 100%)',
         border: '1px solid rgba(200,150,60,0.22)',
@@ -323,18 +336,18 @@ function HeroPanel({
         </div>
 
         {/* 3 stat chips */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {[
             { label: 'Minha posição', value: myEntry ? `#${myEntry.rank}` : '—', color: 'var(--nba-gold)' },
             { label: 'Meus pontos', value: myEntry?.total_points ?? 0, color: 'var(--nba-text)' },
             { label: 'Dist. do líder', value: myEntry ? (gapToLeader === 0 ? 'LÍDER' : `${gapToLeader}`) : '—', color: 'var(--nba-east)' },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 12, padding: '10px 12px' }}>
+            <motion.div key={label} variants={scaleInItem} whileHover={{ y: -2, scale: 1.015 }} style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 12, padding: '10px 12px' }}>
               <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.66rem', marginBottom: 5, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
               <div className="font-condensed font-bold" style={{ color, fontSize: '1.7rem', lineHeight: 1 }}>{value}</div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Progress bar */}
         <div style={{ background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.16)', borderRadius: 10, padding: '12px 14px' }}>
@@ -365,6 +378,7 @@ function HeroPanel({
               {primaryAction.description}
             </div>
           </div>
+          <motion.div whileHover={{ y: -1 }} whileTap={pressMotion.tap}>
           <Link
             to={primaryAction.to}
             style={{
@@ -385,9 +399,10 @@ function HeroPanel({
           >
             Ir agora <ChevronRight size={15} />
           </Link>
+          </motion.div>
         </div>
       </div>
-    </section>
+    </motion.section>
   )
 }
 
@@ -409,7 +424,13 @@ function RankingCard({
   ]
 
   return (
-    <div style={{ ...card, minWidth: 0, overflow: 'hidden' }}>
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 18px 36px rgba(0,0,0,0.18)' }}
+      style={{ ...card, minWidth: 0, overflow: 'hidden' }}
+    >
       <CardTitle icon={<Trophy size={14} />}>Ranking Geral</CardTitle>
 
       {loading ? (
@@ -423,16 +444,17 @@ function RankingCard({
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 6 }}>
+        <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 6 }}>
           {top5.map((e, i) => {
             const isMe = e.participant_id === highlightId
             const diff = e.prev_rank != null ? e.prev_rank - e.rank : null
             const p = i < 3 ? podium[i] : null
 
             return (
-              <div
+              <motion.div
                 key={e.participant_id}
-                className={i < 5 ? `animate-in-${i + 1}` : ''}
+                variants={fadeUpItem}
+                whileHover={{ x: 4, backgroundColor: p ? p.bg : isMe ? 'var(--nba-surface-2)' : 'rgba(255,255,255,0.02)' }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -481,17 +503,17 @@ function RankingCard({
                   </span>
                   {p && <span style={{ color: p.color, fontSize: '0.68rem', opacity: 0.7 }}>pts</span>}
                 </div>
-              </div>
+              </motion.div>
             )
           })}
-        </div>
+        </motion.div>
       )}
 
       <Link to="/ranking" style={{ display: 'block', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--nba-border)', textAlign: 'center', fontSize: '0.78rem', color: 'var(--nba-text-muted)' }}>
         <span id="scoring-guide-highlight" />
         Ver ranking completo →
       </Link>
-    </div>
+    </motion.div>
   )
 }
 
@@ -540,7 +562,14 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
   const completed = series.filter((s) => s.is_complete).slice(-5).reverse()
 
   return (
-    <div className="card-hover" style={card}>
+    <motion.div
+      className="card-hover"
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 20px 40px rgba(0,0,0,0.18)' }}
+      style={card}
+    >
       <CardTitle>Séries Recentes</CardTitle>
 
       {completed.length === 0 ? (
@@ -573,7 +602,7 @@ function RecentSeriesCard({ series }: { series: ReturnType<typeof useSeries>['se
           })}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -902,9 +931,16 @@ function NewsAlertPill() {
 
 function HomeQuickDeck() {
   return (
-    <div style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}>
+    <motion.div
+      variants={fadeUpItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 20px 44px rgba(0,0,0,0.2)' }}
+      style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.08) 48%, rgba(200,150,60,0.08) 100%)' }}
+    >
       <CardTitle icon={<Sparkles size={14} />}>Acessos Rápidos</CardTitle>
-      <div style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 10 }} className="sm:grid-cols-2 lg:grid-cols-4">
+        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
         <Link
           id="bracket-highlight"
           to="/bracket"
@@ -930,7 +966,9 @@ function HomeQuickDeck() {
           </span>
           <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
         </Link>
+        </motion.div>
 
+        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
         <Link
           to="/games"
           style={{
@@ -955,7 +993,9 @@ function HomeQuickDeck() {
           </span>
           <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
         </Link>
+        </motion.div>
 
+        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
         <Link
           to="/analysis"
           style={{
@@ -980,6 +1020,8 @@ function HomeQuickDeck() {
           </span>
           <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
         </Link>
+        </motion.div>
+        <motion.div variants={fadeUpItem} whileHover={{ y: -3, scale: 1.01 }} whileTap={pressMotion.tap}>
         <Link
           to="/compare"
           style={{
@@ -1004,8 +1046,9 @@ function HomeQuickDeck() {
           </span>
           <ChevronRight size={15} style={{ flexShrink: 0, color: 'var(--nba-text-muted)' }} />
         </Link>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -1024,7 +1067,13 @@ export function Home({ participantId }: Props) {
   const canStartTour = !rankLoading && !seriesLoading && show
 
   return (
-    <div className="pb-24 pt-4 px-4 mx-auto grid gap-4 xl:gap-5 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]" style={{ maxWidth: 1420 }}>
+    <motion.div
+      className="pb-24 pt-4 px-4 mx-auto grid gap-4 xl:gap-5 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]"
+      style={{ maxWidth: 1420 }}
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
       {canStartTour && <OnboardingTour show={canStartTour} onComplete={complete} />}
       <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
         <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
@@ -1032,10 +1081,10 @@ export function Home({ participantId }: Props) {
       </div>
 
       <div className="flex flex-col gap-4 min-w-0">
-        <div className="animate-in-1"><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} loading={seriesLoading} /></div>
-        <div className="animate-in-2"><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></div>
-        <div className="animate-in-3"><NewsAlertPill /></div>
-        <div className="animate-in-4"><HomeQuickDeck /></div>
+        <motion.div variants={fadeUpItem}><LastNightRecap games={recentCompletedGames} upcomingGames={upcomingGames} isRealData={hasRealGames && recentCompletedGames.length > 0} loading={seriesLoading} /></motion.div>
+        <motion.div variants={scaleInItem}><HeroPanel myEntry={myEntry} pickedSeries={pickedSeries} readySeries={readySeries.length} totalSeries={series.length} leaderPoints={leader?.total_points ?? 0} /></motion.div>
+        <motion.div variants={fadeInItem}><NewsAlertPill /></motion.div>
+        <motion.div variants={fadeUpItem}><HomeQuickDeck /></motion.div>
 
         <div className="xl:hidden flex flex-col gap-4">
           <MyPicksCard series={series} picks={picks} />
@@ -1051,6 +1100,6 @@ export function Home({ participantId }: Props) {
         <MyPicksCard series={series} picks={picks} />
         <RecentSeriesCard series={series} />
       </div>
-    </div>
+    </motion.div>
   )
 }

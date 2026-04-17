@@ -1,5 +1,87 @@
 # Codex Changelog
 
+## 2026-04-16 - Feature: Segunda rodada de motion premium com continuidade de rota e números animados
+
+### Contexto
+Depois da primeira camada de motion, a próxima etapa foi deixar o app mais fluido no fluxo completo: troca de páginas, mudanças de ranking, leitura de métricas e sensação de progressão do bracket.
+
+### `frontend/src/App.tsx`
+- Rotas principais passaram a usar transição de página com `AnimatePresence`
+- As telas agora entram e saem com fade + deslocamento suave + blur leve
+- Isso deixa a navegação mais contínua sem depender só da View Transitions API
+
+### `frontend/src/components/AnimatedNumber.tsx`
+- Novo componente para animar números com `motion`
+- Usado para métricas, posições e totais que mudam com frequência
+
+### `frontend/src/components/RankingTable.tsx`
+- Linhas do ranking agora usam `layout` para suavizar reordenação
+- Posição, total e cravadas passaram a usar número animado
+- Botão de relatório ganhou feedback de hover/tap mais refinado
+
+### `frontend/src/pages/OfficialBracket.tsx`
+- Hero do bracket oficial ganhou motion de entrada e hover leve
+- Métricas principais agora animam valores numéricos
+- Botão de sync admin recebeu feedback de interação mais premium
+
+### `frontend/src/components/CountdownTimer.tsx`
+- O valor do timer agora entra com microtransição a cada mudança perceptível
+- Mantido o fix anterior que evita loop de animação
+
+### `frontend/src/components/BracketSVG.tsx`
+- Séries recém-concluídas agora recebem destaque visual temporário
+- O efeito foi aplicado tanto no bracket mobile quanto no desktop
+- Isso melhora a sensação de progressão automática da chave
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso
+
+### Observação técnica
+- O build passou, mas o Vite sinalizou que o bundle principal ficou acima de `500 kB` minificado
+- Isso não quebrou o app, mas virou um ponto real de atenção para uma próxima rodada de code splitting/manual chunks
+
+## 2026-04-16 - Feature: Base premium de motion com Motion for React
+
+### Contexto
+O app já estava visualmente consistente, mas ainda faltava uma camada de movimento mais profissional e coordenada entre Home, Ranking, bracket mobile e modais. A proposta desta rodada foi criar uma base reutilizável de animações e aplicá-la nos pontos de maior impacto.
+
+### Dependências
+- `frontend`: instalada a biblioteca `motion`
+
+### `frontend/src/lib/motion.ts`
+- Novo arquivo com a base reutilizável de motion do app
+- Centraliza easing, tween, spring e variantes como:
+  - `fadeUpItem`
+  - `fadeInItem`
+  - `scaleInItem`
+  - `staggerContainer`
+  - `softStaggerContainer`
+  - `pressMotion`
+
+### `frontend/src/pages/Home.tsx`
+- Home passou a usar entradas em cascata com `motion`
+- `LastNightRecap`, `HeroPanel`, `RankingCard`, `MyPicksCard` e `HomeQuickDeck` ganharam presença de entrada e hover mais premium
+- Cards rápidos da Home agora respondem com lift e press mais elegantes
+- Hero principal ganhou sensação mais “broadcast” com entrada suave e microprofundidade
+
+### `frontend/src/pages/Ranking.tsx`
+- Hero do ranking ganhou motion de entrada e hover sutil
+- Pódio do top 3 ficou mais vivo com cards animados e resposta em hover/tap
+- Drawer mobile de pontuação agora entra e sai com presença mais limpa
+- Cards do gráfico e da tabela receberam movimento leve de painel premium
+- CTA do simulador ganhou feedback melhor em interação
+
+### `frontend/src/components/SeriesModal.tsx`
+- Modal da série passou a abrir com transição mais cinematográfica, usando fade + subida + escala + leve profundidade
+- Botão de fechar, seleção de time, seleção de jogos e CTA principal ganharam feedbacks de hover/tap mais refinados
+
+### `frontend/src/components/BracketSVG.tsx`
+- Cards do bracket mobile agora entram em cascata e respondem melhor ao toque/hover
+- A leitura do bracket mobile ficou mais dinâmica sem comprometer clareza
+
+### Validações
+- `frontend`: `npm run build` concluído com sucesso
+
 ## 2026-04-16 - Fix: Loader passa a usar o asset oficial loading.svg
 
 ### Contexto

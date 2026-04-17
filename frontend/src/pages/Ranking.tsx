@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { BarChart2, Crown, Flame, FlaskConical, Info, Medal, Trophy, X } from 'lucide-react'
 import { RankingTable } from '../components/RankingTable'
 import { RankingChart } from '../components/RankingChart'
@@ -10,6 +11,7 @@ import { useRanking } from '../hooks/useRanking'
 import { useAllGamePickDots } from '../hooks/useAllGamePickDots'
 import { SCORING_CONFIG } from '../utils/scoring'
 import { ROUND_LABELS } from '../utils/constants'
+import { fadeUpItem, premiumTween, pressMotion, scaleInItem, softStaggerContainer, staggerContainer } from '../lib/motion'
 
 interface Props {
   participantId: string
@@ -33,7 +35,7 @@ function TopThreeCards({
   ]
 
   return (
-    <div style={{ display: 'grid', gap: 12 }} className="grid-cols-1 sm:grid-cols-3">
+    <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 12 }} className="grid-cols-1 sm:grid-cols-3">
       {topThree.map((entry, index) => {
         const style = styles[index]
         const isMe = entry.participant_id === participantId
@@ -41,9 +43,12 @@ function TopThreeCards({
         const enterClass = index === 0 ? 'podium-enter-center' : index === 1 ? 'podium-enter-right' : 'podium-enter-left'
 
         return (
-          <div
+          <motion.div
             key={entry.participant_id}
+            variants={scaleInItem}
             className={`${style.glowClass} ${enterClass}`}
+            whileHover={{ y: -5, scale: 1.012, boxShadow: `0 24px 48px ${style.glow}` }}
+            whileTap={pressMotion.tap}
             style={{
               background: `linear-gradient(180deg, ${style.glow}, rgba(19,19,26,0.96))`,
               border: `1px solid ${style.color}33`,
@@ -83,10 +88,10 @@ function TopThreeCards({
                 <strong style={{ color: 'var(--nba-text)' }}>{entry.series_correct}/{entry.series_total}</strong>
               </div>
             </div>
-          </div>
+          </motion.div>
         )
       })}
-    </div>
+    </motion.div>
   )
 }
 
@@ -129,7 +134,11 @@ function RankingHero({
   const myGap = myEntry && leader ? Math.max(leader.total_points - myEntry.total_points, 0) : null
 
   return (
-    <div
+    <motion.div
+      variants={scaleInItem}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -3, boxShadow: '0 22px 44px rgba(0,0,0,0.2)' }}
       style={{
         background: 'linear-gradient(135deg, rgba(200,150,60,0.18), rgba(74,144,217,0.10) 55%, rgba(19,19,26,1) 100%)',
         border: '1px solid rgba(200,150,60,0.22)',
@@ -189,14 +198,16 @@ function RankingHero({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
+        <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gap: 10 }} className="grid-cols-1 sm:grid-cols-3">
           {[
             { label: 'Participantes', value: ranking.length, tone: 'var(--nba-text)' },
             { label: 'Líder atual', value: leader ? leader.participant_name.split(' ')[0] : '—', tone: 'var(--nba-gold)' },
             { label: 'Maior pontuação', value: leader?.total_points ?? 0, tone: 'var(--nba-success)' },
           ].map((item) => (
-            <div
+            <motion.div
               key={item.label}
+              variants={fadeUpItem}
+              whileHover={{ y: -2, scale: 1.015 }}
               style={{
                 padding: '10px 12px',
                 borderRadius: 10,
@@ -208,11 +219,11 @@ function RankingHero({
               <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.65rem', lineHeight: 1.1 }}>
                 {item.value}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -405,8 +416,8 @@ const navigate = useNavigate()
   }
 
   return (
-    <div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1180 }}>
-      <div className="animate-in"><RankingHero ranking={ranking} participantId={participantId} /></div>
+    <motion.div className="pb-24 pt-4 px-4 mx-auto" style={{ maxWidth: 1180 }} variants={staggerContainer} initial="hidden" animate="show">
+      <motion.div variants={scaleInItem}><RankingHero ranking={ranking} participantId={participantId} /></motion.div>
 
       {error && (
         <div style={{ margin: '16px 0', padding: '12px 16px', borderRadius: 8, background: 'rgba(231,76,60,0.10)', border: '1px solid rgba(231,76,60,0.3)', color: 'var(--nba-danger)', fontSize: '0.875rem' }}>
@@ -495,9 +506,13 @@ const navigate = useNavigate()
             </button>
           </div>
 
+          <AnimatePresence>
           {mobileScoringOpen && (
             <div className="lg:hidden">
-              <div
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 onClick={() => setMobileScoringOpen(false)}
                 style={{
                   position: 'fixed',
@@ -506,7 +521,11 @@ const navigate = useNavigate()
                   zIndex: 40,
                 }}
               />
-              <div
+              <motion.div
+                initial={{ opacity: 0, x: -36 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -36 }}
+                transition={premiumTween}
                 style={{
                   position: 'fixed',
                   top: 0,
@@ -519,9 +538,10 @@ const navigate = useNavigate()
                 }}
               >
                 <ScoringGuide mobile onClose={() => setMobileScoringOpen(false)} />
-              </div>
+              </motion.div>
             </div>
           )}
+          </AnimatePresence>
 
           <div
             className="grid lg:grid-cols-[280px_minmax(0,1fr)]"
@@ -538,10 +558,12 @@ const navigate = useNavigate()
                 gap: 16,
               }}
             >
-              <div className="animate-in-2"><TopThreeCards ranking={ranking} participantId={participantId} /></div>
+              <motion.div variants={fadeUpItem}><TopThreeCards ranking={ranking} participantId={participantId} /></motion.div>
 
               {/* Chart card */}
-              <div
+              <motion.div
+                variants={fadeUpItem}
+                whileHover={{ y: -2, boxShadow: '0 18px 38px rgba(0,0,0,0.18)' }}
                 style={{
                   background: 'var(--nba-surface)',
                   border: '1px solid var(--nba-border)',
@@ -561,10 +583,12 @@ const navigate = useNavigate()
                   Corrida de Pontuação
                 </h2>
                 <RankingChart ranking={ranking} breakdowns={breakdowns} />
-              </div>
+              </motion.div>
 
               {/* Table card */}
-              <div
+              <motion.div
+                variants={fadeUpItem}
+                whileHover={{ y: -2, boxShadow: '0 18px 38px rgba(0,0,0,0.18)' }}
                 style={{
                   background: 'var(--nba-surface)',
                   border: '1px solid var(--nba-border)',
@@ -624,9 +648,11 @@ const navigate = useNavigate()
                         Veja como o ranking mudaria dependendo dos próximos resultados
                       </div>
                     </div>
-                    <button
+                    <motion.button
                       onClick={() => setSimOpen((v) => !v)}
                       title="Simule resultados das séries abertas e veja como o ranking seria afetado"
+                      whileHover={{ y: -1, scale: 1.015 }}
+                      whileTap={pressMotion.tap}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -649,10 +675,10 @@ const navigate = useNavigate()
                     >
                       <FlaskConical size={14} />
                       {simOpen ? 'Fechar simulador' : 'E se...'}
-                    </button>
+                    </motion.button>
                   </div>
                 )}
-              </div>
+              </motion.div>
 
               {/* Simulator panel */}
               {simOpen && (
@@ -669,6 +695,6 @@ const navigate = useNavigate()
         </>
       )}
 
-    </div>
+    </motion.div>
   )
 }

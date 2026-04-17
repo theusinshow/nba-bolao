@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import { motion } from 'motion/react'
 import { RefreshCw, Activity, Trophy, Clock3 } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
 import { SeriesModal } from '../components/SeriesModal'
+import { AnimatedNumber } from '../components/AnimatedNumber'
 import { useSeries } from '../hooks/useSeries'
 import { useUIStore } from '../store/useUIStore'
 import { supabase } from '../lib/supabase'
 import type { Series } from '../types'
 import { getSeriesSlot } from '../utils/bracket'
+import { fadeUpItem, pressMotion, scaleInItem, softStaggerContainer, staggerContainer } from '../lib/motion'
 
 interface Props {
   isAdmin: boolean
@@ -67,9 +70,11 @@ export function OfficialBracket({ isAdmin }: Props) {
   }
 
   return (
-    <div className="pb-20 pt-4">
+    <motion.div className="pb-20 pt-4" variants={staggerContainer} initial="hidden" animate="show">
       <div className="px-4 mb-5">
-        <div
+        <motion.div
+          variants={scaleInItem}
+          whileHover={{ y: -3, boxShadow: '0 22px 44px rgba(0,0,0,0.22)' }}
           style={{
             background: 'linear-gradient(135deg, rgba(224,92,58,0.18), rgba(200,150,60,0.08) 55%, rgba(19,19,26,1) 100%)',
             border: '1px solid rgba(200,150,60,0.18)',
@@ -95,26 +100,30 @@ export function OfficialBracket({ isAdmin }: Props) {
                 <p className="text-nba-muted text-sm">Resultados reais dos playoffs e panorama atualizado da chave.</p>
               </div>
               {isAdmin && (
-                <button
+                <motion.button
                   onClick={handleSync}
                   disabled={syncing}
                   className="flex items-center gap-2 text-sm text-nba-gold border border-nba-border rounded-lg px-3 py-2 hover:bg-nba-surface-2 transition-colors disabled:opacity-50"
+                  whileHover={!syncing ? { y: -1, scale: 1.02 } : undefined}
+                  whileTap={!syncing ? pressMotion.tap : undefined}
                   style={{ background: 'rgba(12,12,18,0.34)' }}
                 >
                   <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
                   {syncing ? 'Sincronizando...' : 'Sync'}
-                </button>
+                </motion.button>
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+            <motion.div variants={softStaggerContainer} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
               {[
                 { label: 'Séries concluídas', value: completedSeries, icon: <Activity size={14} />, color: 'var(--nba-success)' },
                 { label: 'Ainda em aberto', value: openSeries, icon: <Clock3 size={14} />, color: 'var(--nba-gold)' },
                 { label: 'Campeão atual', value: champion, icon: <Trophy size={14} />, color: 'var(--nba-text)' },
               ].map((item) => (
-                <div
+                <motion.div
                   key={item.label}
+                  variants={fadeUpItem}
+                  whileHover={{ y: -2, scale: 1.015 }}
                   style={{
                     padding: '10px 12px',
                     borderRadius: 10,
@@ -127,21 +136,21 @@ export function OfficialBracket({ isAdmin }: Props) {
                     {item.label}
                   </div>
                   <div className="font-condensed font-bold" style={{ color: item.color, fontSize: '1.32rem', lineHeight: 1 }}>
-                    {item.value}
+                    {typeof item.value === 'number' ? <AnimatedNumber value={item.value} /> : item.value}
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      <div className="px-2">
+      <motion.div className="px-2" variants={fadeUpItem}>
         <BracketSVG
           series={series}
           onSeriesClick={setSelectedSeries}
         />
-      </div>
+      </motion.div>
 
       {selectedSeries && (
         <SeriesModal
@@ -151,6 +160,6 @@ export function OfficialBracket({ isAdmin }: Props) {
           readOnly
         />
       )}
-    </div>
+    </motion.div>
   )
 }

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { ArrowUp, ArrowDown, ChevronRight, Minus, Star } from 'lucide-react'
 import type { RankingEntry } from '../types'
 import { GamePickDots, type DotData } from './GamePickDots'
+import { AnimatedNumber } from './AnimatedNumber'
+import { pressMotion } from '../lib/motion'
 
 interface Props {
   ranking: RankingEntry[]
@@ -194,7 +197,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
         </thead>
 
         {/* Rows */}
-        <tbody>
+        <motion.tbody layout>
           {ranking.map((e, idx) => {
             const isMe    = e.participant_id === highlightId
             const isSelected = e.participant_id === selectedId
@@ -221,7 +224,8 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
             const rankColor = RANK_COLOR[e.rank] ?? 'var(--nba-gold)'
 
             return (
-              <tr
+              <motion.tr
+                layout
                 key={e.participant_id}
                 className={[
                   idx < 9 ? `stagger-row-${idx + 1}` : '',
@@ -245,7 +249,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                     className="font-condensed font-bold"
                     style={{ color: rankColor, fontSize: '0.95rem' }}
                   >
-                    {e.rank}
+                    <AnimatedNumber value={e.rank} />
                   </span>
                 </td>
 
@@ -294,7 +298,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                     className="font-condensed font-bold"
                     style={{ color: rankColor, fontSize: '1.05rem' }}
                   >
-                    {e.total_points}
+                    <AnimatedNumber value={e.total_points} />
                   </span>
                 </td>
 
@@ -317,7 +321,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                     >
                       <Star size={10} fill="#c8963c" style={{ color: '#c8963c' }} />
                       <span className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '0.85rem' }}>
-                        {e.cravadas}
+                        <AnimatedNumber value={e.cravadas} />
                       </span>
                     </span>
                   ) : (
@@ -334,11 +338,13 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                 </td>
 
                 <td style={{ padding: '11px 12px', textAlign: 'right', verticalAlign: 'middle' }}>
-                  <button
+                  <motion.button
                     onClick={(event) => {
                       event.stopPropagation()
                       onParticipantClick?.(e.participant_id)
                     }}
+                    whileHover={{ y: -1, scale: 1.02 }}
+                    whileTap={pressMotion.tap}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -355,12 +361,12 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                   >
                     Ver
                     <ChevronRight size={13} />
-                  </button>
+                  </motion.button>
                 </td>
-              </tr>
+              </motion.tr>
             )
           })}
-        </tbody>
+        </motion.tbody>
       </table>
     </div>
   )

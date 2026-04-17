@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Suspense, lazy, useEffect, useRef } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Nav } from './components/Nav'
@@ -7,6 +8,7 @@ import { Toast } from './components/Toast'
 import { Login } from './pages/Login'
 import { Unauthorized } from './pages/Unauthorized'
 import { LoadingBasketball } from './components/LoadingBasketball'
+import { premiumTween } from './lib/motion'
 
 // Patch <a> clicks inside BrowserRouter to use View Transitions API when available
 function ViewTransitionHandler() {
@@ -56,6 +58,141 @@ function RouteFallback() {
   )
 }
 
+function PageTransition({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: -12, filter: 'blur(8px)' }}
+      transition={premiumTween}
+      style={{ minHeight: '100vh' }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+function AppRoutes({
+  auth,
+  participantId,
+  isAdmin,
+}: {
+  auth: ReturnType<typeof useAuth>['auth']
+  participantId: string
+  isAdmin: boolean
+}) {
+  const location = useLocation()
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute auth={auth}>
+              <PageTransition>
+                <Home participantId={participantId} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analysis"
+          element={
+            <ProtectedRoute auth={auth}>
+              <PageTransition>
+                <Analysis />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bracket"
+          element={
+            <ProtectedRoute auth={auth} blockGuest>
+              <PageTransition>
+                <BracketEditor participantId={participantId} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/games"
+          element={
+            <ProtectedRoute auth={auth} blockGuest>
+              <PageTransition>
+                <Games participantId={participantId} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/official"
+          element={
+            <ProtectedRoute auth={auth}>
+              <PageTransition>
+                <OfficialBracket isAdmin={isAdmin} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ranking"
+          element={
+            <ProtectedRoute auth={auth}>
+              <PageTransition>
+                <Ranking participantId={participantId} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compare"
+          element={
+            <ProtectedRoute auth={auth}>
+              <PageTransition>
+                <Compare />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/simulacao"
+          element={
+            <ProtectedRoute auth={auth} blockGuest>
+              <PageTransition>
+                <SimulationLab participantId={participantId} isAdmin={isAdmin} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute auth={auth} requireAdmin>
+              <PageTransition>
+                <Admin participantId={participantId} />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:id"
+          element={
+            <ProtectedRoute auth={auth}>
+              <PageTransition>
+                <Profile />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
+  )
+}
+
 export default function App() {
   const { auth, signInWithGoogle, signOut, enterAsGuest } = useAuth()
 
@@ -90,90 +227,7 @@ export default function App() {
       <ViewTransitionHandler />
       <Toast />
       <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute auth={auth}>
-                <Home participantId={participantId} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analysis"
-            element={
-              <ProtectedRoute auth={auth}>
-                <Analysis />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/bracket"
-            element={
-              <ProtectedRoute auth={auth} blockGuest>
-                <BracketEditor participantId={participantId} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/games"
-            element={
-              <ProtectedRoute auth={auth} blockGuest>
-                <Games participantId={participantId} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/official"
-            element={
-              <ProtectedRoute auth={auth}>
-                <OfficialBracket isAdmin={isAdmin} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/ranking"
-            element={
-              <ProtectedRoute auth={auth}>
-                <Ranking participantId={participantId} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/compare"
-            element={
-              <ProtectedRoute auth={auth}>
-                <Compare />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/simulacao"
-            element={
-              <ProtectedRoute auth={auth} blockGuest>
-                <SimulationLab participantId={participantId} isAdmin={isAdmin} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute auth={auth} requireAdmin>
-                <Admin participantId={participantId} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile/:id"
-            element={
-              <ProtectedRoute auth={auth}>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AppRoutes auth={auth} participantId={participantId} isAdmin={isAdmin} />
       </Suspense>
       <Nav auth={auth} onSignOut={signOut} />
     </BrowserRouter>

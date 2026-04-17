@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { useNowTick } from '../hooks/useNowTick'
 
 interface Props {
@@ -62,7 +63,15 @@ export function CountdownTimer({ targetDate, label, urgentUnderOneHour = false, 
           transition: 'color 0.3s ease',
         }}
       >
-        {timeStr}
+        <motion.span
+          key={timeStr}
+          initial={{ opacity: 0.78, y: 5, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          style={{ display: 'inline-block' }}
+        >
+          {timeStr}
+        </motion.span>
       </span>
       {isUrgent && (
         <span style={{ color: 'var(--nba-danger)', fontSize: '0.6rem', marginTop: 1, opacity: 0.8 }}>
