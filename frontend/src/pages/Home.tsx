@@ -1126,9 +1126,12 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
 
   return (
     <div className="px-3 py-4 sm:p-[1.35rem]" style={{ ...card, background: 'linear-gradient(145deg, rgba(224,92,58,0.16), rgba(200,150,60,0.10) 42%, rgba(19,19,26,1) 100%)', border: '1px solid rgba(200,150,60,0.22)', borderRadius: 18, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 42px rgba(0,0,0,0.16)' }}>
-      <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
+      <div
+        className="mb-4 flex flex-col gap-3 sm:mb-[18px] sm:flex-row sm:items-center sm:justify-between"
+        style={{ alignItems: 'stretch' }}
+      >
+        <CardTitle icon={<Trophy size={14} />}>Resultados reais</CardTitle>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
         <Link
           to="/official"
           className="w-full sm:w-auto"
@@ -1137,17 +1140,18 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            padding: '16px 22px',
-            minHeight: 56,
+            padding: '14px 20px',
+            minHeight: 52,
             borderRadius: 14,
             textDecoration: 'none',
             background: 'linear-gradient(135deg, rgba(200,150,60,0.20), rgba(224,92,58,0.10))',
             border: '1px solid rgba(200,150,60,0.24)',
             color: 'var(--nba-gold)',
             fontWeight: 700,
-            fontSize: '1rem',
+            fontSize: '0.98rem',
             fontFamily: "'Barlow Condensed', sans-serif",
             letterSpacing: '0.05em',
+            alignSelf: 'center',
           }}
         >
           Ver playoff real da NBA
@@ -1178,7 +1182,7 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
           { label: 'Em aberto', value: String(openSeries), color: openSeries > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)' },
           { label: 'Campeão', value: championLabel, color: champion ? (champion.primary_color ?? 'var(--nba-gold)') : 'var(--nba-text-muted)' },
         ].map(({ label, value, color }) => (
-          <div key={label} style={{ padding: '14px 16px', borderRadius: 16, background: 'rgba(12,12,18,0.42)', border: '1px solid rgba(200,150,60,0.14)' }}>
+          <div key={label} style={{ padding: '14px 16px', minHeight: 88, borderRadius: 16, background: 'rgba(12,12,18,0.42)', border: '1px solid rgba(200,150,60,0.14)', display: 'grid', alignContent: 'space-between' }}>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
             <div className="font-condensed font-bold" style={{ color, fontSize: '1.6rem', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
           </div>
@@ -1298,7 +1302,10 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
                         }}
                       >
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-[14px]" style={{ alignItems: 'stretch' }}>
+                        <div
+                          className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_112px_minmax(0,1fr)] sm:gap-[14px]"
+                          style={{ alignItems: 'center' }}
+                        >
                           <TeamShowcase
                             abbr={homeAbbr}
                             color={homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor}
@@ -1306,7 +1313,10 @@ function OfficialBracketCard({ series, upcomingGames, participantCount, injuries
                             injury={!s.is_complete ? homeInjury : undefined}
                           />
 
-                          <div className="mx-auto grid min-w-0 content-center justify-items-center gap-2 rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3 sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0" style={{ minWidth: 0 }}>
+                          <div
+                            className="mx-auto grid min-w-0 content-center justify-items-center gap-2 rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3 sm:mx-0 sm:min-h-[122px] sm:self-center sm:rounded-[16px] sm:border sm:bg-[rgba(255,255,255,0.025)] sm:px-3 sm:py-4"
+                            style={{ minWidth: 0 }}
+                          >
                             <span
                               className="font-condensed font-bold"
                               style={{
