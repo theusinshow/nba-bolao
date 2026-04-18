@@ -1,5 +1,35 @@
 # Codex Changelog
 
+## 2026-04-18 10:43:32
+
+### Palpites oficiais - save blindado via backend para jogo a jogo e séries
+- criei [backend/src/routes/picks.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/routes/picks.ts) com os endpoints `POST /api/picks/game` e `POST /api/picks/series`, exigindo sessão válida, resolvendo o participante autenticado, validando lock, confronto e `winner_id`, e salvando com `upsert` mais fallback controlado quando a constraint ainda não existir;
+- liguei essa rota em [backend/src/index.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/index.ts), consolidando um caminho oficial de gravação no servidor em vez de depender de `insert/update` disparado direto do cliente;
+- adicionei [frontend/src/lib/picksApi.ts](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/lib/picksApi.ts) para encapsular o `fetch` autenticado com bearer token do Supabase para os saves oficiais;
+- atualizei [frontend/src/pages/Games.tsx](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/pages/Games.tsx), [frontend/src/hooks/useGamePicks.ts](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/hooks/useGamePicks.ts) e [frontend/src/hooks/useSeries.ts](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/hooks/useSeries.ts) para usar esse fluxo oficial, reduzindo risco de estado stale, corrida entre `insert`/`update` e falso positivo de “palpite salvo”.
+
+### Admin - painel de integridade para detectar problema antes da queixa do usuário
+- ampliei [backend/src/routes/admin.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/routes/admin.ts) com `buildAdminPickIntegrity()` e a rota `GET /admin/pick-integrity`, que varrem:
+  - duplicidade de `game_picks` por `(participant_id, game_id)`;
+  - duplicidade de `series_picks` por `(participant_id, series_id)`;
+  - picks órfãos;
+  - `winner_id` inválido em jogo e série;
+  - jogos abertos sem `tip_off_at`;
+  - séries prontas sem horário-base para lock;
+- evoluí [frontend/src/pages/Admin.tsx](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/pages/Admin.tsx) com a nova seção `Integridade dos Palpites`, trazendo cards-resumo, severidade, amostras dos casos, recomendações e recarga automática quando `participants`, `game_picks`, `series_picks`, `games` ou `series` mudam.
+
+### Banco - hardening manual preparado para constraints e RLS
+- adicionei [supabase/pick-integrity-hardening.sql](C:/Dev/pessoal/projetos/nba-bolao/supabase/pick-integrity-hardening.sql) com:
+  - fail-fast se ainda houver duplicidade estrutural;
+  - helper `current_participant_id()` para policies;
+  - índices `UNIQUE` em `game_picks(participant_id, game_id)` e `series_picks(participant_id, series_id)`;
+  - policies de `insert/update` restringindo gravação ao próprio participante e apenas dentro da janela válida de lock;
+- o script foi deixado para aplicação manual e revisada, porque políticas legadas podem se combinar com `OR` e precisam de conferência antes de produção.
+
+### Validação
+- `npm --prefix frontend run build`
+- `npm --prefix backend run build`
+
 ## 2026-04-18 03:01:00
 
 ### Infra - backup operacional diário agendado para 03:00 BRT
