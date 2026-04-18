@@ -16,6 +16,7 @@ import { listAdminOperationRuns, recordAdminOperation } from '../admin/adminOper
 import type { AdminOperationName } from '../admin/adminOperationLog'
 import type { ArtifactDescriptor } from '../lib/operationalArtifacts'
 import { BRT_TIMEZONE } from '../lib/constants'
+import { getLiveGameColumnsSnapshot } from '../lib/liveGameColumns'
 
 const router = Router()
 
@@ -603,6 +604,7 @@ router.post('/rescore', async (req, res) => {
 // GET /admin/health
 router.get('/health', async (_req, res) => {
   const operations = await listAdminOperationRuns(12)
+  const liveGameColumns = await getLiveGameColumnsSnapshot()
   res.json({
     ok: true,
     timestamp: new Date().toISOString(),
@@ -611,6 +613,7 @@ router.get('/health', async (_req, res) => {
       nbaSync: getNBASyncSchedulerSnapshot(),
       dailyDigest: getDailyDigestSchedulerSnapshot(),
     },
+    liveGameColumns,
     operations: {
       updatedAt: operations.updatedAt,
       summary: operations.summary,

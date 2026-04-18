@@ -63,6 +63,7 @@ interface SchedulerSnapshot {
 
 interface NBASyncSchedulerSnapshot extends SchedulerSnapshot {
   mode: string
+  intervalSeconds?: number
   intervalMinutes: number
   reason: string
   lastSyncAt: string | null
@@ -72,6 +73,15 @@ interface DailyDigestSchedulerSnapshot extends SchedulerSnapshot {
   cron: string
   timezone: string
   lastOutputDir: string | null
+}
+
+interface LiveGameColumnsHealth {
+  ready: boolean
+  available: Array<'game_state' | 'status_text' | 'current_period' | 'clock'>
+  missing: Array<'game_state' | 'status_text' | 'current_period' | 'clock'>
+  checkedAt: string
+  migrationPath: string
+  message: string
 }
 
 interface OperationSummaryEntry {
@@ -114,6 +124,7 @@ interface HealthResponse {
     nbaSync: NBASyncSchedulerSnapshot
     dailyDigest: DailyDigestSchedulerSnapshot
   }
+  liveGameColumns: LiveGameColumnsHealth
   operations: {
     updatedAt: string
     summary: OperationSummaryEntry[]
@@ -473,6 +484,18 @@ function formatDuration(durationMs: number) {
   if (durationMs < 1000) return `${durationMs} ms`
   if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)} s`
   return `${(durationMs / 60_000).toFixed(1)} min`
+}
+
+function formatSchedulerCadence(snapshot: NBASyncSchedulerSnapshot | null | undefined) {
+  if (!snapshot) return '—'
+
+  if (typeof snapshot.intervalSeconds === 'number' && Number.isFinite(snapshot.intervalSeconds)) {
+    if (snapshot.intervalSeconds < 60) return `${snapshot.intervalSeconds}s`
+    const minutes = snapshot.intervalSeconds / 60
+    return Number.isInteger(minutes) ? `${minutes} min` : `${minutes.toFixed(1)} min`
+  }
+
+  return `${snapshot.intervalMinutes} min`
 }
 
 function operationTone(status: 'success' | 'error' | null | undefined) {
@@ -1045,6 +1068,9 @@ export function Admin({ participantId }: Props) {
 
   const stats = overview?.stats
   const inconsistencies = overview?.inconsistencies
+  const liveGameColumns = health?.liveGameColumns ?? null
+  const liveColumnsReady = liveGameColumns?.ready ?? false
+  const missingLiveColumnsLabel = liveGameColumns?.missing.join(', ') ?? ''
   const totalIssues = inconsistencies
     ? inconsistencies.duplicate_names +
       inconsistencies.duplicate_emails +
@@ -2097,8 +2123,20 @@ export function Admin({ participantId }: Props) {
               { label: 'Operação', value: 'Sync real da NBA', tone: 'var(--nba-east)' },
               {
                 label: 'Health backend',
-                value: health?.scheduler.nbaSync.isRunning ? 'Sincronizando' : healthTimestamp ? 'Online' : 'Sem resposta',
-                tone: health?.scheduler.nbaSync.isRunning ? 'var(--nba-gold)' : healthTimestamp ? 'var(--nba-success)' : 'var(--nba-danger)',
+                value: !healthTimestamp
+                  ? 'Sem resposta'
+                  : !liveColumnsReady
+                  ? 'Ajuste pendente'
+                  : health?.scheduler.nbaSync.isRunning
+                  ? 'Sincronizando'
+                  : 'Online',
+                tone: !healthTimestamp
+                  ? 'var(--nba-danger)'
+                  : !liveColumnsReady
+                  ? '#ff8c72'
+                  : health?.scheduler.nbaSync.isRunning
+                  ? 'var(--nba-gold)'
+                  : 'var(--nba-success)',
               },
             ].map((item) => (
               <div
@@ -2123,6 +2161,32 @@ export function Admin({ participantId }: Props) {
           Último health check: {formatTimestamp(healthTimestamp)} · Operações atualizadas em {formatTimestamp(operationsSnapshot?.updatedAt ?? health?.operations.updatedAt ?? null)}
         </div>
       </section>
+
+      {liveGameColumns && !liveGameColumns.ready && (
+        <section
+          style={{
+            ...card,
+            marginBottom: 16,
+            border: '1px solid rgba(255,140,114,0.28)',
+            background: 'linear-gradient(135deg, rgba(255,140,114,0.12), rgba(19,19,26,0.96))',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ff8c72', marginBottom: 10 }}>
+            <AlertTriangle size={16} />
+            <span className="font-condensed" style={{ fontSize: '0.8rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Banco sem colunas live
+            </span>
+          </div>
+          <div style={{ color: 'var(--nba-text)', fontSize: '0.86rem', lineHeight: 1.55 }}>
+            O backend já suporta placar ao vivo, mas o Supabase atual ainda não recebeu a migração necessária.
+            Faltam: <strong>{missingLiveColumnsLabel}</strong>.
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', lineHeight: 1.5, marginTop: 8 }}>
+            Aplique <strong>{liveGameColumns.migrationPath}</strong> no SQL Editor do Supabase para liberar `LIVE`, período e relógio na Home.
+            Última checagem: {formatTimestamp(liveGameColumns.checkedAt)}.
+          </div>
+        </section>
+      )}
 
       <section
         style={{
@@ -2210,9 +2274,14 @@ export function Admin({ participantId }: Props) {
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
               {health
-                ? `Sync real: ${health.scheduler.nbaSync.mode} a cada ${health.scheduler.nbaSync.intervalMinutes} min.`
+                ? `Sync real: ${health.scheduler.nbaSync.mode} a cada ${formatSchedulerCadence(health.scheduler.nbaSync)}.`
                 : 'Sem health check recente; vale conferir antes de uma ação crítica.'}
             </div>
+            {liveGameColumns && !liveGameColumns.ready && (
+              <div style={{ color: '#ff8c72', fontSize: '0.72rem', lineHeight: 1.45, marginTop: 8 }}>
+                Schema live pendente no banco: {missingLiveColumnsLabel}.
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -2788,7 +2857,7 @@ export function Admin({ participantId }: Props) {
                 <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginBottom: 8 }}>Scheduler e observabilidade</div>
                 <div style={{ display: 'grid', gap: 8 }} className="md:grid-cols-2">
                   <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', lineHeight: 1.5 }}>
-                    NBA sync em <strong>{health?.scheduler.nbaSync.mode ?? '—'}</strong> · {health?.scheduler.nbaSync.intervalMinutes ?? '—'} min
+                    NBA sync em <strong>{health?.scheduler.nbaSync.mode ?? '—'}</strong> · {formatSchedulerCadence(health?.scheduler.nbaSync)}
                     <div style={{ color: 'var(--nba-text-muted)' }}>{health?.scheduler.nbaSync.reason ?? 'Sem snapshot do scheduler.'}</div>
                   </div>
                   <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', lineHeight: 1.5 }}>
@@ -2797,6 +2866,13 @@ export function Admin({ participantId }: Props) {
                       Último sucesso: {formatTimestamp(health?.scheduler.dailyDigest.lastSuccessAt ?? null)}
                     </div>
                   </div>
+                </div>
+                <div style={{ marginTop: 10, color: liveColumnsReady ? 'var(--nba-success)' : '#ff8c72', fontSize: '0.76rem', lineHeight: 1.5 }}>
+                  {liveGameColumns
+                    ? liveGameColumns.ready
+                      ? 'Schema live conferido: banco pronto para game_state, período e relógio.'
+                      : `Schema live pendente: ${missingLiveColumnsLabel}. Aplicar ${liveGameColumns.migrationPath}.`
+                    : 'Sem diagnóstico recente do schema live.'}
                 </div>
               </div>
             </div>

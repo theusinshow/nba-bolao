@@ -8,6 +8,7 @@ import seriesContextRouter from './routes/seriesContext'
 import { getNBASyncSchedulerSnapshot, startNBASyncScheduler } from './scheduler/nbaSyncScheduler'
 import { getDailyDigestSchedulerSnapshot, startDailyDigestScheduler } from './scheduler/dailyDigestScheduler'
 import { SCORING } from './scoring/rules'
+import { getLiveGameColumnsSnapshot } from './lib/liveGameColumns'
 
 // Validação de variáveis de ambiente obrigatórias — encerra o processo com mensagem clara
 const REQUIRED_ENV_VARS = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY'] as const
@@ -38,7 +39,9 @@ app.get('/scoring-rules', (_req, res) => {
   res.json({ ok: true, scoring: SCORING })
 })
 
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
+  const liveGameColumns = await getLiveGameColumnsSnapshot()
+
   res.json({
     ok: true,
     uptime: process.uptime(),
@@ -46,6 +49,7 @@ app.get('/health', (_req, res) => {
       nbaSync: getNBASyncSchedulerSnapshot(),
       dailyDigest: getDailyDigestSchedulerSnapshot(),
     },
+    liveGameColumns,
   })
 })
 

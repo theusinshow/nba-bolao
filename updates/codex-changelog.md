@@ -1,5 +1,37 @@
 # Codex Changelog
 
+## 2026-04-18 02:34:00
+
+### Backend/Admin - health agora denuncia quando o banco ainda não suporta status live
+- adicionei a checagem operacional de colunas live em [backend/src/lib/liveGameColumns.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/lib/liveGameColumns.ts), validando no Supabase se `games` já possui `game_state`, `status_text`, `current_period` e `clock`;
+- expus esse diagnóstico nos endpoints [backend/src/index.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/index.ts) e [backend/src/routes/admin.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/routes/admin.ts), com snapshot cacheado, caminho da migração e mensagem operacional pronta;
+- atualizei [frontend/src/pages/Admin.tsx](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/pages/Admin.tsx) para mostrar alerta visível quando o schema live ainda não foi aplicado, inclusive marcando `Health backend` como `Ajuste pendente` e apontando para `supabase/live-game-status.sql`;
+- durante a verificação real do ambiente, confirmei que o Supabase atual ainda está sem essas colunas, então o próximo passo externo continua sendo aplicar [supabase/live-game-status.sql](C:/Dev/pessoal/projetos/nba-bolao/supabase/live-game-status.sql) no SQL Editor.
+
+### Validação
+- `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
+## 2026-04-18 02:18:00
+
+### Backend - scheduler de sync real agora trabalha em segundos para acelerar pós-jogo
+- reestruturei o scheduler em [backend/src/scheduler/nbaSyncScheduler.ts](C:/Dev/pessoal/projetos/nba-bolao/backend/src/scheduler/nbaSyncScheduler.ts) para sair do pulso fixo de 1 minuto e passar a operar com heartbeat de 15 segundos;
+- a cadência agora segue o plano operacional:
+  - `clutch`: `15s` quando há jogo ao vivo na reta final ou overtime;
+  - `live`: `30s` durante jogo em andamento;
+  - `pregame`: `5 min`;
+  - `daily`: `15 min`;
+  - `idle`: `60 min`;
+- adicionei detecção de reta final usando `game_state`, `current_period` e `clock` quando essas colunas estão disponíveis, com fallback seguro para a leitura básica da agenda quando não estiverem;
+- o snapshot do scheduler agora expõe `intervalSeconds` além de `intervalMinutes`.
+
+### Admin - health do sync mostra segundos quando a cadência cai abaixo de 1 minuto
+- atualizei [frontend/src/pages/Admin.tsx](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/pages/Admin.tsx) para exibir a cadência real do scheduler como `15s`, `30s` ou `5 min`, em vez de arredondar tudo para minutos.
+
+### Validação
+- `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 02:04:00
 
 ### Home - bloco do visitante ancorado pela largura do conteúdo
