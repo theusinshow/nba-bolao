@@ -393,6 +393,7 @@ interface PickCoverageEntry {
   tipOffAt: string | null
   tipOffLabel: string
   locked: boolean
+  status: 'open' | 'locked' | 'closed'
   pickedCount: number
   missingCount: number
   pickedParticipants: string[]
@@ -593,13 +594,19 @@ function modeLabel(mode: string) {
 }
 
 function coverageStatusLabel(entry: PickCoverageEntry) {
-  if (entry.locked) return 'Travou'
+  if (entry.status === 'closed') return 'Encerrado'
+  if (entry.status === 'locked') return 'Travou'
   if (entry.missingCount === 0) return 'Completo'
   return `Faltam ${entry.missingCount}`
 }
 
 function coverageStatusTone(entry: PickCoverageEntry) {
-  if (entry.locked) return 'var(--nba-danger)'
+  if (entry.status === 'closed') {
+    return entry.missingCount > 0 ? 'var(--nba-danger)' : 'var(--nba-success)'
+  }
+  if (entry.status === 'locked') {
+    return entry.missingCount > 0 ? 'var(--nba-danger)' : 'var(--nba-text-muted)'
+  }
   if (entry.missingCount === 0) return 'var(--nba-success)'
   return 'var(--nba-gold)'
 }

@@ -254,6 +254,18 @@ function isLockedByTipOff(tipOffAt: string | null): boolean {
   return !!tipOffAt && new Date(tipOffAt).getTime() <= Date.now()
 }
 
+function getCoverageState(isClosed: boolean, tipOffAt: string | null) {
+  if (isClosed) return 'closed' as const
+  if (isLockedByTipOff(tipOffAt)) return 'locked' as const
+  return 'open' as const
+}
+
+function getCoverageStateWeight(state: 'open' | 'locked' | 'closed') {
+  if (state === 'open') return 0
+  if (state === 'locked') return 1
+  return 2
+}
+
 function getSeriesLockTipOff(seriesId: string, games: AdminCoverageGameRow[]): string | null {
   const datedGames = games
     .filter((game) => game.series_id === seriesId && !!game.tip_off_at)
@@ -329,7 +341,7 @@ async function buildAdminPickCoverage() {
   const abbr = (teamId: string | null | undefined) => (teamId ? teamsById.get(teamId) ?? teamId : '?')
 
   const todayGames = gameRows
-    .filter((game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey && !game.played)
+    .filter((game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey)
     .map((game) => {
       const pickedParticipants = participantRows
         .filter((participant) => gamePickSet.has(`${participant.id}:${game.id}`))
@@ -337,13 +349,15 @@ async function buildAdminPickCoverage() {
       const missingParticipants = participantRows
         .filter((participant) => !gamePickSet.has(`${participant.id}:${game.id}`))
         .map((participant) => participant.name)
+      const status = getCoverageState(game.played, game.tip_off_at)
 
       return {
         gameId: game.id,
         matchup: `${abbr(game.home_team_id)} x ${abbr(game.away_team_id)}`,
         tipOffAt: game.tip_off_at,
         tipOffLabel: formatTipOffForCoverage(game.tip_off_at),
-        locked: isLockedByTipOff(game.tip_off_at),
+        locked: status !== 'open',
+        status,
         gameNumber: game.game_number,
         pickedCount: pickedParticipants.length,
         missingCount: missingParticipants.length,
@@ -351,6 +365,10 @@ async function buildAdminPickCoverage() {
         missingParticipants,
       }
     })
+    .sort((left, right) => (
+      getCoverageStateWeight(left.status) - getCoverageStateWeight(right.status) ||
+      new Date(left.tipOffAt!).getTime() - new Date(right.tipOffAt!).getTime()
+    ))
 
   const roundOneSeries = seriesRows
     .map((seriesItem) => {
@@ -361,31 +379,38 @@ async function buildAdminPickCoverage() {
       const missingParticipants = participantRows
         .filter((participant) => !seriesPickSet.has(`${participant.id}:${seriesItem.id}`))
         .map((participant) => participant.name)
+      const status = getCoverageState(seriesItem.is_complete, tipOffAt)
 
       return {
         seriesId: seriesItem.id,
         matchup: `${abbr(seriesItem.home_team_id)} x ${abbr(seriesItem.away_team_id)}`,
         tipOffAt,
         tipOffLabel: formatTipOffForCoverage(tipOffAt),
-        locked: isLockedByTipOff(tipOffAt),
+        locked: status !== 'open',
+        status,
         pickedCount: pickedParticipants.length,
         missingCount: missingParticipants.length,
         pickedParticipants,
         missingParticipants,
       }
     })
-    .filter((seriesItem) => !!seriesItem.tipOffAt && !seriesItem.locked)
-    .sort((left, right) => new Date(left.tipOffAt!).getTime() - new Date(right.tipOffAt!).getTime())
+    .filter((seriesItem) => !!seriesItem.tipOffAt)
+    .sort((left, right) => (
+      getCoverageStateWeight(left.status) - getCoverageStateWeight(right.status) ||
+      new Date(left.tipOffAt!).getTime() - new Date(right.tipOffAt!).getTime()
+    ))
 
-  const pendingParticipantsToday = new Set(todayGames.flatMap((game) => game.missingParticipants))
-  const pendingParticipantsRoundOne = new Set(roundOneSeries.flatMap((seriesItem) => seriesItem.missingParticipants))
+  const openTodayGames = todayGames.filter((game) => game.status === 'open')
+  const openRoundOneSeries = roundOneSeries.filter((seriesItem) => seriesItem.status === 'open')
+  const pendingParticipantsToday = new Set(openTodayGames.flatMap((game) => game.missingParticipants))
+  const pendingParticipantsRoundOne = new Set(openRoundOneSeries.flatMap((seriesItem) => seriesItem.missingParticipants))
 
   return {
     summary: {
       todayGames: todayGames.length,
-      todayGamesPending: todayGames.filter((game) => game.missingCount > 0).length,
-      roundOneSeriesOpen: roundOneSeries.length,
-      roundOneSeriesPending: roundOneSeries.filter((seriesItem) => seriesItem.missingCount > 0).length,
+      todayGamesPending: openTodayGames.filter((game) => game.missingCount > 0).length,
+      roundOneSeriesOpen: openRoundOneSeries.length,
+      roundOneSeriesPending: openRoundOneSeries.filter((seriesItem) => seriesItem.missingCount > 0).length,
       totalParticipants: participantTotal,
       participantsPendingToday: pendingParticipantsToday.size,
       participantsPendingRoundOne: pendingParticipantsRoundOne.size,
