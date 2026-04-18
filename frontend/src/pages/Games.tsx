@@ -37,6 +37,7 @@ interface SeriesGroup {
   openGames: number
   playedGames: number
   pickedGames: number
+  nextGamePicked: boolean
   points: number
   nextTipOff: string | null
   seriesGamesPlayed: number | null
@@ -209,7 +210,7 @@ function matchesSeriesFilter(group: SeriesGroup, filter: GamesFilter) {
     case 'pending':
       return group.openGames > 0 && group.pickedGames < group.effectiveGamesCount
     case 'urgent':
-      return group.openGames > 0 && isUrgentSeries(group) && group.pickedGames < group.effectiveGamesCount
+      return group.openGames > 0 && isUrgentSeries(group) && !group.nextGamePicked
     case 'saved':
       return group.openGames > 0 && group.pickedGames > 0
     case 'completed':
@@ -257,9 +258,11 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
         )
       }, 0)
 
-      const nextTipOff = seriesIsComplete ? null : effectiveGames
+      const nextOpenGame = seriesIsComplete ? null : effectiveGames
         .filter((game) => !game.played && game.tip_off_at)
-        .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0]?.tip_off_at ?? null
+        .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())[0] ?? null
+      const nextTipOff = nextOpenGame?.tip_off_at ?? null
+      const nextGamePicked = nextOpenGame ? !!picksByGameId[nextOpenGame.id] : true
 
       return {
         key: seriesId,
@@ -271,6 +274,7 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
         openGames,
         playedGames,
         pickedGames,
+        nextGamePicked,
         points,
         nextTipOff,
         seriesGamesPlayed,
