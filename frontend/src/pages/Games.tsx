@@ -209,7 +209,7 @@ function matchesSeriesFilter(group: SeriesGroup, filter: GamesFilter) {
     case 'pending':
       return group.openGames > 0 && group.pickedGames < group.effectiveGamesCount
     case 'urgent':
-      return group.openGames > 0 && isUrgentSeries(group)
+      return group.openGames > 0 && isUrgentSeries(group) && group.pickedGames < group.effectiveGamesCount
     case 'saved':
       return group.openGames > 0 && group.pickedGames > 0
     case 'completed':
@@ -1984,13 +1984,13 @@ function GamesHero({
   recentlySavedGameId: string | null
 }) {
   const openGames = games.filter((game) => !game.played)
+  const pickedIds = new Set(picks.map((pick) => pick.game_id))
   const lockedSoon = openGames.filter((game) => {
+    if (pickedIds.has(game.id)) return false
     if (!game.tip_off_at) return false
     const diff = new Date(game.tip_off_at).getTime() - Date.now()
     return diff > 0 && diff <= 10_800_000
   }).length
-
-  const pickedIds = new Set(picks.map((pick) => pick.game_id))
   const pendingPicks = openGames.filter((game) => !pickedIds.has(game.id)).length
   const nextGame = openGames
     .filter((game) => game.tip_off_at)
