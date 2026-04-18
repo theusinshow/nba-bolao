@@ -1465,6 +1465,7 @@ function TeamMark({
         opacity: dimmed ? 0.4 : 1,
         flexDirection: isRight ? 'row-reverse' : 'row',
         flex: '1 1 0',
+        justifySelf: isRight ? 'end' : 'start',
       }}
     >
       <img

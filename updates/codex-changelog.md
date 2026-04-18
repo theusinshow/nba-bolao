@@ -1,5 +1,13 @@
 # Codex Changelog
 
+## 2026-04-18 02:00:00
+
+### Home - alinhamento do time visitante ajustado na direita do card
+- refinei `TeamMark` em `frontend/src/pages/Home.tsx` para que o bloco do time visitante se ancore de fato na borda direita do card em `Jogos de hoje`, alinhando logo e sigla com mais precisão visual.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 01:54:00
 
 ### Home - linhas de `Jogos de hoje` sem vazios laterais excessivos
