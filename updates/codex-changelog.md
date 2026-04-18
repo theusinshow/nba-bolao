@@ -1,5 +1,19 @@
 # Codex Changelog
 
+## 2026-04-18 — Home: ampliar detecção de fim de quarto na rail ao vivo
+
+### Problema
+O commit anterior detectava fim de quarto apenas com `/end of/i` no `status_text`. Screenshot mostrou "Q2 em andamento" quando o 2º quarto já havia encerrado — a BDL API retornou clock `0:00` sem o texto "End of Qtr".
+
+### Correção
+`frontend/src/utils/gameStatus.ts` — condição `Fim do Q{N}` agora ativa quando:
+- `cleanClock === '0:00'` (relógio zerado), **ou**
+- `status_text` contém `end of`, `between qtr` ou `intermission` (regex ampliado)
+
+### Validação
+- `npm --prefix frontend run build` ✓
+- `git push` ✓ (commit `2e7cd99`)
+
 ## 2026-04-18 — Games: fix definitivo Séries urgentes usando nextGamePicked
 
 ### Problema
