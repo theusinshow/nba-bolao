@@ -60,7 +60,7 @@ export function getGameStatusMeta(game: Pick<Game, 'played' | 'game_state' | 'ti
       showScore: game.home_score != null && game.away_score != null,
       badgeLabel: 'Ao vivo',
       centerLabel: 'LIVE',
-      detail: [periodLabel, cleanClock].filter(Boolean).join(' • ') || game.status_text || null,
+      detail: [periodLabel, cleanClock].filter(Boolean).join(' • ') || 'Início',
     }
   }
 
