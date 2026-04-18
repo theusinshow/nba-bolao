@@ -53,7 +53,14 @@ export function useAllGamePickDots(): {
           supabase.from('game_picks').select('participant_id, game_id, winner_id'),
         ])
 
-        if (!participants || !games) return
+        if (!participants || !games) {
+          console.warn('[dots] early return — participants:', participants?.length, 'games:', games?.length)
+          return
+        }
+
+        const playedGames = (games as GameRow[]).filter(g => g.played)
+        console.log('[dots] loaded — games:', games.length, 'played:', playedGames.length, 'picks:', picks?.length ?? 0, 'participants:', participants.length)
+        if (playedGames.length > 0) console.log('[dots] first played game:', playedGames[0])
 
         const gamesById = new Map((games as GameRow[]).map((g) => [g.id, g]))
 
@@ -94,6 +101,9 @@ export function useAllGamePickDots(): {
 
           map.set(participantId, dots)
         }
+
+        const firstParticipantDots = map.values().next().value ?? []
+        console.log('[dots] first participant dots (0-4):', firstParticipantDots.slice(0, 5).map((d: DotData) => ({ gameId: d.gameId, status: d.status, gameNumber: d.gameNumber })))
 
         setDotsById(map)
       } finally {
