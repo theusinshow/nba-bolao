@@ -1,5 +1,15 @@
 # Codex Changelog
 
+## 2026-04-18 01:18:00
+
+### Home - rail agora colapsa duplicatas do mesmo jogo por slot real
+- ajustei `frontend/src/pages/Home.tsx` para deduplicar a faixa `Jogos` não só por `nba_game_id`, mas também por `série + confronto + horário`, espelhando melhor a lógica do topo do site da NBA;
+- com isso, quando a Home recebe o mesmo jogo pela base local e pela trilha complementar `external-*`, os cards são fundidos em uma única entrada em vez de aparecerem como `Game 1` e `Game 2` no mesmo dia e horário;
+- a seleção do card vencedor agora prioriza estado mais relevante (`live`/`halftime`, depois `final`, depois `scheduled`) e preserva o menor `game_number` quando houver conflito do mesmo slot.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 01:02:00
 
 ### Home - faixa de jogos agora abre focada no dia de hoje

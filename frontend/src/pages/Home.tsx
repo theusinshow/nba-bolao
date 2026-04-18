@@ -270,26 +270,75 @@ function buildHomeGamesRailEntries(
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames'],
   extraGames: PostseasonRailExtraGame[]
 ): HomeGamesRailEntry[] {
-  function getIdentityKey(game: HomeRailGame) {
+  function getNbaIdentityKey(game: HomeRailGame) {
     if (typeof game.nba_game_id === 'number' && Number.isFinite(game.nba_game_id)) return `nba:${game.nba_game_id}`
-    return `local:${game.id}`
+    return null
+  }
+
+  function getSlotIdentityKey(game: HomeRailGame) {
+    if (!game.tip_off_at) return null
+    const tipOffTime = new Date(game.tip_off_at).getTime()
+    if (!Number.isFinite(tipOffTime)) return null
+
+    const homeKey = game.home_team_id ?? ('home_team_abbr' in game ? game.home_team_abbr : null)
+    const awayKey = game.away_team_id ?? ('away_team_abbr' in game ? game.away_team_abbr : null)
+    if (!homeKey || !awayKey) return null
+
+    return `slot:${game.series_id ?? 'no-series'}:${homeKey}:${awayKey}:${tipOffTime}`
   }
 
   function getSourcePriority(game: HomeRailGame) {
     return 'source' in game && game.source === 'external' ? 0 : 1
   }
 
-  const deduped = new Map<string, HomeRailGame>()
-
-  for (const game of [...completedGames, ...liveGames, ...upcomingGames, ...extraGames]) {
-    const key = getIdentityKey(game)
-    const existing = deduped.get(key)
-    if (!existing || getSourcePriority(game) >= getSourcePriority(existing)) {
-      deduped.set(key, game)
-    }
+  function getStatePriority(game: HomeRailGame) {
+    const state = getGameStatusMeta(game).state
+    if (state === 'live' || state === 'halftime') return 3
+    if (state === 'final') return 2
+    return 1
   }
 
-  const sortedGames = [...deduped.values()]
+  function pickPreferredGame(existing: HomeRailGame, candidate: HomeRailGame) {
+    const stateDelta = getStatePriority(candidate) - getStatePriority(existing)
+    if (stateDelta !== 0) return stateDelta > 0 ? candidate : existing
+
+    const sourceDelta = getSourcePriority(candidate) - getSourcePriority(existing)
+    if (sourceDelta !== 0) return sourceDelta > 0 ? candidate : existing
+
+    const existingHasNbaId = typeof existing.nba_game_id === 'number' && Number.isFinite(existing.nba_game_id)
+    const candidateHasNbaId = typeof candidate.nba_game_id === 'number' && Number.isFinite(candidate.nba_game_id)
+    if (existingHasNbaId !== candidateHasNbaId) return candidateHasNbaId ? candidate : existing
+
+    const existingGameNumber = existing.game_number ?? Number.MAX_SAFE_INTEGER
+    const candidateGameNumber = candidate.game_number ?? Number.MAX_SAFE_INTEGER
+    if (existingGameNumber !== candidateGameNumber) return candidateGameNumber < existingGameNumber ? candidate : existing
+
+    return getSourcePriority(candidate) >= getSourcePriority(existing) ? candidate : existing
+  }
+
+  const deduped: HomeRailGame[] = []
+
+  for (const game of [...completedGames, ...liveGames, ...upcomingGames, ...extraGames]) {
+    const nbaIdentityKey = getNbaIdentityKey(game)
+    const slotIdentityKey = getSlotIdentityKey(game)
+    const existingIndex = deduped.findIndex((entry) => {
+      const existingNbaIdentityKey = getNbaIdentityKey(entry)
+      const existingSlotIdentityKey = getSlotIdentityKey(entry)
+      return (
+        (nbaIdentityKey != null && existingNbaIdentityKey === nbaIdentityKey) ||
+        (slotIdentityKey != null && existingSlotIdentityKey === slotIdentityKey)
+      )
+    })
+
+    if (existingIndex === -1) {
+      deduped.push(game)
+      continue
+    }
+
+    deduped[existingIndex] = pickPreferredGame(deduped[existingIndex], game)
+  }
+
+  const sortedGames = [...deduped]
     .filter((game) => !!game.tip_off_at)
     .sort((left, right) => {
       const leftTime = new Date(left.tip_off_at ?? 0).getTime()
