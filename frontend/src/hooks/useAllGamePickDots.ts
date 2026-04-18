@@ -102,6 +102,14 @@ export function useAllGamePickDots(): {
     }
 
     load()
+
+    const channel = supabase
+      .channel('game-pick-dots-refresh')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, () => load())
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   return { dotsById, loading }

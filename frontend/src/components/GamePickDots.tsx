@@ -36,8 +36,8 @@ const DOT_LABEL: Record<DotStatus, string> = {
 const COMPACT_COUNT = 5
 
 function CompactDots({ dots }: { dots: DotData[] }) {
-  // Last 5 games (any status), padded to COMPACT_COUNT slots
-  const recent = dots.slice(-COMPACT_COUNT)
+  // First 5 games in chronological order (earliest tip-off first)
+  const recent = dots.slice(0, COMPACT_COUNT)
   const padded: (DotData | null)[] = [
     ...Array(Math.max(0, COMPACT_COUNT - recent.length)).fill(null),
     ...recent,
