@@ -2844,7 +2844,18 @@ export function Games({ participantId }: Props) {
     }
 
     try {
-      const existing = picks.find((p) => p.game_id === gameId)
+      const { data: existing, error: existingError } = await supabase
+        .from('game_picks')
+        .select('*')
+        .eq('participant_id', participantId)
+        .eq('game_id', gameId)
+        .limit(1)
+        .maybeSingle()
+
+      if (existingError) {
+        addToast(`Erro ao localizar palpite atual: ${existingError.message}`, 'error')
+        return false
+      }
 
       if (existing) {
         const { data, error } = await supabase
@@ -2857,7 +2868,11 @@ export function Games({ participantId }: Props) {
           addToast(`Erro ao salvar: ${error.message}`, 'error')
           return false
         }
-        if (data) setPicks((prev) => prev.map((p) => p.id === existing.id ? data as GamePick : p))
+        if (data) {
+          setPicks((prev) => prev.map((pick) => (
+            pick.game_id === gameId || pick.id === existing.id ? data as GamePick : pick
+          )))
+        }
       } else {
         const { data, error } = await supabase
           .from('game_picks')
@@ -2868,7 +2883,15 @@ export function Games({ participantId }: Props) {
           addToast(`Erro ao salvar: ${error.message}`, 'error')
           return false
         }
-        if (data) setPicks((prev) => [...prev, data as GamePick])
+        if (data) {
+          setPicks((prev) => {
+            const alreadyExists = prev.some((pick) => pick.game_id === gameId)
+            if (alreadyExists) {
+              return prev.map((pick) => (pick.game_id === gameId ? data as GamePick : pick))
+            }
+            return [...prev, data as GamePick]
+          })
+        }
       }
 
       setAutoPickGameIds((current) => {

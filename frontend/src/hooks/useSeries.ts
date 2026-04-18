@@ -84,25 +84,43 @@ export function useSeries(participantId?: string) {
       throw new Error('Os palpites desta série já foram travados')
     }
 
-    const existing = picks.find((p) => p.series_id === seriesId)
+    const { data: existing, error: existingError } = await supabase
+      .from('series_picks')
+      .select('*')
+      .eq('participant_id', participantId)
+      .eq('series_id', seriesId)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingError) {
+      throw new Error(existingError.message)
+    }
 
     if (existing) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('series_picks')
         .update({ winner_id: winnerId, games_count: gamesCount })
         .eq('id', existing.id)
         .select()
         .single()
-      if (!data) throw new Error('Não foi possível atualizar o palpite da série')
-      setPicks((prev) => prev.map((p) => (p.id === existing.id ? (data as SeriesPick) : p)))
+      if (error || !data) throw new Error(error?.message ?? 'Não foi possível atualizar o palpite da série')
+      setPicks((prev) => prev.map((pick) => (
+        pick.series_id === seriesId || pick.id === existing.id ? data as SeriesPick : pick
+      )))
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('series_picks')
         .insert({ participant_id: participantId, series_id: seriesId, winner_id: winnerId, games_count: gamesCount })
         .select()
         .single()
-      if (!data) throw new Error('Não foi possível salvar o palpite da série')
-      setPicks((prev) => [...prev, data as SeriesPick])
+      if (error || !data) throw new Error(error?.message ?? 'Não foi possível salvar o palpite da série')
+      setPicks((prev) => {
+        const alreadyExists = prev.some((pick) => pick.series_id === seriesId)
+        if (alreadyExists) {
+          return prev.map((pick) => (pick.series_id === seriesId ? data as SeriesPick : pick))
+        }
+        return [...prev, data as SeriesPick]
+      })
     }
   }
 

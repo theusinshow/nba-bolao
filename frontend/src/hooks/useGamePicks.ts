@@ -61,36 +61,71 @@ export function useGamePicks(participantId?: string, seriesId?: string) {
   }
 
   async function saveGamePick(gameId: string, winnerId: string) {
-    if (!participantId) return
+    if (!participantId) return { error: 'Participante não identificado' }
 
     const game = games.find((g) => g.id === gameId)
-    if (!game) return { error: 'Game not found' }
+    if (!game) return { error: 'Jogo não encontrado' }
 
     // Check if game is already finished
-    if (game.played) return { error: 'Game already finished' }
+    if (game.played) return { error: 'Jogo já finalizado' }
 
     // Check if game has started (tip_off_at is a proper datetime when parsed from API status)
     if (seriesLockTipOff && new Date(seriesLockTipOff) <= new Date()) {
-      return { error: 'Series already started' }
+      return { error: 'A série já começou' }
     }
 
-    const existing = picks.find((p) => p.game_id === gameId)
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('game_picks')
+        .select('*')
+        .eq('participant_id', participantId)
+        .eq('game_id', gameId)
+        .limit(1)
+        .maybeSingle()
 
-    if (existing) {
-      const { data } = await supabase
-        .from('game_picks')
-        .update({ winner_id: winnerId })
-        .eq('id', existing.id)
-        .select()
-        .single()
-      if (data) setPicks((prev) => prev.map((p) => (p.id === existing.id ? (data as GamePick) : p)))
-    } else {
-      const { data } = await supabase
-        .from('game_picks')
-        .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
-        .select()
-        .single()
-      if (data) setPicks((prev) => [...prev, data as GamePick])
+      if (existingError) {
+        return { error: existingError.message }
+      }
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('game_picks')
+          .update({ winner_id: winnerId })
+          .eq('id', existing.id)
+          .select()
+          .single()
+
+        if (error || !data) {
+          return { error: error?.message ?? 'Não foi possível atualizar o palpite do jogo' }
+        }
+
+        setPicks((prev) => prev.map((pick) => (
+          pick.game_id === gameId || pick.id === existing.id ? data as GamePick : pick
+        )))
+      } else {
+        const { data, error } = await supabase
+          .from('game_picks')
+          .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
+          .select()
+          .single()
+
+        if (error || !data) {
+          return { error: error?.message ?? 'Não foi possível salvar o palpite do jogo' }
+        }
+
+        setPicks((prev) => {
+          const alreadyExists = prev.some((pick) => pick.game_id === gameId)
+          if (alreadyExists) {
+            return prev.map((pick) => (pick.game_id === gameId ? data as GamePick : pick))
+          }
+          return [...prev, data as GamePick]
+        })
+      }
+    } catch (error) {
+      console.error('[useGamePicks.saveGamePick] unexpected error:', error)
+      return {
+        error: error instanceof Error ? error.message : 'Erro inesperado ao salvar o palpite do jogo',
+      }
     }
 
     return { error: null }
