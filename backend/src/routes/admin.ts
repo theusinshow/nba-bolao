@@ -861,6 +861,30 @@ router.post('/rescore', async (req, res) => {
   }
 })
 
+// GET /admin/live-games — debug: raw live fields from DB for today's games
+router.get('/live-games', async (_req, res) => {
+  try {
+    const today = new Date()
+    const start = new Date(today)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(today)
+    end.setHours(23, 59, 59, 999)
+
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, home_team_id, away_team_id, tip_off_at, played, game_state, status_text, current_period, clock, home_score, away_score')
+      .gte('tip_off_at', start.toISOString())
+      .lte('tip_off_at', end.toISOString())
+      .order('tip_off_at')
+
+    if (error) throw error
+    res.json({ ok: true, timestamp: new Date().toISOString(), games: data ?? [] })
+  } catch (err: unknown) {
+    console.error('[admin/live-games] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
 // GET /admin/health
 router.get('/health', async (_req, res) => {
   const operations = await listAdminOperationRuns(12)
