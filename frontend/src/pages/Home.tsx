@@ -671,13 +671,14 @@ function LastNightRecap({
               msOverflowStyle: 'none',
               cursor: isDragging ? 'grabbing' : 'grab',
               userSelect: 'none',
-              scrollSnapType: isCompactRail ? 'x proximity' : undefined,
+              scrollSnapType: 'x proximity',
               WebkitOverflowScrolling: 'touch',
             }}
           >
             <div style={{ display: 'flex', width: 'max-content' }}>
               {sourceItems.map((item, index) => {
                 if (item.kind === 'day') {
+                  const isTodayBlock = item.dateKey === todayDateKey
                   return (
                     <div
                       key={`${item.key}-${index}`}
@@ -685,24 +686,36 @@ function LastNightRecap({
                       data-entry-kind="day"
                       data-entry-key={item.key}
                       style={{
-                        width: isCompactRail ? 58 : 72,
-                        minHeight: isCompactRail ? 106 : 116,
-                        padding: isCompactRail ? '10px 8px' : '12px 10px',
-                        borderTop: '1px solid rgba(200,150,60,0.12)',
-                        borderBottom: '1px solid rgba(200,150,60,0.12)',
-                        borderLeft: '1px solid rgba(200,150,60,0.12)',
-                        background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(12,12,18,0.32))',
+                        width: isCompactRail ? 66 : 82,
+                        minHeight: isCompactRail ? 124 : 142,
+                        padding: isCompactRail ? '10px 8px' : '13px 10px',
+                        marginLeft: index === 0 ? 0 : isCompactRail ? 8 : 14,
+                        marginRight: isCompactRail ? 4 : 8,
+                        borderTop: `1px solid ${isTodayBlock ? 'rgba(200,150,60,0.3)' : 'rgba(200,150,60,0.12)'}`,
+                        borderBottom: `1px solid ${isTodayBlock ? 'rgba(200,150,60,0.3)' : 'rgba(200,150,60,0.12)'}`,
+                        borderLeft: `1px solid ${isTodayBlock ? 'rgba(200,150,60,0.3)' : 'rgba(200,150,60,0.12)'}`,
+                        borderRight: `1px solid ${isTodayBlock ? 'rgba(200,150,60,0.18)' : 'rgba(200,150,60,0.08)'}`,
+                        background: isTodayBlock
+                          ? 'linear-gradient(180deg, rgba(200,150,60,0.18), rgba(74,144,217,0.12) 45%, rgba(12,12,18,0.42))'
+                          : 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(12,12,18,0.32))',
                         display: 'grid',
                         alignContent: 'space-between',
                         justifyItems: 'center',
                         flexShrink: 0,
-                        scrollSnapAlign: isCompactRail ? 'start' : undefined,
+                        scrollSnapAlign: 'start',
+                        borderRadius: isCompactRail ? 10 : 12,
+                        boxShadow: isTodayBlock ? '0 14px 30px rgba(200,150,60,0.14)' : 'none',
+                        position: 'relative',
+                        overflow: 'hidden',
                       }}
                     >
-                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: isCompactRail ? '0.74rem' : '0.82rem', letterSpacing: '0.08em' }}>
+                      <span style={{ color: isTodayBlock ? 'var(--nba-gold)' : 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.5rem' : '0.54rem', fontWeight: 800, letterSpacing: '0.18em' }}>
+                        {isTodayBlock ? 'HOJE' : 'DIA'}
+                      </span>
+                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: isCompactRail ? '0.92rem' : '1rem', letterSpacing: '0.1em', lineHeight: 1 }}>
                         {item.label}
                       </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.62rem' : '0.7rem', fontWeight: 600 }}>
+                      <span style={{ color: isTodayBlock ? 'rgba(255,255,255,0.92)' : 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.68rem' : '0.76rem', fontWeight: 700, letterSpacing: '0.06em' }}>
                         {item.sublabel}
                       </span>
                     </div>
@@ -710,6 +723,7 @@ function LastNightRecap({
                 }
 
                 const game = item.game!
+                const isTodayGame = getBrtDateKey(new Date(game.tip_off_at!)) === todayDateKey
                 const statusMeta = getGameStatusMeta(game)
                 const homeAbbr = getRailGameAbbr(game, 'home')
                 const awayAbbr = getRailGameAbbr(game, 'away')
@@ -725,6 +739,7 @@ function LastNightRecap({
                   : statusMeta.state === 'final'
                   ? 'var(--nba-text-muted)'
                   : 'var(--nba-east)'
+                const isEditorialGame = statusMeta.isLive || statusMeta.state === 'final'
 
                 return (
                   <div
@@ -733,35 +748,61 @@ function LastNightRecap({
                     data-entry-kind="game"
                     data-entry-key={item.key}
                     style={{
-                      width: isCompactRail ? (statusMeta.isLive ? 184 : 170) : statusMeta.isLive ? 214 : 196,
-                      minHeight: isCompactRail ? 112 : 124,
-                      padding: isCompactRail ? '10px 10px 10px' : '11px 12px 12px',
-                      borderTop: '1px solid rgba(200,150,60,0.12)',
-                      borderBottom: '1px solid rgba(200,150,60,0.12)',
+                      width: isCompactRail
+                        ? (isEditorialGame ? 188 : 166)
+                        : isEditorialGame
+                        ? 220
+                        : 188,
+                      minHeight: isCompactRail ? 130 : 146,
+                      padding: isCompactRail ? '10px 10px 11px' : '12px 12px 13px',
+                      borderTop: `1px solid ${statusMeta.isLive ? 'rgba(46,204,113,0.3)' : isTodayGame ? 'rgba(200,150,60,0.22)' : 'rgba(200,150,60,0.12)'}`,
+                      borderBottom: `1px solid ${statusMeta.isLive ? 'rgba(46,204,113,0.22)' : isTodayGame ? 'rgba(200,150,60,0.18)' : 'rgba(200,150,60,0.12)'}`,
                       borderLeft: '1px solid rgba(200,150,60,0.12)',
+                      borderRight: '1px solid rgba(200,150,60,0.08)',
                       background: statusMeta.isLive
-                        ? 'linear-gradient(180deg, rgba(46,204,113,0.16), rgba(12,12,18,0.38))'
+                        ? 'linear-gradient(180deg, rgba(46,204,113,0.18), rgba(18,30,24,0.42) 46%, rgba(12,12,18,0.42))'
+                        : statusMeta.state === 'final'
+                        ? 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(20,20,28,0.38) 52%, rgba(12,12,18,0.36))'
+                        : isTodayGame
+                        ? 'linear-gradient(180deg, rgba(74,144,217,0.12), rgba(200,150,60,0.08) 44%, rgba(12,12,18,0.32))'
                         : 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(12,12,18,0.3))',
                       display: 'grid',
-                      gap: 7,
+                      gap: 8,
                       flexShrink: 0,
-                      boxShadow: statusMeta.isLive ? 'inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 24px rgba(46,204,113,0.08)' : 'none',
-                      scrollSnapAlign: isCompactRail ? 'start' : undefined,
+                      boxShadow: statusMeta.isLive
+                        ? 'inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 28px rgba(46,204,113,0.1)'
+                        : isTodayGame
+                        ? '0 10px 24px rgba(74,144,217,0.08)'
+                        : 'none',
+                      scrollSnapAlign: 'start',
+                      position: 'relative',
+                      overflow: 'hidden',
                     }}
                   >
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: isEditorialGame
+                          ? 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0) 40%)'
+                          : 'linear-gradient(135deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 38%)',
+                        pointerEvents: 'none',
+                      }}
+                    />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: isCompactRail ? '0.76rem' : '0.84rem', letterSpacing: '0.03em' }}>
+                      <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: isCompactRail ? '0.82rem' : '0.9rem', letterSpacing: '0.04em' }}>
                         {formatBrtTime(game.tip_off_at)} BRT
                       </span>
                       <span
                         style={{
-                          fontSize: isCompactRail ? '0.54rem' : '0.58rem',
+                          fontSize: isCompactRail ? '0.54rem' : '0.6rem',
                           fontWeight: 800,
-                          letterSpacing: '0.08em',
+                          letterSpacing: '0.11em',
                           color: badgeColor,
                           background: `${badgeColor}22`,
                           border: `1px solid ${badgeColor}35`,
-                          padding: isCompactRail ? '2px 5px' : '2px 6px',
+                          padding: isCompactRail ? '3px 6px' : '3px 7px',
                           borderRadius: 999,
                           whiteSpace: 'nowrap',
                         }}
@@ -770,73 +811,100 @@ function LastNightRecap({
                       </span>
                     </div>
 
-                    <div style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.59rem' : '0.64rem', lineHeight: 1.25 }}>
-                      {statusMeta.state === 'final'
-                        ? `${gameContextLabel} · encerrado`
-                        : statusMeta.isLive
-                        ? `${gameContextLabel} · ${statusMeta.detail ?? 'em andamento'}`
-                        : gameContextLabel}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.59rem' : '0.64rem', lineHeight: 1.25 }}>
+                        {statusMeta.state === 'final'
+                          ? `${gameContextLabel} · encerrado`
+                          : statusMeta.isLive
+                          ? `${gameContextLabel} · ${statusMeta.detail ?? 'em andamento'}`
+                          : gameContextLabel}
+                      </div>
+                      {isTodayGame && !statusMeta.isLive && statusMeta.state !== 'final' && (
+                        <span style={{ color: 'var(--nba-gold)', fontSize: isCompactRail ? '0.5rem' : '0.54rem', fontWeight: 800, letterSpacing: '0.14em', whiteSpace: 'nowrap' }}>
+                          HOJE
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.58rem' : '0.62rem', fontWeight: 700, letterSpacing: '0.08em' }}>
                         {stageLabel}
                       </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.56rem' : '0.6rem', fontWeight: 700 }}>
+                      <span style={{ color: statusMeta.isLive ? 'rgba(255,255,255,0.9)' : 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.56rem' : '0.6rem', fontWeight: 800, letterSpacing: '0.08em' }}>
                         {game.game_number > 0 ? `GAME ${game.game_number}` : 'PLAY-IN'}
                       </span>
                     </div>
 
-                    <div style={{ height: 1, background: statusMeta.isLive ? 'rgba(46,204,113,0.18)' : 'rgba(255,255,255,0.05)' }} />
+                    <div style={{ height: 1, background: statusMeta.isLive ? 'rgba(46,204,113,0.24)' : isTodayGame ? 'rgba(200,150,60,0.16)' : 'rgba(255,255,255,0.05)' }} />
 
-                    {[
-                      {
-                        abbr: homeAbbr,
-                        logo: getTeamLogoUrl(homeAbbr),
-                        score: game.home_score,
-                        emphasized: homeWon || statusMeta.isLive,
-                      },
-                      {
-                        abbr: awayAbbr,
-                        logo: getTeamLogoUrl(awayAbbr),
-                        score: game.away_score,
-                        emphasized: awayWon || statusMeta.isLive,
-                      },
-                    ].map((team) => (
-                      <div key={`${game.id}-${team.abbr}`} style={{ display: 'grid', gridTemplateColumns: `${isCompactRail ? 18 : 20}px minmax(0,1fr) auto`, alignItems: 'center', gap: isCompactRail ? 6 : 8 }}>
-                        <img
-                          src={team.logo}
-                          alt={team.abbr}
-                          onError={(e) => (e.currentTarget.style.display = 'none')}
-                          style={{ width: isCompactRail ? 18 : 20, height: isCompactRail ? 18 : 20, objectFit: 'contain' }}
-                        />
-                        <span
-                          className="font-condensed font-bold"
-                          style={{
-                            color: team.emphasized ? 'var(--nba-text)' : 'var(--nba-text-muted)',
-                            fontSize: isCompactRail ? '0.88rem' : '0.96rem',
-                            lineHeight: 1,
-                            letterSpacing: '0.02em',
-                          }}
-                        >
-                          {team.abbr}
-                        </span>
-                        <span
-                          className="font-condensed font-bold"
-                          style={{
-                            color: statusMeta.showScore ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                            fontSize: statusMeta.showScore ? (isCompactRail ? '1.06rem' : '1.18rem') : isCompactRail ? '0.92rem' : '1rem',
-                            lineHeight: 1,
-                            minWidth: 24,
-                            textAlign: 'right',
-                          }}
-                        >
-                          {statusMeta.showScore ? (team.score ?? 0) : '—'}
-                        </span>
-                      </div>
-                    ))}
+                    <div style={{ display: 'grid', gap: 7 }}>
+                      {[
+                        {
+                          abbr: homeAbbr,
+                          logo: getTeamLogoUrl(homeAbbr),
+                          score: game.home_score,
+                          emphasized: homeWon || statusMeta.isLive,
+                        },
+                        {
+                          abbr: awayAbbr,
+                          logo: getTeamLogoUrl(awayAbbr),
+                          score: game.away_score,
+                          emphasized: awayWon || statusMeta.isLive,
+                        },
+                      ].map((team) => (
+                        <div key={`${game.id}-${team.abbr}`} style={{ display: 'grid', gridTemplateColumns: `${isCompactRail ? 19 : 21}px minmax(0,1fr) auto`, alignItems: 'center', gap: isCompactRail ? 7 : 8 }}>
+                          <img
+                            src={team.logo}
+                            alt={team.abbr}
+                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                            style={{ width: isCompactRail ? 19 : 21, height: isCompactRail ? 19 : 21, objectFit: 'contain', filter: team.emphasized ? 'none' : 'saturate(0.8)' }}
+                          />
+                          <span
+                            className="font-condensed font-bold"
+                            style={{
+                              color: team.emphasized ? 'var(--nba-text)' : 'var(--nba-text-muted)',
+                              fontSize: isCompactRail ? '0.92rem' : '1rem',
+                              lineHeight: 1,
+                              letterSpacing: '0.03em',
+                            }}
+                          >
+                            {team.abbr}
+                          </span>
+                          <span
+                            className="font-condensed font-bold"
+                            style={{
+                              color: statusMeta.showScore ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                              fontSize: statusMeta.showScore ? (isCompactRail ? '1.18rem' : '1.34rem') : isCompactRail ? '0.92rem' : '1rem',
+                              lineHeight: 1,
+                              minWidth: 28,
+                              textAlign: 'right',
+                              textShadow: statusMeta.showScore ? '0 0 18px rgba(200,150,60,0.12)' : 'none',
+                            }}
+                          >
+                            {statusMeta.showScore ? (team.score ?? 0) : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.58rem' : '0.62rem', lineHeight: 1.35 }}>
+                        {statusMeta.state === 'final'
+                          ? 'resultado confirmado'
+                          : statusMeta.isLive
+                          ? (statusMeta.detail ?? 'em andamento')
+                          : isTodayGame
+                          ? 'janela principal de hoje'
+                          : 'agenda confirmada'}
+                      </span>
+                      {isEditorialGame && (
+                        <span style={{ color: badgeColor, fontSize: isCompactRail ? '0.5rem' : '0.54rem', fontWeight: 800, letterSpacing: '0.14em', whiteSpace: 'nowrap' }}>
+                          MOMENTO
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.58rem' : '0.62rem' }}>
                         {statusMeta.state === 'final'
                           ? (seriesStatus?.postLabel ?? 'placar fechado')

@@ -1,5 +1,20 @@
 # Codex Changelog
 
+## 2026-04-18 01:32:00
+
+### Home - estilização premium da rail de jogos sem mudar a lógica aprovada
+- refinei a apresentação da faixa `Jogos` em `frontend/src/pages/Home.tsx` mantendo a lógica já aprovada de agenda por data, com hoje centralizado e passados/futuros distribuídos na rolagem;
+- fortaleci o bloco de data com largura maior, destaque editorial para `HOJE`, contraste superior e separação mais clara entre grupos diários;
+- reorganizei a hierarquia visual dos cards para deixar horário, badge de status, fase, número do jogo e confronto mais legíveis, com placar mais forte em `live/final`;
+- diferenciei melhor os estados dos cards:
+  - `live` com destaque verde e brilho mais esportivo;
+  - `final` com tratamento editorial próprio;
+  - jogos de hoje com realce sutil mesmo quando ainda estão em agenda;
+- melhorei a navegação horizontal com `snap` consistente, fades laterais mais úteis e cards com pesos diferentes para agenda versus jogos em momento editorial.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 01:18:00
 
 ### Home - rail agora colapsa duplicatas do mesmo jogo por slot real
