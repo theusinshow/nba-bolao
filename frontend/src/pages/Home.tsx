@@ -732,6 +732,7 @@ function LastNightRecap({
                 const seriesStatus = seriesStatusByGameId.get(game.id)
                 const homeWon = game.winner_id === game.home_team_id
                 const awayWon = game.winner_id === game.away_team_id
+                const liveDetailLabel = statusMeta.detail ?? 'em andamento'
                 const badgeColor = statusMeta.state === 'live'
                   ? '#2ecc71'
                   : statusMeta.state === 'halftime'
@@ -805,6 +806,11 @@ function LastNightRecap({
                           padding: isCompactRail ? '3px 6px' : '3px 7px',
                           borderRadius: 999,
                           whiteSpace: 'nowrap',
+                          boxShadow: statusMeta.state === 'live'
+                            ? '0 0 18px rgba(46,204,113,0.18)'
+                            : statusMeta.state === 'halftime'
+                            ? '0 0 14px rgba(200,150,60,0.14)'
+                            : 'none',
                         }}
                       >
                         {statusMeta.state === 'live' ? 'LIVE' : statusMeta.state === 'halftime' ? 'HALF' : statusMeta.state === 'final' ? 'FINAL' : 'AGENDA'}
@@ -816,7 +822,7 @@ function LastNightRecap({
                         {statusMeta.state === 'final'
                           ? `${gameContextLabel} · encerrado`
                           : statusMeta.isLive
-                          ? `${gameContextLabel} · ${statusMeta.detail ?? 'em andamento'}`
+                          ? `${gameContextLabel} · ao vivo`
                           : gameContextLabel}
                       </div>
                       {isTodayGame && !statusMeta.isLive && statusMeta.state !== 'final' && (
@@ -834,6 +840,46 @@ function LastNightRecap({
                         {game.game_number > 0 ? `GAME ${game.game_number}` : 'PLAY-IN'}
                       </span>
                     </div>
+
+                    {statusMeta.isLive && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          padding: isCompactRail ? '5px 7px' : '6px 8px',
+                          borderRadius: 8,
+                          background: statusMeta.state === 'halftime'
+                            ? 'rgba(200,150,60,0.12)'
+                            : 'rgba(46,204,113,0.12)',
+                          border: `1px solid ${statusMeta.state === 'halftime' ? 'rgba(200,150,60,0.24)' : 'rgba(46,204,113,0.24)'}`,
+                        }}
+                      >
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            color: badgeColor,
+                            fontSize: isCompactRail ? '0.62rem' : '0.68rem',
+                            letterSpacing: '0.12em',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {statusMeta.state === 'halftime' ? 'INTERVALO' : 'AO VIVO'}
+                        </span>
+                        <span
+                          className="font-condensed font-bold"
+                          style={{
+                            color: 'var(--nba-text)',
+                            fontSize: isCompactRail ? '0.74rem' : '0.82rem',
+                            letterSpacing: '0.06em',
+                            lineHeight: 1,
+                          }}
+                        >
+                          {liveDetailLabel}
+                        </span>
+                      </div>
+                    )}
 
                     <div style={{ height: 1, background: statusMeta.isLive ? 'rgba(46,204,113,0.24)' : isTodayGame ? 'rgba(200,150,60,0.16)' : 'rgba(255,255,255,0.05)' }} />
 
@@ -874,11 +920,21 @@ function LastNightRecap({
                             className="font-condensed font-bold"
                             style={{
                               color: statusMeta.showScore ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                              fontSize: statusMeta.showScore ? (isCompactRail ? '1.18rem' : '1.34rem') : isCompactRail ? '0.92rem' : '1rem',
+                              fontSize: statusMeta.showScore
+                                ? statusMeta.isLive
+                                  ? (isCompactRail ? '1.34rem' : '1.54rem')
+                                  : (isCompactRail ? '1.18rem' : '1.34rem')
+                                : isCompactRail
+                                ? '0.92rem'
+                                : '1rem',
                               lineHeight: 1,
-                              minWidth: 28,
+                              minWidth: statusMeta.isLive ? 34 : 28,
                               textAlign: 'right',
-                              textShadow: statusMeta.showScore ? '0 0 18px rgba(200,150,60,0.12)' : 'none',
+                              textShadow: statusMeta.showScore
+                                ? statusMeta.isLive
+                                  ? '0 0 20px rgba(46,204,113,0.16)'
+                                  : '0 0 18px rgba(200,150,60,0.12)'
+                                : 'none',
                             }}
                           >
                             {statusMeta.showScore ? (team.score ?? 0) : '—'}
@@ -892,7 +948,7 @@ function LastNightRecap({
                         {statusMeta.state === 'final'
                           ? 'resultado confirmado'
                           : statusMeta.isLive
-                          ? (statusMeta.detail ?? 'em andamento')
+                          ? 'placar parcial da transmissão'
                           : isTodayGame
                           ? 'janela principal de hoje'
                           : 'agenda confirmada'}

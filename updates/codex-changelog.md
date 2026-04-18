@@ -1,5 +1,17 @@
 # Codex Changelog
 
+## 2026-04-18 02:47:00
+
+### Home - cards ao vivo da rail agora destacam melhor transmissão, relógio e placar parcial
+- refinei os cards da timeline de jogos em [frontend/src/pages/Home.tsx](C:/Dev/pessoal/projetos/nba-bolao/frontend/src/pages/Home.tsx) para dar mais peso visual aos confrontos ao vivo sem mudar a estrutura aprovada;
+- o badge `LIVE`/`HALF` ganhou contraste e glow mais forte, deixando o estado de transmissão mais evidente;
+- se o jogo estiver ao vivo, o card agora abre uma faixa própria com `AO VIVO` ou `INTERVALO` e o detalhe principal (`Qx • relógio`);
+- aumentei o tamanho do placar parcial nos jogos ao vivo e dei mais destaque ao score com tratamento visual específico;
+- também simplifiquei o microtexto do contexto live para não repetir demais a mesma informação em várias linhas do card.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 02:34:00
 
 ### Backend/Admin - health agora denuncia quando o banco ainda não suporta status live
