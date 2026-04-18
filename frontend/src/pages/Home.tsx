@@ -867,16 +867,23 @@ function LastNightRecap({
                         >
                           {statusMeta.state === 'halftime' ? 'INTERVALO' : 'AO VIVO'}
                         </span>
-                        <span
-                          className="font-condensed font-bold"
-                          style={{
-                            color: 'var(--nba-text)',
-                            fontSize: isCompactRail ? '0.74rem' : '0.82rem',
-                            letterSpacing: '0.06em',
-                            lineHeight: 1,
-                          }}
-                        >
-                          {liveDetailLabel}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span
+                            className="font-condensed font-bold"
+                            style={{
+                              color: 'var(--nba-text)',
+                              fontSize: isCompactRail ? '0.74rem' : '0.82rem',
+                              letterSpacing: '0.06em',
+                              lineHeight: 1,
+                            }}
+                          >
+                            {liveDetailLabel}
+                          </span>
+                          {liveDetailLabel !== 'Início' && liveDetailLabel !== 'INTERVALO' && (
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.04em' }}>
+                              ~30s
+                            </span>
+                          )}
                         </span>
                       </div>
                     )}
