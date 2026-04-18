@@ -237,6 +237,28 @@ interface DailyDigestPreviewResponse {
   result: DailyDigestPreviewResult
 }
 
+interface PickInsertTarget {
+  id: string
+  matchup: string
+  homeTeamId: string
+  awayTeamId: string
+  tipOffAt?: string | null
+  round?: number
+}
+
+interface PickInsertOptionsResponse {
+  ok: boolean
+  participants: Array<{ id: string; name: string }>
+  games: PickInsertTarget[]
+  series: PickInsertTarget[]
+}
+
+interface PickInsertResponse {
+  ok: boolean
+  inserted: boolean
+  message: string
+}
+
 interface BackupResult {
   backupId: string
   generatedAt: string
@@ -656,6 +678,15 @@ export function Admin({ participantId }: Props) {
   const [latestReset, setLatestReset] = useState<ResetPicksResponse['deleted'] | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
   const [confirmInput, setConfirmInput] = useState('')
+  const [pickInsertOptions, setPickInsertOptions] = useState<PickInsertOptionsResponse | null>(null)
+  const [loadingPickOptions, setLoadingPickOptions] = useState(false)
+  const [pickInsertType, setPickInsertType] = useState<'game' | 'series'>('game')
+  const [pickInsertParticipant, setPickInsertParticipant] = useState('')
+  const [pickInsertTarget, setPickInsertTarget] = useState('')
+  const [pickInsertWinner, setPickInsertWinner] = useState('')
+  const [pickInsertGamesCount, setPickInsertGamesCount] = useState(4)
+  const [pickInsertResult, setPickInsertResult] = useState<{ ok: boolean; inserted: boolean; message: string } | null>(null)
+  const [pickInsertBusy, setPickInsertBusy] = useState(false)
 
   async function loadParticipants() {
     setLoadingParticipants(true)
@@ -740,6 +771,47 @@ export function Admin({ participantId }: Props) {
       addToast((error as Error).message, 'error')
     } finally {
       setLoadingPickIntegrity(false)
+    }
+  }
+
+  async function loadPickOptions() {
+    setLoadingPickOptions(true)
+    try {
+      const payload = await adminGet<PickInsertOptionsResponse>('/admin/picks/options')
+      setPickInsertOptions(payload)
+      setPickInsertTarget('')
+      setPickInsertWinner('')
+      setPickInsertResult(null)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+    } finally {
+      setLoadingPickOptions(false)
+    }
+  }
+
+  async function submitPickInsert() {
+    if (!pickInsertParticipant || !pickInsertTarget || !pickInsertWinner) return
+    setPickInsertBusy(true)
+    setPickInsertResult(null)
+    try {
+      const body: Record<string, unknown> = {
+        participantId: pickInsertParticipant,
+        type: pickInsertType,
+        targetId: pickInsertTarget,
+        winnerId: pickInsertWinner,
+      }
+      if (pickInsertType === 'series') body.gamesCount = pickInsertGamesCount
+      const payload = await adminPost<PickInsertResponse>('/admin/picks/insert', body)
+      setPickInsertResult({ ok: true, inserted: payload.inserted, message: payload.message })
+      if (payload.inserted) {
+        loadPickCoverage()
+        setPickInsertTarget('')
+        setPickInsertWinner('')
+      }
+    } catch (error) {
+      setPickInsertResult({ ok: false, inserted: false, message: (error as Error).message })
+    } finally {
+      setPickInsertBusy(false)
     }
   }
 
@@ -863,6 +935,12 @@ export function Admin({ participantId }: Props) {
         .map(([name]) => name)
     )
   }, [participants])
+
+  const selectedPickTarget = useMemo(() => {
+    if (!pickInsertOptions || !pickInsertTarget) return null
+    const list = pickInsertType === 'game' ? pickInsertOptions.games : pickInsertOptions.series
+    return list.find((item) => item.id === pickInsertTarget) ?? null
+  }, [pickInsertOptions, pickInsertType, pickInsertTarget])
 
   const filteredParticipants = useMemo(() => {
     const normalizedQuery = participantsQuery.trim().toLocaleLowerCase('pt-BR')
@@ -3295,6 +3373,186 @@ export function Admin({ participantId }: Props) {
       </div>
       ) : (
       <div style={{ display: 'grid', gap: 16 }}>
+
+        {/* ── Inserir Palpite Manual ── */}
+        <section style={{ ...card, background: 'linear-gradient(135deg, rgba(200,150,60,0.10), rgba(19,19,26,1) 100%)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <SectionTitle icon={<Plus size={14} />}>Inserir Palpite Manual</SectionTitle>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.5, marginTop: -6 }}>
+                Registra um palpite por qualquer participante. Nunca sobrescreve pick já existente.
+              </div>
+            </div>
+            <button
+              onClick={loadPickOptions}
+              disabled={loadingPickOptions}
+              style={{
+                borderRadius: 10,
+                border: '1px solid rgba(200,150,60,0.28)',
+                background: pickInsertOptions ? 'rgba(200,150,60,0.08)' : 'rgba(255,255,255,0.03)',
+                color: 'var(--nba-gold)',
+                padding: '10px 14px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: loadingPickOptions ? 'default' : 'pointer',
+              }}
+            >
+              {loadingPickOptions ? 'Carregando...' : pickInsertOptions ? 'Recarregar opções' : 'Carregar opções'}
+            </button>
+          </div>
+
+          {pickInsertOptions && (
+            <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
+
+              {/* Participante + Tipo */}
+              <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 md:grid-cols-2">
+                <div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Participante</div>
+                  <select
+                    value={pickInsertParticipant}
+                    onChange={(e) => { setPickInsertParticipant(e.target.value); setPickInsertTarget(''); setPickInsertWinner(''); setPickInsertResult(null) }}
+                    style={{ width: '100%', background: 'rgba(12,12,18,0.6)', border: '1px solid rgba(200,150,60,0.18)', borderRadius: 8, color: 'var(--nba-text)', padding: '10px 12px', fontSize: '0.82rem' }}
+                  >
+                    <option value="">Selecione um participante…</option>
+                    {pickInsertOptions.participants.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tipo</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['game', 'series'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => { setPickInsertType(t); setPickInsertTarget(''); setPickInsertWinner(''); setPickInsertResult(null) }}
+                        style={{
+                          flex: 1,
+                          borderRadius: 8,
+                          border: `1px solid ${pickInsertType === t ? 'rgba(200,150,60,0.5)' : 'rgba(200,150,60,0.14)'}`,
+                          background: pickInsertType === t ? 'rgba(200,150,60,0.12)' : 'rgba(255,255,255,0.03)',
+                          color: pickInsertType === t ? 'var(--nba-gold)' : 'var(--nba-text)',
+                          padding: '10px 12px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {t === 'game' ? 'Jogo' : 'Série'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Jogo/Série + Vencedor */}
+              <div style={{ display: 'grid', gap: 10 }} className="grid-cols-1 md:grid-cols-2">
+                <div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {pickInsertType === 'game' ? 'Jogo' : 'Série'}
+                  </div>
+                  <select
+                    value={pickInsertTarget}
+                    onChange={(e) => { setPickInsertTarget(e.target.value); setPickInsertWinner(''); setPickInsertResult(null) }}
+                    style={{ width: '100%', background: 'rgba(12,12,18,0.6)', border: '1px solid rgba(200,150,60,0.18)', borderRadius: 8, color: 'var(--nba-text)', padding: '10px 12px', fontSize: '0.82rem' }}
+                  >
+                    <option value="">Selecione…</option>
+                    {(pickInsertType === 'game' ? pickInsertOptions.games : pickInsertOptions.series).map((item) => (
+                      <option key={item.id} value={item.id}>{item.matchup}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vencedor</div>
+                  <select
+                    value={pickInsertWinner}
+                    onChange={(e) => { setPickInsertWinner(e.target.value); setPickInsertResult(null) }}
+                    disabled={!selectedPickTarget}
+                    style={{ width: '100%', background: 'rgba(12,12,18,0.6)', border: '1px solid rgba(200,150,60,0.18)', borderRadius: 8, color: selectedPickTarget ? 'var(--nba-text)' : 'var(--nba-text-muted)', padding: '10px 12px', fontSize: '0.82rem', cursor: selectedPickTarget ? 'pointer' : 'default' }}
+                  >
+                    <option value="">Selecione o vencedor…</option>
+                    {selectedPickTarget && (
+                      <>
+                        <option value={selectedPickTarget.homeTeamId}>{selectedPickTarget.homeTeamId}</option>
+                        <option value={selectedPickTarget.awayTeamId}>{selectedPickTarget.awayTeamId}</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Número de jogos (só para série) */}
+              {pickInsertType === 'series' && (
+                <div>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nº de jogos</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[4, 5, 6, 7].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setPickInsertGamesCount(n)}
+                        style={{
+                          borderRadius: 8,
+                          border: `1px solid ${pickInsertGamesCount === n ? 'rgba(200,150,60,0.5)' : 'rgba(200,150,60,0.14)'}`,
+                          background: pickInsertGamesCount === n ? 'rgba(200,150,60,0.12)' : 'rgba(255,255,255,0.03)',
+                          color: pickInsertGamesCount === n ? 'var(--nba-gold)' : 'var(--nba-text)',
+                          padding: '10px 16px',
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Resultado */}
+              {pickInsertResult && (
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: pickInsertResult.ok && pickInsertResult.inserted
+                    ? 'rgba(46,204,113,0.10)'
+                    : pickInsertResult.ok
+                    ? 'rgba(200,150,60,0.10)'
+                    : 'rgba(231,76,60,0.10)',
+                  border: `1px solid ${pickInsertResult.ok && pickInsertResult.inserted ? 'rgba(46,204,113,0.25)' : pickInsertResult.ok ? 'rgba(200,150,60,0.25)' : 'rgba(231,76,60,0.25)'}`,
+                  color: pickInsertResult.ok && pickInsertResult.inserted
+                    ? 'var(--nba-success)'
+                    : pickInsertResult.ok
+                    ? 'var(--nba-gold)'
+                    : 'var(--nba-danger)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                }}>
+                  {pickInsertResult.message}
+                </div>
+              )}
+
+              {/* Botão submeter */}
+              <button
+                onClick={submitPickInsert}
+                disabled={pickInsertBusy || !pickInsertParticipant || !pickInsertTarget || !pickInsertWinner}
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(200,150,60,0.30)',
+                  background: (!pickInsertParticipant || !pickInsertTarget || !pickInsertWinner) ? 'rgba(255,255,255,0.03)' : 'rgba(200,150,60,0.18)',
+                  color: (!pickInsertParticipant || !pickInsertTarget || !pickInsertWinner) ? 'var(--nba-text-muted)' : 'var(--nba-gold)',
+                  padding: '12px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  cursor: (pickInsertBusy || !pickInsertParticipant || !pickInsertTarget || !pickInsertWinner) ? 'default' : 'pointer',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {pickInsertBusy ? 'Inserindo...' : 'Inserir palpite'}
+              </button>
+            </div>
+          )}
+        </section>
+
         <section
           style={{
             ...card,

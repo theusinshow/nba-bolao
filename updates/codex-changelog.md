@@ -1,5 +1,25 @@
 # Codex Changelog
 
+## 2026-04-18 — Admin: ferramenta de inserção manual de palpites
+
+### O que foi feito
+- `backend/src/routes/admin.ts` — dois endpoints novos:
+  - `GET /admin/picks/options`: retorna participantes, jogos abertos e séries abertas para popular o formulário
+  - `POST /admin/picks/insert`: insere palpite de jogo ou série para qualquer participante; nunca sobrescreve pick existente (retorna `inserted: false` com aviso se já havia pick)
+- `frontend/src/pages/Admin.tsx` — seção "Inserir Palpite Manual" na aba Cobertura:
+  - dropdown de participante, toggle Jogo/Série, dropdown do alvo, dropdown do vencedor (auto-populado), seletor 4-7 jogos (apenas para série)
+  - feedback visual: verde (inserido), dourado (já existia), vermelho (erro)
+  - ao inserir com sucesso, recarrega automaticamente o painel de cobertura
+
+### Proteções
+- nunca sobrescreve pick já existente — somente insere se não houver
+- valida `winnerId` contra os times reais do jogo/série no backend
+- valida participante existente antes de inserir
+
+### Validação
+- `npm --prefix backend run build` ✓
+- `npm --prefix frontend run build` ✓
+
 ## 2026-04-18 — Fix deleteGameRows preserva game_picks
 
 ### Problema

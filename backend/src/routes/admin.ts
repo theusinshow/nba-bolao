@@ -1356,6 +1356,169 @@ router.post('/participants/set-admin', async (req, res) => {
 })
 
 // POST /admin/participants/remove — fully remove one participant and related data
+// GET /admin/picks/options — lista participantes, jogos abertos e séries abertas para o formulário de inserção manual
+router.get('/picks/options', async (_req, res) => {
+  try {
+    const [
+      { data: participantRows, error: participantsError },
+      { data: gameRows, error: gamesError },
+      { data: seriesRows, error: seriesError },
+    ] = await Promise.all([
+      supabase.from('participants').select('id, name').order('name', { ascending: true }),
+      supabase
+        .from('games')
+        .select('id, game_number, home_team_id, away_team_id, tip_off_at, played')
+        .eq('played', false)
+        .not('home_team_id', 'is', null)
+        .not('away_team_id', 'is', null)
+        .order('tip_off_at', { ascending: true }),
+      supabase
+        .from('series')
+        .select('id, round, home_team_id, away_team_id, is_complete')
+        .eq('is_complete', false)
+        .not('home_team_id', 'is', null)
+        .not('away_team_id', 'is', null)
+        .order('round', { ascending: true }),
+    ])
+
+    if (participantsError) throw new Error(participantsError.message)
+    if (gamesError) throw new Error(gamesError.message)
+    if (seriesError) throw new Error(seriesError.message)
+
+    const roundLabels: Record<number, string> = { 1: 'R1', 2: 'R2', 3: 'Conf Finals', 4: 'Finals' }
+
+    res.json({
+      ok: true,
+      participants: (participantRows ?? []).map((p) => ({ id: p.id, name: p.name })),
+      games: (gameRows ?? []).map((g) => ({
+        id: g.id,
+        matchup: `${g.home_team_id} x ${g.away_team_id} — Jogo ${g.game_number}`,
+        homeTeamId: g.home_team_id,
+        awayTeamId: g.away_team_id,
+        tipOffAt: g.tip_off_at ?? null,
+      })),
+      series: (seriesRows ?? []).map((s) => ({
+        id: s.id,
+        matchup: `${s.home_team_id} x ${s.away_team_id} (${roundLabels[s.round] ?? `R${s.round}`})`,
+        homeTeamId: s.home_team_id,
+        awayTeamId: s.away_team_id,
+        round: s.round,
+      })),
+    })
+  } catch (err: unknown) {
+    console.error('[admin/picks/options] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/picks/insert — insere palpite manualmente; nunca sobrescreve pick existente
+router.post('/picks/insert', async (req, res) => {
+  try {
+    const participantId = typeof req.body?.participantId === 'string' ? req.body.participantId.trim() : ''
+    const type = req.body?.type === 'game' ? 'game' : req.body?.type === 'series' ? 'series' : ''
+    const targetId = typeof req.body?.targetId === 'string' ? req.body.targetId.trim() : ''
+    const winnerId = typeof req.body?.winnerId === 'string' ? req.body.winnerId.trim() : ''
+    const gamesCount = type === 'series' ? Number(req.body?.gamesCount) : undefined
+
+    if (!participantId || !type || !targetId || !winnerId) {
+      return res.status(400).json({ ok: false, error: 'participantId, type, targetId e winnerId são obrigatórios.' })
+    }
+    if (type === 'series' && (!Number.isInteger(gamesCount) || (gamesCount as number) < 4 || (gamesCount as number) > 7)) {
+      return res.status(400).json({ ok: false, error: 'gamesCount deve estar entre 4 e 7 para palpites de série.' })
+    }
+
+    const { data: participant, error: participantError } = await supabase
+      .from('participants')
+      .select('id, name')
+      .eq('id', participantId)
+      .maybeSingle()
+
+    if (participantError) return res.status(500).json({ ok: false, error: participantError.message })
+    if (!participant) return res.status(404).json({ ok: false, error: 'Participante não encontrado.' })
+
+    if (type === 'game') {
+      const { data: game, error: gameError } = await supabase
+        .from('games')
+        .select('id, home_team_id, away_team_id, played')
+        .eq('id', targetId)
+        .maybeSingle()
+
+      if (gameError) return res.status(500).json({ ok: false, error: gameError.message })
+      if (!game) return res.status(404).json({ ok: false, error: 'Jogo não encontrado.' })
+      if (winnerId !== game.home_team_id && winnerId !== game.away_team_id) {
+        return res.status(400).json({ ok: false, error: 'winnerId inválido para este jogo.' })
+      }
+
+      const { data: existing } = await supabase
+        .from('game_picks')
+        .select('id, winner_id')
+        .eq('participant_id', participantId)
+        .eq('game_id', targetId)
+        .maybeSingle()
+
+      if (existing) {
+        return res.json({
+          ok: true,
+          inserted: false,
+          message: `${(participant as ParticipantNameRow).name} já tem palpite neste jogo (${existing.winner_id}). Nenhuma alteração feita.`,
+        })
+      }
+
+      const { data: pick, error: insertError } = await supabase
+        .from('game_picks')
+        .insert({ participant_id: participantId, game_id: targetId, winner_id: winnerId })
+        .select('*')
+        .single()
+
+      if (insertError) return res.status(500).json({ ok: false, error: insertError.message })
+
+      console.log(`[admin/picks/insert] game pick: ${(participant as ParticipantNameRow).name} → ${targetId} → ${winnerId}`)
+      return res.json({ ok: true, inserted: true, pick, message: `Palpite de jogo inserido para ${(participant as ParticipantNameRow).name}.` })
+    } else {
+      const { data: seriesItem, error: seriesError } = await supabase
+        .from('series')
+        .select('id, home_team_id, away_team_id, is_complete')
+        .eq('id', targetId)
+        .maybeSingle()
+
+      if (seriesError) return res.status(500).json({ ok: false, error: seriesError.message })
+      if (!seriesItem) return res.status(404).json({ ok: false, error: 'Série não encontrada.' })
+      if (winnerId !== seriesItem.home_team_id && winnerId !== seriesItem.away_team_id) {
+        return res.status(400).json({ ok: false, error: 'winnerId inválido para esta série.' })
+      }
+
+      const { data: existing } = await supabase
+        .from('series_picks')
+        .select('id, winner_id, games_count')
+        .eq('participant_id', participantId)
+        .eq('series_id', targetId)
+        .maybeSingle()
+
+      if (existing) {
+        return res.json({
+          ok: true,
+          inserted: false,
+          message: `${(participant as ParticipantNameRow).name} já tem palpite nesta série (${existing.winner_id} em ${existing.games_count}). Nenhuma alteração feita.`,
+        })
+      }
+
+      const { data: pick, error: insertError } = await supabase
+        .from('series_picks')
+        .insert({ participant_id: participantId, series_id: targetId, winner_id: winnerId, games_count: gamesCount })
+        .select('*')
+        .single()
+
+      if (insertError) return res.status(500).json({ ok: false, error: insertError.message })
+
+      console.log(`[admin/picks/insert] series pick: ${(participant as ParticipantNameRow).name} → ${targetId} → ${winnerId} em ${gamesCount}`)
+      return res.json({ ok: true, inserted: true, pick, message: `Palpite de série inserido para ${(participant as ParticipantNameRow).name} (${winnerId} em ${gamesCount} jogos).` })
+    }
+  } catch (err: unknown) {
+    console.error('[admin/picks/insert] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
 router.post('/participants/remove', async (req, res) => {
   try {
     const participantId = typeof req.body?.participantId === 'string' ? req.body.participantId.trim() : ''
