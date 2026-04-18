@@ -1,5 +1,17 @@
 # Codex Changelog
 
+## 2026-04-18 — Fix deleteGameRows preserva game_picks
+
+### Problema
+O job `syncNBA` chamava `deleteGameRows` que apagava `game_picks` antes de deletar `games` considerados "stale". Qualquer jogo que a API da balldontlie deixasse de retornar (por mismatch de season, paginação ou instabilidade) fazia todos os palpites ligados a ele sumirem em até 15 minutos.
+
+### Correção
+- `backend/src/jobs/syncNBA.ts` — `deleteGameRows` agora consulta `game_picks` antes de deletar: jogos que já possuem palpites de usuários **não são deletados**; apenas jogos sem palpite são removidos.
+- Isso elimina a perda silenciosa de picks causada pelo ciclo de sync.
+
+### Validação
+- `npm --prefix backend run build`
+
 ## 2026-04-18 11:31:00
 
 ### Sync NBA - correção do sumiço de palpites jogo a jogo

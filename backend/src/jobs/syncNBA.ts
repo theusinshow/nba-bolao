@@ -315,8 +315,18 @@ async function deleteGameRows(gameIds: string[]) {
   const chunkSize = 100
   for (let start = 0; start < gameIds.length; start += chunkSize) {
     const chunk = gameIds.slice(start, start + chunkSize)
-    await supabase.from('game_picks').delete().in('game_id', chunk)
-    await supabase.from('games').delete().in('id', chunk)
+
+    // Never delete games that already have user picks — preserve those records
+    const { data: pickedRows } = await supabase
+      .from('game_picks')
+      .select('game_id')
+      .in('game_id', chunk)
+
+    const pickedIds = new Set((pickedRows ?? []).map((r) => r.game_id))
+    const deletable = chunk.filter((id) => !pickedIds.has(id))
+
+    if (!deletable.length) continue
+    await supabase.from('games').delete().in('id', deletable)
   }
 }
 
