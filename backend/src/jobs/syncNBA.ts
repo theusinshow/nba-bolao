@@ -41,7 +41,7 @@ interface GameRow {
   id: string
   series_id: string
   game_number: number
-  nba_game_id: number | null
+  nba_game_id: number | string | null
   winner_id: string | null
   played: boolean
 }
@@ -189,6 +189,11 @@ function parseTipOffAt(date: string, status: string, datetime?: string | null): 
 
 function getPairKey(teamA: string, teamB: string): string {
   return [teamA, teamB].sort().join('-')
+}
+
+function getExternalGameKey(value: number | string | null | undefined): string | null {
+  if (value == null) return null
+  return String(value)
 }
 
 function getConferenceFromGame(game: BDLGame): 'East' | 'West' | null {
@@ -474,9 +479,12 @@ export async function syncNBA(): Promise<void> {
     if (seriesError) throw seriesError
     if (localGamesError) throw localGamesError
 
-    const currentGameIds = new Set(bdlGames.map((game) => game.id))
+    const currentGameIds = new Set(bdlGames.map((game) => getExternalGameKey(game.id)).filter(Boolean) as string[])
     const staleGameIds = (localGameRows ?? [])
-      .filter((game) => game.nba_game_id != null && !currentGameIds.has(game.nba_game_id))
+      .filter((game) => {
+        const externalGameKey = getExternalGameKey(game.nba_game_id)
+        return externalGameKey != null && !currentGameIds.has(externalGameKey)
+      })
       .map((game) => game.id)
 
     if (staleGameIds.length) {
@@ -520,7 +528,10 @@ export async function syncNBA(): Promise<void> {
 
       if (existingGamesError) throw existingGamesError
 
-      const existingGame = existingGames?.find((game) => game.nba_game_id === bdlGame.id) ?? null
+      const currentExternalGameKey = getExternalGameKey(bdlGame.id)
+      const existingGame = existingGames?.find((game) => (
+        getExternalGameKey(game.nba_game_id) === currentExternalGameKey
+      )) ?? null
       const maxGameNumber = (existingGames ?? []).reduce((max, game) => Math.max(max, game.game_number), 0)
 
       const payload = {

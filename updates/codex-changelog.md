@@ -1,5 +1,16 @@
 # Codex Changelog
 
+## 2026-04-18 11:31:00
+
+### Sync NBA - correção do sumiço de palpites jogo a jogo
+- corrigi `backend/src/jobs/syncNBA.ts` para normalizar `nba_game_id` como string nas comparações entre o banco e a API da balldontlie;
+- a regressão vinha do fato de `games.nba_game_id` voltar do Supabase como string, enquanto o sync comparava com `bdlGame.id` numérico, classificando jogos válidos como `stale`;
+- isso fazia o scheduler apagar o jogo local, deletar `game_picks` ligados a ele e recriar a mesma partida com um novo `id`, causando exatamente o sintoma de “salvou, recarreguei e sumiu”;
+- também alinhei a busca de `existingGame` por `nba_game_id` para usar a mesma normalização, evitando recriação indevida de jogos já existentes.
+
+### Validação
+- `npm --prefix backend run build`
+
 ## 2026-04-18 11:34:00
 
 ### Palpites jogo a jogo - restauração do save e lock corrigido no modal
