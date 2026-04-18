@@ -1,12 +1,24 @@
 # Codex Changelog
 
+## 2026-04-18 — Games: fix definitivo Séries urgentes usando nextGamePicked
+
+### Problema
+O fix anterior comparava `pickedGames < effectiveGamesCount`, que é sempre verdadeiro em séries em andamento (effectiveGamesCount inclui os 7 jogos potenciais da série, o usuário só palpitou 1). Resultado: "Séries urgentes" continuava mostrando 1 mesmo com todos os picks feitos.
+
+### Correção
+- `frontend/src/pages/Games.tsx` — adicionado `nextGamePicked: boolean` ao `SeriesGroup`, que verifica especificamente se o **próximo jogo aberto** da série tem pick do usuário
+- Filtro `urgent` agora usa `!group.nextGamePicked` — contador zera quando o próximo jogo da série já tem pick
+
+### Validação
+- `npm --prefix frontend run build` ✓
+
 ## 2026-04-18 — Home/Games: correções na rail de jogos ao vivo
 
 ### Mudanças
-- `frontend/src/utils/gameStatus.ts` — detalhe do jogo ao vivo agora tem três estados: `Q1 • 7:45` (período + relógio), `Q1 em andamento` (período sem relógio da API), `Início` (sem dados ainda). Antes mostrava "17:00" (horário UTC do tip-off) quando `status_text` não era útil.
-- `frontend/src/utils/gameStatus.ts` — adicionado indicador `~30s` discreto ao lado do relógio para informar o usuário sobre o delay de sincronização.
+- `frontend/src/utils/gameStatus.ts` — detalhe do jogo ao vivo com três estados: `Q1 • 7:45` (período + relógio), `Q1 em andamento` (período sem relógio da API), `Início` (sem dados ainda). Antes mostrava o horário UTC do tip-off quando `status_text` não era útil.
+- `frontend/src/utils/gameStatus.ts` — indicador `~30s` discreto ao lado do relógio para informar o usuário sobre o delay de sincronização.
 - `frontend/src/pages/Games.tsx` — "Fecham hoje" agora só conta jogos que o usuário ainda não palpitou; antes contava todos os jogos fechando em 3h mesmo com pick salvo.
-- `frontend/src/pages/Games.tsx` — "Séries urgentes" agora só conta séries onde o usuário ainda tem jogos sem palpite; antes contava todas as séries com próximo jogo em 3h.
+- `frontend/src/pages/Games.tsx` — "Séries urgentes" agora só conta séries onde o próximo jogo ainda não tem pick; antes contava todas as séries com próximo jogo em 3h.
 
 ### Validação
 - `npm --prefix frontend run build` ✓
