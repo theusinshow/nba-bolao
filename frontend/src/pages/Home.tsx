@@ -269,16 +269,34 @@ function buildHomeGamesRailEntries(
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames'],
   extraGames: PostseasonRailExtraGame[]
 ): HomeGamesRailEntry[] {
+  function getIdentityKey(game: HomeRailGame) {
+    if (typeof game.nba_game_id === 'number' && Number.isFinite(game.nba_game_id)) return `nba:${game.nba_game_id}`
+    return `local:${game.id}`
+  }
+
+  function getSourcePriority(game: HomeRailGame) {
+    return 'source' in game && game.source === 'external' ? 0 : 1
+  }
+
   const deduped = new Map<string, HomeRailGame>()
 
-  for (const game of [...completedGames].reverse()) deduped.set(game.id, game)
-  for (const game of liveGames) deduped.set(game.id, game)
-  for (const game of upcomingGames) deduped.set(game.id, game)
-  for (const game of extraGames) deduped.set(game.id, game)
+  for (const game of [...completedGames, ...liveGames, ...upcomingGames, ...extraGames]) {
+    const key = getIdentityKey(game)
+    const existing = deduped.get(key)
+    if (!existing || getSourcePriority(game) >= getSourcePriority(existing)) {
+      deduped.set(key, game)
+    }
+  }
 
   const sortedGames = [...deduped.values()]
     .filter((game) => !!game.tip_off_at)
-    .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime())
+    .sort((left, right) => {
+      const leftTime = new Date(left.tip_off_at ?? 0).getTime()
+      const rightTime = new Date(right.tip_off_at ?? 0).getTime()
+      if (leftTime !== rightTime) return leftTime - rightTime
+      if ((left.game_number ?? 0) !== (right.game_number ?? 0)) return (left.game_number ?? 0) - (right.game_number ?? 0)
+      return left.id.localeCompare(right.id)
+    })
 
   const items: HomeGamesRailEntry[] = []
   let lastDateKey: string | null = null
@@ -345,7 +363,6 @@ function LastNightRecap({
     return state === 'live' || state === 'halftime'
   }).length
   const upcomingCount = railGames.filter((game) => getGameStatusMeta(game).state === 'scheduled').length
-  const loopItems = sourceItems.length > 0 ? [...sourceItems, ...sourceItems] : []
   const nextRealGame = useMemo(
     () =>
       [...railGames]
@@ -385,10 +402,9 @@ function LastNightRecap({
       lastTimestamp = timestamp
 
       if (!pausedRef.current && !draggingRef.current) {
-        const loopWidth = node.scrollWidth / 2
-        node.scrollLeft += deltaSeconds * speedPxPerSecond
-        if (node.scrollLeft >= loopWidth) {
-          node.scrollLeft -= loopWidth
+        const maxScrollLeft = Math.max(node.scrollWidth - node.clientWidth, 0)
+        if (maxScrollLeft > 0) {
+          node.scrollLeft = Math.min(node.scrollLeft + deltaSeconds * speedPxPerSecond, maxScrollLeft)
         }
       }
 
@@ -611,7 +627,7 @@ function LastNightRecap({
             }}
           >
             <div style={{ display: 'flex', width: 'max-content' }}>
-              {loopItems.map((item, index) => {
+              {sourceItems.map((item, index) => {
                 if (item.kind === 'day') {
                   return (
                     <div
@@ -662,9 +678,9 @@ function LastNightRecap({
                   <div
                     key={`${item.key}-${index}`}
                     style={{
-                      width: isCompactRail ? (statusMeta.isLive ? 172 : 162) : statusMeta.isLive ? 194 : 182,
-                      minHeight: isCompactRail ? 106 : 116,
-                      padding: isCompactRail ? '9px 10px 9px' : '10px 12px 10px',
+                      width: isCompactRail ? (statusMeta.isLive ? 184 : 170) : statusMeta.isLive ? 214 : 196,
+                      minHeight: isCompactRail ? 112 : 124,
+                      padding: isCompactRail ? '10px 10px 10px' : '11px 12px 12px',
                       borderTop: '1px solid rgba(200,150,60,0.12)',
                       borderBottom: '1px solid rgba(200,150,60,0.12)',
                       borderLeft: '1px solid rgba(200,150,60,0.12)',
@@ -695,7 +711,7 @@ function LastNightRecap({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {statusMeta.state === 'live' ? 'AO VIVO' : statusMeta.state === 'halftime' ? 'INTERVALO' : statusMeta.state === 'final' ? 'FINAL' : 'PRÓXIMO'}
+                        {statusMeta.state === 'live' ? 'LIVE' : statusMeta.state === 'halftime' ? 'HALF' : statusMeta.state === 'final' ? 'FINAL' : 'AGENDA'}
                       </span>
                     </div>
 
@@ -705,6 +721,15 @@ function LastNightRecap({
                         : statusMeta.isLive
                         ? `${gameContextLabel} · ${statusMeta.detail ?? 'em andamento'}`
                         : gameContextLabel}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.58rem' : '0.62rem', fontWeight: 700, letterSpacing: '0.08em' }}>
+                        {stageLabel}
+                      </span>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.56rem' : '0.6rem', fontWeight: 700 }}>
+                        {game.game_number > 0 ? `GAME ${game.game_number}` : 'PLAY-IN'}
+                      </span>
                     </div>
 
                     <div style={{ height: 1, background: statusMeta.isLive ? 'rgba(46,204,113,0.18)' : 'rgba(255,255,255,0.05)' }} />
@@ -745,9 +770,9 @@ function LastNightRecap({
                           className="font-condensed font-bold"
                           style={{
                             color: statusMeta.showScore ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                            fontSize: isCompactRail ? '0.92rem' : '1rem',
+                            fontSize: statusMeta.showScore ? (isCompactRail ? '1.06rem' : '1.18rem') : isCompactRail ? '0.92rem' : '1rem',
                             lineHeight: 1,
-                            minWidth: 18,
+                            minWidth: 24,
                             textAlign: 'right',
                           }}
                         >
@@ -763,9 +788,6 @@ function LastNightRecap({
                           : statusMeta.isLive
                           ? (seriesStatus?.liveLabel ?? (stageLabel === 'Play-In' ? 'vaga em jogo ao vivo' : 'série ao vivo'))
                           : (seriesStatus?.preLabel ?? (stageLabel === 'Play-In' ? 'eliminação única' : 'série empatada 0-0'))}
-                      </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: isCompactRail ? '0.56rem' : '0.6rem', fontWeight: 700 }}>
-                        {game.game_number > 0 ? `J${game.game_number}` : stageLabel}
                       </span>
                     </div>
                   </div>

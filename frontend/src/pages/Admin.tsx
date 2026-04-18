@@ -377,6 +377,46 @@ interface OperationsResponse {
   }
 }
 
+interface PickCoverageEntry {
+  matchup: string
+  tipOffAt: string | null
+  tipOffLabel: string
+  locked: boolean
+  pickedCount: number
+  missingCount: number
+  pickedParticipants: string[]
+  missingParticipants: string[]
+}
+
+interface PickCoverageGameEntry extends PickCoverageEntry {
+  gameId: string
+  gameNumber: number
+}
+
+interface PickCoverageSeriesEntry extends PickCoverageEntry {
+  seriesId: string
+}
+
+interface PickCoverageResponse {
+  ok: boolean
+  timestamp: string
+  coverage: {
+    summary: {
+      todayGames: number
+      todayGamesPending: number
+      roundOneSeriesOpen: number
+      roundOneSeriesPending: number
+      totalParticipants: number
+      participantsPendingToday: number
+      participantsPendingRoundOne: number
+      lastSyncAt: string | null
+      sourceLabel: string
+    }
+    todayGames: PickCoverageGameEntry[]
+    roundOneSeries: PickCoverageSeriesEntry[]
+  }
+}
+
 interface ConfirmDialogState {
   title: string
   description: string
@@ -489,25 +529,41 @@ function getOperationHelperText(run: AdminOperationRun | null) {
 
 function modeLabel(mode: string) {
   const normalized = mode.trim().toLocaleLowerCase('pt-BR')
-  if (normalized === 'real') return 'Modo real'
-  if (normalized === 'ficticio' || normalized === 'fictício') return 'Modo fictício'
+  if (normalized === 'real') return 'Operação real'
+  if (normalized === 'ficticio' || normalized === 'fictício') return 'Simulação'
   return mode
+}
+
+function coverageStatusLabel(entry: PickCoverageEntry) {
+  if (entry.locked) return 'Travou'
+  if (entry.missingCount === 0) return 'Completo'
+  return `Faltam ${entry.missingCount}`
+}
+
+function coverageStatusTone(entry: PickCoverageEntry) {
+  if (entry.locked) return 'var(--nba-danger)'
+  if (entry.missingCount === 0) return 'var(--nba-success)'
+  return 'var(--nba-gold)'
 }
 
 export function Admin({ participantId }: Props) {
   const { addToast } = useUIStore()
   const todayInputDate = useMemo(() => getTodayInputDate(), [])
+  const [activeView, setActiveView] = useState<'operations' | 'coverage'>('operations')
   const [participants, setParticipants] = useState<Participant[]>([])
   const [allowedEmails, setAllowedEmails] = useState<string[]>([])
   const [overview, setOverview] = useState<OverviewResponse['overview'] | null>(null)
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [operationsSnapshot, setOperationsSnapshot] = useState<OperationsResponse['operations'] | null>(null)
+  const [pickCoverage, setPickCoverage] = useState<PickCoverageResponse['coverage'] | null>(null)
   const [participantsQuery, setParticipantsQuery] = useState('')
   const [allowedEmailInput, setAllowedEmailInput] = useState('')
+  const [showOnlyCoveragePending, setShowOnlyCoveragePending] = useState(true)
   const [loadingParticipants, setLoadingParticipants] = useState(true)
   const [loadingAllowedEmails, setLoadingAllowedEmails] = useState(true)
   const [loadingOverview, setLoadingOverview] = useState(true)
   const [loadingOperations, setLoadingOperations] = useState(true)
+  const [loadingPickCoverage, setLoadingPickCoverage] = useState(true)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [digestTargetDate, setDigestTargetDate] = useState(todayInputDate)
   const [digestVariant, setDigestVariant] = useState<'full' | 'compact'>('full')
@@ -592,6 +648,18 @@ export function Admin({ participantId }: Props) {
     }
   }
 
+  async function loadPickCoverage() {
+    setLoadingPickCoverage(true)
+    try {
+      const payload = await adminGet<PickCoverageResponse>('/admin/pick-coverage')
+      setPickCoverage(payload.coverage)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+    } finally {
+      setLoadingPickCoverage(false)
+    }
+  }
+
   async function loadDigestPreview(targetDate = digestTargetDate, variant = digestVariant) {
     setLoadingDigestPreview(true)
     try {
@@ -623,7 +691,7 @@ export function Admin({ participantId }: Props) {
   }
 
   async function refreshOperationalData() {
-    await Promise.all([loadHealth(), loadOperations()])
+    await Promise.all([loadHealth(), loadOperations(), loadPickCoverage()])
   }
 
   function closeConfirmDialog() {
@@ -652,16 +720,30 @@ export function Admin({ participantId }: Props) {
     loadOverview()
     loadHealth()
     loadOperations()
+    loadPickCoverage()
 
     const sub = supabase
       .channel('admin-participants')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, () => {
         loadParticipants()
         loadOverview()
+        loadPickCoverage()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'allowed_emails' }, () => {
         loadAllowedEmails()
         loadOverview()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, () => {
+        loadPickCoverage()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, () => {
+        loadPickCoverage()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
+        loadPickCoverage()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, () => {
+        loadPickCoverage()
       })
       .subscribe()
 
@@ -983,6 +1065,16 @@ export function Admin({ participantId }: Props) {
   const resetSummary = findOperationSummary(operationSummary, 'reset-picks')
   const latestBackupRun = findLatestOperationRun(operationsSnapshot?.runs, 'backup', 'success')
   const latestBackupVerificationRun = findLatestOperationRun(operationsSnapshot?.runs, 'verify-backup')
+  const filteredCoverageGames = useMemo(
+    () =>
+      (pickCoverage?.todayGames ?? []).filter((item) => !showOnlyCoveragePending || item.missingCount > 0),
+    [pickCoverage, showOnlyCoveragePending]
+  )
+  const filteredCoverageSeries = useMemo(
+    () =>
+      (pickCoverage?.roundOneSeries ?? []).filter((item) => !showOnlyCoveragePending || item.missingCount > 0),
+    [pickCoverage, showOnlyCoveragePending]
+  )
   const playbookCards = [
     {
       key: 'pre-game',
@@ -1008,7 +1100,7 @@ export function Admin({ participantId }: Props) {
         ? `Último sync: ${formatTimestamp(syncSummary.lastRunAt)}`
         : 'Use sync manual só quando os dados da rodada pedirem intervenção.',
       steps: [
-        '1. Rodar Sincronizar API se o feed da NBA atrasar.',
+        '1. Rodar Sincronizar dados reais da NBA se o feed atrasar ou houver defasagem.',
         '2. Recalcular ranking depois de sync ou correção operacional.',
         '3. Acompanhar Atividade Recente para validar status e alertas.',
         '4. Evitar ações destrutivas no meio da rodada.',
@@ -2002,7 +2094,7 @@ export function Admin({ participantId }: Props) {
             {[
               { label: 'Participantes', value: stats?.participants ?? participants.length, tone: 'var(--nba-text)' },
               { label: 'Admins', value: stats?.admins ?? participants.filter((item) => item.is_admin).length, tone: 'var(--nba-gold)' },
-              { label: 'Modo atual', value: stats ? modeLabel(stats.mode) : '—', tone: 'var(--nba-east)' },
+              { label: 'Operação', value: 'Sync real da NBA', tone: 'var(--nba-east)' },
               {
                 label: 'Health backend',
                 value: health?.scheduler.nbaSync.isRunning ? 'Sincronizando' : healthTimestamp ? 'Online' : 'Sem resposta',
@@ -2036,6 +2128,55 @@ export function Admin({ participantId }: Props) {
         style={{
           ...card,
           marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <div className="font-condensed" style={{ color: 'var(--nba-gold)', fontSize: '0.82rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Navegação administrativa
+          </div>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', marginTop: 4 }}>
+            Alterne entre a operação completa do comissário e a conferência rápida de cobertura dos palpites.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[
+            { key: 'operations', label: 'Centro operacional' },
+            { key: 'coverage', label: 'Cobertura de palpites' },
+          ].map((item) => {
+            const active = activeView === item.key
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveView(item.key as 'operations' | 'coverage')}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${active ? 'rgba(200,150,60,0.28)' : 'rgba(200,150,60,0.12)'}`,
+                  background: active ? 'rgba(200,150,60,0.12)' : 'rgba(255,255,255,0.03)',
+                  color: active ? 'var(--nba-gold)' : 'var(--nba-text)',
+                  padding: '10px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      {activeView === 'operations' ? (
+      <div style={{ display: 'grid', gap: 16 }}>
+      <section
+        style={{
+          ...card,
+          marginBottom: 16,
           background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(74,144,217,0.07) 42%, rgba(200,150,60,0.08) 100%)',
           borderRadius: 12,
         }}
@@ -2063,13 +2204,13 @@ export function Admin({ participantId }: Props) {
           </div>
 
           <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(12,12,18,0.34)', border: '1px solid rgba(200,150,60,0.14)' }}>
-            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Modo de comando</div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>Fonte operacional</div>
             <div className="font-condensed font-bold" style={{ color: 'var(--nba-gold)', fontSize: '1rem', lineHeight: 1.05, marginBottom: 6 }}>
-              {stats ? `${modeLabel(stats.mode)} · ${stats.participants} no jogo` : 'Aguardando overview'}
+              {pickCoverage ? `${pickCoverage.summary.sourceLabel} · ${pickCoverage.summary.totalParticipants} no jogo` : 'API da NBA + base local'}
             </div>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
               {health
-                ? `NBA sync: ${health.scheduler.nbaSync.mode} a cada ${health.scheduler.nbaSync.intervalMinutes} min.`
+                ? `Sync real: ${health.scheduler.nbaSync.mode} a cada ${health.scheduler.nbaSync.intervalMinutes} min.`
                 : 'Sem health check recente; vale conferir antes de uma ação crítica.'}
             </div>
           </div>
@@ -2594,7 +2735,7 @@ export function Admin({ participantId }: Props) {
                 {[
                   {
                     key: 'sync',
-                    label: 'Sincronizar API',
+                    label: 'Sincronizar dados reais',
                     helper: syncSummary?.lastRunAt ? `Última: ${formatTimestamp(syncSummary.lastRunAt)}` : getOperationHelperText(null),
                     busy: busyAction === 'sync',
                     onClick: handleSync,
@@ -2822,12 +2963,171 @@ export function Admin({ participantId }: Props) {
             <SectionTitle icon={<AlertTriangle size={14} />}>Cuidados</SectionTitle>
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
               A remoção completa apaga os palpites do participante no bolão inteiro e remove o email de `allowed_emails` quando existir.
-              A conta do usuário no Supabase Auth continua existindo. O botão de sync deve ser usado com mais cuidado enquanto o produto
-              seguir em modo fictício.
+              A conta do usuário no Supabase Auth continua existindo. O sync manual deve ser usado com cuidado quando houver divergência entre
+              a base local e o feed real da NBA.
             </div>
           </div>
         </section>
         </div>
+      </div>
+      ) : (
+      <div style={{ display: 'grid', gap: 16 }}>
+        <section
+          style={{
+            ...card,
+            background: 'linear-gradient(135deg, rgba(74,144,217,0.08), rgba(200,150,60,0.08) 60%, rgba(19,19,26,1) 100%)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <SectionTitle icon={<Users size={14} />}>Cobertura de Palpites</SectionTitle>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.5, marginTop: -6 }}>
+                Painel operacional sem revelar escolhas: quem já enviou, quem falta enviar e qual janela fecha primeiro.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => loadPickCoverage()}
+                disabled={loadingPickCoverage}
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: 'var(--nba-text)',
+                  padding: '10px 12px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {loadingPickCoverage ? 'Atualizando...' : 'Atualizar painel'}
+              </button>
+              <button
+                onClick={() => setShowOnlyCoveragePending((current) => !current)}
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid rgba(200,150,60,0.18)',
+                  background: showOnlyCoveragePending ? 'rgba(200,150,60,0.10)' : 'rgba(255,255,255,0.03)',
+                  color: showOnlyCoveragePending ? 'var(--nba-gold)' : 'var(--nba-text)',
+                  padding: '10px 12px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {showOnlyCoveragePending ? 'Mostrando só pendentes' : 'Mostrar todos'}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 10, marginTop: 14 }} className="grid-cols-2 md:grid-cols-4">
+            {[
+              { label: 'Jogos hoje', value: pickCoverage?.summary.todayGames ?? '—', tone: 'var(--nba-text)' },
+              { label: 'Jogos pendentes', value: pickCoverage?.summary.todayGamesPending ?? '—', tone: 'var(--nba-gold)' },
+              { label: 'R1 abertas', value: pickCoverage?.summary.roundOneSeriesOpen ?? '—', tone: 'var(--nba-east)' },
+              { label: 'Pendentes na R1', value: pickCoverage?.summary.participantsPendingRoundOne ?? '—', tone: 'var(--nba-danger)' },
+            ].map((item) => (
+              <div
+                key={item.label}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'rgba(12,12,18,0.34)',
+                  border: '1px solid rgba(200,150,60,0.14)',
+                }}
+              >
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+                <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.18rem', lineHeight: 1.05 }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 12 }}>
+            Fonte: {pickCoverage?.summary.sourceLabel ?? 'API da NBA + base local'} · último sync real em {formatTimestamp(pickCoverage?.summary.lastSyncAt ?? null)}
+          </div>
+        </section>
+
+        {loadingPickCoverage ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '28px 0' }}>
+            <LoadingBasketball size={28} />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 16 }} className="xl:grid-cols-2">
+            {[
+              {
+                key: 'games',
+                title: 'Jogos do dia',
+                empty: 'Nenhum jogo aberto hoje para conferir.',
+                items: filteredCoverageGames,
+              },
+              {
+                key: 'series',
+                title: 'R1 pronta para pick',
+                empty: 'Nenhuma série de R1 aberta para fechamento agora.',
+                items: filteredCoverageSeries,
+              },
+            ].map((group) => (
+              <section key={group.key} style={card}>
+                <SectionTitle icon={group.key === 'games' ? <BellRing size={14} /> : <ShieldCheck size={14} />}>{group.title}</SectionTitle>
+                {group.items.length === 0 ? (
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem' }}>{group.empty}</div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {group.items.map((item) => {
+                      const tone = coverageStatusTone(item)
+                      return (
+                        <div
+                          key={'gameId' in item ? item.gameId : item.seriesId}
+                          style={{
+                            padding: '14px 15px',
+                            borderRadius: 12,
+                            background: 'rgba(12,12,18,0.34)',
+                            border: '1px solid rgba(200,150,60,0.12)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                            <div>
+                              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.98rem' }}>
+                                {item.matchup}
+                              </div>
+                              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                                {'gameNumber' in item ? `Jogo ${item.gameNumber}` : 'Série da rodada 1'} · {item.tipOffLabel}
+                              </div>
+                            </div>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone, border: `1px solid ${tone}33`, background: `${tone}14`, borderRadius: 999, padding: '4px 10px', fontSize: '0.7rem', fontWeight: 800 }}>
+                              {coverageStatusLabel(item)}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gap: 10, marginTop: 12 }} className="md:grid-cols-2">
+                            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(46,204,113,0.14)' }}>
+                              <div style={{ color: 'var(--nba-success)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6 }}>
+                                Já fecharam · {item.pickedCount}
+                              </div>
+                              <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+                                {item.pickedParticipants.length > 0 ? item.pickedParticipants.join(', ') : 'Ninguém ainda.'}
+                              </div>
+                            </div>
+                            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.14)' }}>
+                              <div style={{ color: item.missingCount > 0 ? 'var(--nba-gold)' : 'var(--nba-success)', fontSize: '0.72rem', fontWeight: 700, marginBottom: 6 }}>
+                                Ainda faltam · {item.missingCount}
+                              </div>
+                              <div style={{ color: 'var(--nba-text)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+                                {item.missingParticipants.length > 0 ? item.missingParticipants.join(', ') : 'Cobertura completa.'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
       </div>
     </>
   )

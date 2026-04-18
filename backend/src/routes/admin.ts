@@ -15,6 +15,7 @@ import { getNBASyncSchedulerSnapshot } from '../scheduler/nbaSyncScheduler'
 import { listAdminOperationRuns, recordAdminOperation } from '../admin/adminOperationLog'
 import type { AdminOperationName } from '../admin/adminOperationLog'
 import type { ArtifactDescriptor } from '../lib/operationalArtifacts'
+import { BRT_TIMEZONE } from '../lib/constants'
 
 const router = Router()
 
@@ -33,6 +34,44 @@ interface ParticipantRow {
 interface PickRow {
   id: string
   participant_id: string
+}
+
+interface ParticipantNameRow {
+  id: string
+  name: string
+}
+
+interface TeamAbbreviationRow {
+  id: string
+  abbreviation: string
+}
+
+interface AdminCoverageGameRow {
+  id: string
+  series_id: string
+  game_number: number
+  home_team_id: string
+  away_team_id: string
+  tip_off_at: string | null
+  played: boolean
+}
+
+interface AdminCoverageSeriesRow {
+  id: string
+  round: number
+  home_team_id: string | null
+  away_team_id: string | null
+  is_complete: boolean
+}
+
+interface AdminCoverageGamePickRow {
+  participant_id: string
+  game_id: string
+}
+
+interface AdminCoverageSeriesPickRow {
+  participant_id: string
+  series_id: string
 }
 
 interface AdminRequest extends Request {
@@ -174,6 +213,158 @@ function countDuplicateValues(values: string[]): number {
 
   // Soma as entradas extras (count - 1) por grupo — ex: "João" aparecendo 3x = 2 duplicatas
   return Array.from(counts.values()).reduce((sum, count) => sum + Math.max(0, count - 1), 0)
+}
+
+function getBrtDateKey(date: Date): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: BRT_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  )
+
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+function formatTipOffForCoverage(value: string | null): string {
+  if (!value) return 'Sem horário'
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: BRT_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function isLockedByTipOff(tipOffAt: string | null): boolean {
+  return !!tipOffAt && new Date(tipOffAt).getTime() <= Date.now()
+}
+
+function getSeriesLockTipOff(seriesId: string, games: AdminCoverageGameRow[]): string | null {
+  const datedGames = games
+    .filter((game) => game.series_id === seriesId && !!game.tip_off_at)
+    .sort((left, right) => new Date(left.tip_off_at!).getTime() - new Date(right.tip_off_at!).getTime())
+
+  return datedGames[0]?.tip_off_at ?? null
+}
+
+async function buildAdminPickCoverage() {
+  const [
+    { data: participants, error: participantsError },
+    { data: teams, error: teamsError },
+    { data: games, error: gamesError },
+    { data: gamePicks, error: gamePicksError },
+    { data: series, error: seriesError },
+    { data: seriesPicks, error: seriesPicksError },
+  ] = await Promise.all([
+    supabase.from('participants').select('id, name').order('name', { ascending: true }),
+    supabase.from('teams').select('id, abbreviation'),
+    supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, played').order('tip_off_at', { ascending: true }),
+    supabase.from('game_picks').select('participant_id, game_id'),
+    supabase.from('series').select('id, round, home_team_id, away_team_id, is_complete').eq('round', 1).order('position', { ascending: true }),
+    supabase.from('series_picks').select('participant_id, series_id'),
+  ])
+
+  const fetchError =
+    participantsError ??
+    teamsError ??
+    gamesError ??
+    gamePicksError ??
+    seriesError ??
+    seriesPicksError
+
+  if (fetchError) {
+    throw new Error(fetchError.message)
+  }
+
+  const participantRows = (participants ?? []) as ParticipantNameRow[]
+  const teamRows = (teams ?? []) as TeamAbbreviationRow[]
+  const gameRows = (games ?? []) as AdminCoverageGameRow[]
+  const seriesRows = (series ?? []) as AdminCoverageSeriesRow[]
+  const gamePickRows = (gamePicks ?? []) as AdminCoverageGamePickRow[]
+  const seriesPickRows = (seriesPicks ?? []) as AdminCoverageSeriesPickRow[]
+  const teamsById = new Map(teamRows.map((team) => [team.id, team.abbreviation]))
+  const participantNamesById = new Map(participantRows.map((participant) => [participant.id, participant.name]))
+  const gamePickSet = new Set(gamePickRows.map((pick) => `${pick.participant_id}:${pick.game_id}`))
+  const seriesPickSet = new Set(seriesPickRows.map((pick) => `${pick.participant_id}:${pick.series_id}`))
+  const todayKey = getBrtDateKey(new Date())
+  const participantTotal = participantRows.length
+  const abbr = (teamId: string | null | undefined) => (teamId ? teamsById.get(teamId) ?? teamId : '?')
+
+  const todayGames = gameRows
+    .filter((game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === todayKey && !game.played)
+    .map((game) => {
+      const pickedParticipants = participantRows
+        .filter((participant) => gamePickSet.has(`${participant.id}:${game.id}`))
+        .map((participant) => participant.name)
+      const missingParticipants = participantRows
+        .filter((participant) => !gamePickSet.has(`${participant.id}:${game.id}`))
+        .map((participant) => participant.name)
+
+      return {
+        gameId: game.id,
+        matchup: `${abbr(game.home_team_id)} x ${abbr(game.away_team_id)}`,
+        tipOffAt: game.tip_off_at,
+        tipOffLabel: formatTipOffForCoverage(game.tip_off_at),
+        locked: isLockedByTipOff(game.tip_off_at),
+        gameNumber: game.game_number,
+        pickedCount: pickedParticipants.length,
+        missingCount: missingParticipants.length,
+        pickedParticipants,
+        missingParticipants,
+      }
+    })
+
+  const roundOneSeries = seriesRows
+    .map((seriesItem) => {
+      const tipOffAt = getSeriesLockTipOff(seriesItem.id, gameRows)
+      const pickedParticipants = participantRows
+        .filter((participant) => seriesPickSet.has(`${participant.id}:${seriesItem.id}`))
+        .map((participant) => participant.name)
+      const missingParticipants = participantRows
+        .filter((participant) => !seriesPickSet.has(`${participant.id}:${seriesItem.id}`))
+        .map((participant) => participant.name)
+
+      return {
+        seriesId: seriesItem.id,
+        matchup: `${abbr(seriesItem.home_team_id)} x ${abbr(seriesItem.away_team_id)}`,
+        tipOffAt,
+        tipOffLabel: formatTipOffForCoverage(tipOffAt),
+        locked: isLockedByTipOff(tipOffAt),
+        pickedCount: pickedParticipants.length,
+        missingCount: missingParticipants.length,
+        pickedParticipants,
+        missingParticipants,
+      }
+    })
+    .filter((seriesItem) => !!seriesItem.tipOffAt && !seriesItem.locked)
+    .sort((left, right) => new Date(left.tipOffAt!).getTime() - new Date(right.tipOffAt!).getTime())
+
+  const pendingParticipantsToday = new Set(todayGames.flatMap((game) => game.missingParticipants))
+  const pendingParticipantsRoundOne = new Set(roundOneSeries.flatMap((seriesItem) => seriesItem.missingParticipants))
+
+  return {
+    summary: {
+      todayGames: todayGames.length,
+      todayGamesPending: todayGames.filter((game) => game.missingCount > 0).length,
+      roundOneSeriesOpen: roundOneSeries.length,
+      roundOneSeriesPending: roundOneSeries.filter((seriesItem) => seriesItem.missingCount > 0).length,
+      totalParticipants: participantTotal,
+      participantsPendingToday: pendingParticipantsToday.size,
+      participantsPendingRoundOne: pendingParticipantsRoundOne.size,
+      lastSyncAt: getNBASyncSchedulerSnapshot().lastSyncAt ?? null,
+      sourceLabel: 'API da NBA + base local',
+    },
+    todayGames,
+    roundOneSeries,
+    participants: participantRows.map((participant) => ({
+      id: participant.id,
+      name: participantNamesById.get(participant.id) ?? participant.id,
+    })),
+  }
 }
 
 async function buildAdminOverview() {
@@ -457,6 +648,21 @@ router.get('/overview', async (_req, res) => {
     })
   } catch (err: unknown) {
     console.error('[admin/overview] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// GET /admin/pick-coverage
+router.get('/pick-coverage', async (_req, res) => {
+  try {
+    const coverage = await buildAdminPickCoverage()
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      coverage,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/pick-coverage] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })

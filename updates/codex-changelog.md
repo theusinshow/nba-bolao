@@ -1,5 +1,38 @@
 # Codex Changelog
 
+## 2026-04-18 00:25:00
+
+### Admin - cobertura de palpites e operação orientada a dados reais
+- adicionei a rota `GET /admin/pick-coverage` em `backend/src/routes/admin.ts`, consolidando um painel operacional com:
+  - jogos abertos do dia;
+  - séries de R1 prontas para pick;
+  - nomes de quem já enviou e quem ainda não enviou;
+  - resumo agregado de pendências;
+- mantive a regra de não expor o conteúdo do palpite: o endpoint e a UI mostram apenas cobertura de envio, nunca `winner_id` ou escolha individual;
+- evoluí `frontend/src/pages/Admin.tsx` com uma nova navegação entre `Centro operacional` e `Cobertura de palpites`, incluindo:
+  - cards-resumo;
+  - filtro para mostrar só pendentes;
+  - blocos separados para `Jogos do dia` e `R1 pronta para pick`;
+  - chips de status como `Completo`, `Faltam X` e `Travou`.
+
+### Admin - linguagem e fluxo alinhados com sync real da NBA
+- revisei a comunicação do admin para tratar o produto como operação baseada em dados reais da NBA, sem depender do conceito de “modo fictício” no fluxo principal;
+- renomeei a ação principal de sync para `Sincronizar dados reais` e atualizei textos de apoio, cards de contexto e avisos operacionais em `frontend/src/pages/Admin.tsx`;
+- também passei a destacar no painel a origem operacional como `API da NBA + base local`, com referência ao último sync real disponível.
+
+### Home - rail de jogos sem duplicidade e com visual mais scoreboard
+- corrigi a composição da rail em `frontend/src/pages/Home.tsx` para normalizar os jogos em uma única etapa, unindo base local e extras da API;
+- a deduplicação agora prioriza `nba_game_id` quando existir, impedindo que um jogo local e sua versão `external-*` apareçam duas vezes;
+- reforcei a ordenação cronológica com desempate por `game_number` e `id`, mantendo a sequência estável por data e hora;
+- removi a repetição visual da lista causada pelo loop duplicado da rail e ajustei os cards para uma leitura mais próxima de scoreboard da NBA, com:
+  - status curto (`LIVE`, `HALF`, `FINAL`, `AGENDA`);
+  - fase e número do jogo destacados;
+  - placar com mais peso visual em jogos ao vivo e finalizados.
+
+### Validação
+- `npm --prefix backend run build`
+- `npm --prefix frontend run build`
+
 ## 2026-04-17 13:42:00
 
 ### Home - rail de jogos com leitura editorial de pressão da série
