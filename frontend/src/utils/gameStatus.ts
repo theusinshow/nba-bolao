@@ -62,6 +62,8 @@ export function getGameStatusMeta(game: Pick<Game, 'played' | 'game_state' | 'ti
       centerLabel: 'LIVE',
       detail: periodLabel && cleanClock
         ? `${periodLabel} • ${cleanClock}`
+        : periodLabel && /end of/i.test(game.status_text ?? '')
+        ? `Fim do ${periodLabel}`
         : periodLabel
         ? `${periodLabel} em andamento`
         : 'Início',
