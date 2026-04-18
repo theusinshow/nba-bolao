@@ -60,9 +60,9 @@ export function getGameStatusMeta(game: Pick<Game, 'played' | 'game_state' | 'ti
       showScore: game.home_score != null && game.away_score != null,
       badgeLabel: 'Ao vivo',
       centerLabel: 'LIVE',
-      detail: periodLabel && cleanClock
+      detail: periodLabel && cleanClock && cleanClock !== '0:00'
         ? `${periodLabel} • ${cleanClock}`
-        : periodLabel && /end of/i.test(game.status_text ?? '')
+        : periodLabel && (cleanClock === '0:00' || /end of|between qtr|intermission/i.test(game.status_text ?? ''))
         ? `Fim do ${periodLabel}`
         : periodLabel
         ? `${periodLabel} em andamento`
