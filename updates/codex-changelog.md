@@ -1,5 +1,15 @@
 # Codex Changelog
 
+## 2026-04-18 11:34:00
+
+### Palpites jogo a jogo - restauração do save e lock corrigido no modal
+- corrigi `frontend/src/hooks/useGamePicks.ts` para travar cada jogo pelo próprio `tip_off_at` com a mesma janela de 5 minutos usada em `frontend/src/pages/Games.tsx` e no backend, removendo o bloqueio indevido da série inteira após o Jogo 1;
+- fortalecei `frontend/src/lib/picksApi.ts` com fallback controlado para o fluxo antigo via Supabase quando o backend oficial de picks estiver indisponível, em CORS quebrado, fora do ar ou ainda sem as novas rotas publicadas;
+- com isso, o app continua preferindo `POST /api/picks/game` e `POST /api/picks/series`, mas volta a salvar palpites em cenários de deploy parcial do backend, evitando o estado crítico de “cliquei e nada persistiu”.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 10:43:32
 
 ### Palpites oficiais - save blindado via backend para jogo a jogo e séries
