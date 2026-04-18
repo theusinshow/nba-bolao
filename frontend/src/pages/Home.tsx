@@ -1495,21 +1495,23 @@ function TeamShowcase({
   align = 'left',
   dimmed = false,
   injury,
+  compact = false,
 }: {
   abbr: string
   color: string
   align?: 'left' | 'right'
   dimmed?: boolean
   injury?: InjuryItem
+  compact?: boolean
 }) {
   const isRight = align === 'right'
   const tone = injury ? getInjuryTone(injury.status) : null
   const logoBadge = (
     <div
       style={{
-        width: 44,
-        height: 44,
-        borderRadius: 14,
+        width: compact ? 40 : 44,
+        height: compact ? 40 : 44,
+        borderRadius: compact ? 12 : 14,
         display: 'grid',
         placeItems: 'center',
         background: 'linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03))',
@@ -1522,7 +1524,7 @@ function TeamShowcase({
         src={getTeamLogoUrl(abbr)}
         alt={abbr}
         onError={(e) => (e.currentTarget.style.display = 'none')}
-        className="h-7 w-7 object-contain sm:h-[30px] sm:w-[30px]"
+        className={compact ? 'h-6 w-6 object-contain sm:h-7 sm:w-7' : 'h-7 w-7 object-contain sm:h-[30px] sm:w-[30px]'}
         style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.25))' }}
       />
     </div>
@@ -1534,14 +1536,14 @@ function TeamShowcase({
         className="font-condensed font-bold"
         style={{
           color,
-          fontSize: 'clamp(1.16rem, 5vw, 1.48rem)',
+          fontSize: compact ? 'clamp(1.02rem, 4.3vw, 1.28rem)' : 'clamp(1.16rem, 5vw, 1.48rem)',
           lineHeight: 0.95,
           letterSpacing: '0.03em',
         }}
       >
         {abbr}
       </div>
-      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ color: 'var(--nba-text-muted)', fontSize: compact ? '0.62rem' : '0.68rem', marginTop: compact ? 2 : 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         {injury ? 'alerta no elenco' : 'elenco principal ok'}
       </div>
     </div>
@@ -1549,7 +1551,7 @@ function TeamShowcase({
 
   return (
     <div
-      className="grid gap-3 rounded-[14px] p-3 sm:gap-[10px] sm:rounded-2xl sm:p-4"
+      className={compact ? 'grid gap-2 rounded-[13px] p-[10px] sm:gap-2.5 sm:rounded-[16px] sm:p-3' : 'grid gap-3 rounded-[14px] p-3 sm:gap-[10px] sm:rounded-2xl sm:p-4'}
       style={{
         minWidth: 0,
         background: injury ? 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(231,76,60,0.06))' : 'rgba(255,255,255,0.035)',
@@ -1562,7 +1564,7 @@ function TeamShowcase({
           display: 'grid',
           alignItems: 'center',
           gridTemplateColumns: isRight ? 'minmax(0,1fr) auto' : 'auto minmax(0,1fr)',
-          gap: 12,
+          gap: compact ? 10 : 12,
         }}
       >
         {isRight ? (
@@ -1580,15 +1582,15 @@ function TeamShowcase({
 
       {injury ? (
         <div style={{ minWidth: 0, textAlign: isRight ? 'right' : 'left' }}>
-          <div style={{ color: tone?.color ?? 'var(--nba-text)', fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.2 }}>
+          <div style={{ color: tone?.color ?? 'var(--nba-text)', fontSize: compact ? '0.82rem' : '0.88rem', fontWeight: 700, lineHeight: 1.2 }}>
             {injury.player_name}
           </div>
-          <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', marginTop: 4, lineHeight: 1.35 }}>
+          <div style={{ color: 'var(--nba-text-muted)', fontSize: compact ? '0.7rem' : '0.76rem', marginTop: compact ? 3 : 4, lineHeight: 1.35 }}>
             {tone?.label} • impacto {injury.impact === 'high' ? 'alto' : injury.impact === 'medium' ? 'moderado' : 'baixo'}
           </div>
         </div>
       ) : (
-        <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.35, textAlign: isRight ? 'right' : 'left' }}>
+        <div style={{ color: 'var(--nba-text-muted)', fontSize: compact ? '0.72rem' : '0.78rem', lineHeight: 1.35, textAlign: isRight ? 'right' : 'left' }}>
           Sem baixa relevante destacada para esta série.
         </div>
       )}
@@ -1889,27 +1891,71 @@ function OfficialBracketCard({ series, upcomingGames, liveGames, participantCoun
                     return (
                       <div
                         key={s.id}
-                        className="grid gap-3 rounded-2xl p-3 sm:gap-[14px] sm:rounded-[18px] sm:p-[18px]"
+                        className="grid gap-[10px] rounded-2xl p-3 sm:gap-3 sm:rounded-[18px] sm:p-[14px]"
                         style={{
                           background: hasTodayGame
-                            ? 'linear-gradient(135deg, rgba(46,204,113,0.10), rgba(12,12,18,0.44))'
+                            ? 'linear-gradient(135deg, rgba(46,204,113,0.16), rgba(24,42,32,0.38) 40%, rgba(12,12,18,0.44))'
                             : s.is_complete
                             ? 'rgba(12,12,18,0.30)'
                             : 'rgba(12,12,18,0.46)',
                           border: `1px solid ${
                             hasTodayGame
-                              ? 'rgba(46,204,113,0.24)'
+                              ? 'rgba(46,204,113,0.3)'
                               : s.is_complete
                               ? 'rgba(46,204,113,0.12)'
                               : inProgress
                               ? 'rgba(200,150,60,0.18)'
                               : 'rgba(200,150,60,0.08)'
                           }`,
-                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                          boxShadow: hasTodayGame
+                            ? 'inset 0 1px 0 rgba(255,255,255,0.04), 0 12px 26px rgba(46,204,113,0.07)'
+                            : 'inset 0 1px 0 rgba(255,255,255,0.03)',
                         }}
                       >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: hasTodayGame ? '5px 10px' : '4px 9px',
+                                borderRadius: 999,
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                letterSpacing: '0.11em',
+                                color: hasTodayGame ? '#6df2a0' : color,
+                                background: hasTodayGame ? 'rgba(46,204,113,0.16)' : `${color}18`,
+                                border: `1px solid ${hasTodayGame ? 'rgba(46,204,113,0.28)' : `${color}30`}`,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {hasTodayGame ? 'EM JOGO HOJE' : ROUND_FULL_LABEL[round]}
+                            </span>
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', lineHeight: 1.2 }}>
+                              {s.is_complete ? 'série encerrada' : inProgress ? 'chave em andamento' : 'abertura confirmada'}
+                            </span>
+                          </div>
+
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '5px 10px',
+                              borderRadius: 999,
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              color: impact.color,
+                              background: impact.background,
+                              border: `1px solid ${impact.border}`,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {impact.label}
+                          </span>
+                        </div>
+
                         <div
-                          className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_112px_minmax(0,1fr)] sm:gap-[14px]"
+                          className="grid grid-cols-1 gap-[10px] sm:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)] sm:gap-3"
                           style={{ alignItems: 'center' }}
                         >
                           <TeamShowcase
@@ -1917,10 +1963,11 @@ function OfficialBracketCard({ series, upcomingGames, liveGames, participantCoun
                             color={homeWon ? homeColor : awayWon ? 'var(--nba-text-muted)' : homeColor}
                             dimmed={awayWon}
                             injury={!s.is_complete ? homeInjury : undefined}
+                            compact
                           />
 
                           <div
-                            className="mx-auto grid min-w-0 content-center justify-items-center gap-2 rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3 sm:mx-0 sm:min-h-[122px] sm:self-center sm:rounded-[16px] sm:border sm:bg-[rgba(255,255,255,0.025)] sm:px-3 sm:py-4"
+                            className="mx-auto grid min-w-0 content-center justify-items-center gap-1.5 rounded-[13px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-2.5 py-2.5 sm:mx-0 sm:min-h-[96px] sm:self-center sm:rounded-[15px] sm:bg-[rgba(255,255,255,0.025)] sm:px-2.5 sm:py-3"
                             style={{ minWidth: 0 }}
                           >
                             <span
@@ -1929,35 +1976,35 @@ function OfficialBracketCard({ series, upcomingGames, liveGames, participantCoun
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                minWidth: 72,
-                                padding: s.is_complete ? '8px 14px' : '7px 13px',
+                                minWidth: 60,
+                                padding: s.is_complete ? '6px 12px' : '6px 11px',
                                 borderRadius: 999,
                                 background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
                                 color: s.is_complete ? 'var(--nba-text)' : 'var(--nba-text-muted)',
-                                fontSize: s.is_complete ? '1.18rem' : '0.9rem',
+                                fontSize: s.is_complete ? '1.04rem' : '0.82rem',
                                 letterSpacing: '0.1em',
                                 border: '1px solid rgba(255,255,255,0.07)',
                               }}
                             >
                               {s.is_complete ? `4 – ${losses}` : inProgress ? `${s.games_played}j` : 'VS'}
                             </span>
-                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.76rem', textAlign: 'center', lineHeight: 1.25 }}>
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', textAlign: 'center', lineHeight: 1.2 }}>
                               {s.is_complete ? 'série fechada' : hasTodayGame ? 'abertura hoje' : inProgress ? 'série ativa' : 'aguardando'}
                             </span>
                             {s.is_complete ? (
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '4px 7px', borderRadius: 999, flexShrink: 0, background: 'rgba(46,204,113,0.12)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.22)', whiteSpace: 'nowrap' }}>
                                 {participantCount > 0 ? `${correctCount}/${participantCount} ✓` : '✓'}
                               </span>
                             ) : hasTodayGame ? (
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(46,204,113,0.16)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.26)', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '4px 7px', borderRadius: 999, flexShrink: 0, background: 'rgba(46,204,113,0.16)', color: '#2ecc71', border: '1px solid rgba(46,204,113,0.26)', whiteSpace: 'nowrap' }}>
                                 hoje
                               </span>
                             ) : inProgress ? (
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '4px 7px', borderRadius: 999, flexShrink: 0, background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', border: '1px solid rgba(200,150,60,0.22)', whiteSpace: 'nowrap' }}>
                                 {totalPicked > 0 ? `${totalPicked}/${participantCount} picks` : 'em série'}
                               </span>
                             ) : (
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', borderRadius: 999, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '4px 7px', borderRadius: 999, flexShrink: 0, background: 'rgba(136,136,153,0.08)', color: 'var(--nba-text-muted)', border: '1px solid rgba(136,136,153,0.15)', whiteSpace: 'nowrap' }}>
                                 {totalPicked > 0 ? `${totalPicked}/${participantCount} picks` : 'pendente'}
                               </span>
                             )}
@@ -1969,43 +2016,32 @@ function OfficialBracketCard({ series, upcomingGames, liveGames, participantCoun
                             align="right"
                             dimmed={homeWon}
                             injury={!s.is_complete ? awayInjury : undefined}
+                            compact
                           />
                         </div>
 
                         <div
-                          className="grid gap-[5px] rounded-[14px] px-3 py-[10px] sm:px-[14px] sm:py-3"
+                          className="grid gap-2 rounded-[14px] px-3 py-[10px] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-[13px] sm:py-[11px]"
                           style={{
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: hasTodayGame
+                              ? 'linear-gradient(135deg, rgba(46,204,113,0.08), rgba(255,255,255,0.025))'
+                              : 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))',
+                            border: `1px solid ${hasTodayGame ? 'rgba(46,204,113,0.16)' : 'rgba(255,255,255,0.06)'}`,
                           }}
                         >
-                          <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: 'clamp(0.92rem, 4vw, 1rem)', lineHeight: 1.1 }}>
-                            {headline.title}
+                          <div style={{ minWidth: 0 }}>
+                            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: 'clamp(0.92rem, 4vw, 1rem)', lineHeight: 1.08 }}>
+                              {headline.title}
+                            </div>
+                            <div style={{ color: 'var(--nba-text-muted)', fontSize: 'clamp(0.74rem, 3.2vw, 0.79rem)', lineHeight: 1.38, marginTop: 4 }}>
+                              {headline.detail}
+                            </div>
                           </div>
-                          <div style={{ color: 'var(--nba-text-muted)', fontSize: 'clamp(0.76rem, 3.4vw, 0.8rem)', lineHeight: 1.45 }}>
-                            {headline.detail}
+                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                            <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', lineHeight: 1.25 }}>
+                              {hasTodayGame ? 'Confronto real ativo na agenda de hoje' : inProgress ? 'Série real já começou' : 'Aguardando a bola subir'}
+                            </span>
                           </div>
-                        </div>
-
-                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between" style={{ gap: 10 }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              padding: '7px 12px',
-                              borderRadius: 999,
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
-                              color: impact.color,
-                              background: impact.background,
-                              border: `1px solid ${impact.border}`,
-                            }}
-                          >
-                            {impact.label}
-                          </span>
-                          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.35 }}>
-                            {hasTodayGame ? 'Confronto real ativo na agenda de hoje' : inProgress ? 'Série real já começou' : 'Aguardando a bola subir na chave oficial'}
-                          </span>
                         </div>
 
                         {!s.is_complete && !homeInjury && !awayInjury && injuriesLoading && (

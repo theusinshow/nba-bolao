@@ -1,5 +1,16 @@
 # Codex Changelog
 
+## 2026-04-18 01:46:00
+
+### Home - cards de séries abaixo de `Jogos de hoje` mais compactos e com destaque verde melhor resolvido
+- refinei a área de `Resultados reais` em `frontend/src/pages/Home.tsx`, especialmente os cards logo abaixo de `Jogos de hoje`, para reduzir vazios e aumentar a densidade de informação;
+- os confrontos com jogo no dia agora usam um tratamento verde mais editorial, com destaque superior `EM JOGO HOJE`, fundo mais intencional e leitura visual mais clara do estado ativo da série;
+- compacteis os blocos laterais dos times com uma variação `compact` de `TeamShowcase`, diminuindo paddings, logo badge e tipografia sem perder conteúdo;
+- reorganizei a base do card para juntar headline, detalhe e status operacional em um bloco mais fechado, evitando a sensação de espaços mortos entre seções.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 01:32:00
 
 ### Home - estilização premium da rail de jogos sem mudar a lógica aprovada
