@@ -1,5 +1,20 @@
 # Codex Changelog
 
+## 2026-04-18 00:48:00
+
+### Home - agenda de jogos no topo com leitura mais próxima da NBA
+- reorganizei `frontend/src/pages/Home.tsx` para levar a faixa de jogos para o topo completo da Home, ocupando toda a largura antes das colunas principais;
+- redesenhei a rail para ficar com cara de `schedule strip`, mais próxima da navegação da NBA:
+  - bloco de dia separado;
+  - cards compactos em sequência horizontal;
+  - horário no topo;
+  - ordem cronológica contínua por data e hora;
+- também removi o avanço automático da faixa para deixar a agenda mais estável e previsível, com navegação manual por arraste e setas;
+- refinei o visual dos cards para uma leitura mais direta de agenda real, com status curtos (`LIVE`, `HALF`, `FINAL`, `AGENDA`) e menos tratamento editorial no topo.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 00:25:00
 
 ### Admin - cobertura de palpites e operação orientada a dados reais

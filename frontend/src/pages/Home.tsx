@@ -278,9 +278,39 @@ function buildHomeGamesRailEntries(
     return 'source' in game && game.source === 'external' ? 0 : 1
   }
 
-  const deduped = new Map<string, HomeRailGame>()
+  function getSeriesUpcomingKey(game: HomeRailGame) {
+    if (game.series_id) return `series:${game.series_id}`
+    return getIdentityKey(game)
+  }
 
-  for (const game of [...completedGames, ...liveGames, ...upcomingGames, ...extraGames]) {
+  const deduped = new Map<string, HomeRailGame>()
+  const nextUpcomingBySeries = new Map<string, HomeRailGame>()
+
+  for (const game of [...completedGames, ...liveGames]) {
+    const key = getIdentityKey(game)
+    const existing = deduped.get(key)
+    if (!existing || getSourcePriority(game) >= getSourcePriority(existing)) {
+      deduped.set(key, game)
+    }
+  }
+
+  for (const game of [...upcomingGames, ...extraGames]) {
+    const seriesKey = getSeriesUpcomingKey(game)
+    const existing = nextUpcomingBySeries.get(seriesKey)
+    if (!existing) {
+      nextUpcomingBySeries.set(seriesKey, game)
+      continue
+    }
+
+    const existingTime = existing.tip_off_at ? new Date(existing.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+    const candidateTime = game.tip_off_at ? new Date(game.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
+
+    if (candidateTime < existingTime || (candidateTime === existingTime && getSourcePriority(game) > getSourcePriority(existing))) {
+      nextUpcomingBySeries.set(seriesKey, game)
+    }
+  }
+
+  for (const game of nextUpcomingBySeries.values()) {
     const key = getIdentityKey(game)
     const existing = deduped.get(key)
     if (!existing || getSourcePriority(game) >= getSourcePriority(existing)) {
@@ -2638,13 +2668,7 @@ export function Home({ participantId }: Props) {
       initial="hidden"
       animate="show"
     >
-      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
-        <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-        <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
-        <HomeQuickDeck vertical />
-      </div>
-
-      <div className="flex flex-col gap-4 min-w-0">
+      <div className="xl:col-span-3 min-w-0">
         <motion.div variants={fadeUpItem}>
           <LastNightRecap
             games={games}
@@ -2654,6 +2678,15 @@ export function Home({ participantId }: Props) {
             loading={seriesLoading}
           />
         </motion.div>
+      </div>
+
+      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
+        <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+        <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
+        <HomeQuickDeck vertical />
+      </div>
+
+      <div className="flex flex-col gap-4 min-w-0">
         <motion.div id="home-summary-tour" variants={scaleInItem}>
           <HeroPanel
             myEntry={myEntry}
