@@ -1811,12 +1811,18 @@ function OfficialBracketCard({ series, upcomingGames, liveGames, participantCoun
               return (
                 <div
                   key={g.id}
-                  className="grid gap-3 rounded-[14px] p-3 sm:flex sm:flex-nowrap sm:items-center sm:gap-[10px] sm:rounded-xl sm:px-[14px] sm:py-3"
+                  className="grid gap-2 rounded-[14px] p-3 sm:rounded-xl sm:px-[14px] sm:py-3"
                   style={{ background: isLive ? 'rgba(46,204,113,0.07)' : 'rgba(12,12,18,0.42)', border: `1px solid ${isLive ? 'rgba(46,204,113,0.22)' : 'rgba(200,150,60,0.10)'}` }}
                 >
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:min-w-0 sm:flex-1 sm:items-center sm:gap-[10px]">
+                  <div
+                    className="grid items-center gap-2 sm:gap-3"
+                    style={{ gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)' }}
+                  >
                     <TeamMark abbr={g.home_team?.abbreviation ?? g.home_team_id} color={homeColor} />
-                    <div className="grid justify-items-center gap-1 px-1">
+                    <div
+                      className="grid justify-items-center gap-1"
+                      style={{ minWidth: 74 }}
+                    >
                       <span className="font-condensed" style={{ textAlign: 'center', fontSize: '0.82rem', color: isLive ? '#2ecc71' : 'var(--nba-text-muted)', letterSpacing: '0.08em', lineHeight: 1 }}>
                         {statusMeta.showScore
                           ? `${g.home_score ?? 0} x ${g.away_score ?? 0}`

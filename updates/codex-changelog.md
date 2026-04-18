@@ -1,5 +1,15 @@
 # Codex Changelog
 
+## 2026-04-18 01:54:00
+
+### Home - linhas de `Jogos de hoje` sem vazios laterais excessivos
+- ajustei o layout dos cards de `Jogos de hoje` em `frontend/src/pages/Home.tsx` para remover o espaço morto que sobrava nas laterais da linha;
+- substituí o comportamento em `flex` no desktop por uma grade fixa de 3 colunas (`time da casa`, `miolo`, `time visitante`), mantendo o centro estável sem empurrar os times para longe;
+- também dei largura mínima controlada ao bloco central de horário/status para a leitura continuar equilibrada sem abrir “buracos” visuais.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 01:46:00
 
 ### Home - cards de séries abaixo de `Jogos de hoje` mais compactos e com destaque verde melhor resolvido
