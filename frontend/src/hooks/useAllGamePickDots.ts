@@ -10,7 +10,6 @@ interface GameRow {
   home_team_id: string
   away_team_id: string
   tip_off_at: string | null
-  round: number | null
   played: boolean
   winner_id: string | null
 }
@@ -49,7 +48,7 @@ export function useAllGamePickDots(): {
           { data: picks },
         ] = await Promise.all([
           supabase.from('participants').select('id'),
-          supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, round, played, winner_id').order('tip_off_at', { ascending: true }),
+          supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, played, winner_id').order('tip_off_at', { ascending: true }),
           supabase.from('game_picks').select('participant_id, game_id, winner_id'),
         ])
 
@@ -88,7 +87,7 @@ export function useAllGamePickDots(): {
             dots.push({
               gameId: game.id,
               status,
-              round: game.round ?? 1,
+              round: 1,
               seriesId: game.series_id,
               homeTeamId: game.home_team_id,
               awayTeamId: game.away_team_id,
