@@ -1,5 +1,11 @@
 # Codex Changelog
 
+## 2026-04-18 03:01:00
+
+### Infra - backup operacional diário agendado para 03:00 BRT
+- ajustei o workflow [\.github/workflows/operational-backup.yml](C:/Dev/pessoal/projetos/nba-bolao/.github/workflows/operational-backup.yml) para disparar o backup operacional diário às `06:00 UTC`, que corresponde a `03:00` da manhã no fuso de São Paulo;
+- o fluxo continua chamando o endpoint interno protegido `/admin/internal/backup/run` com verificação automática do snapshot.
+
 ## 2026-04-18 02:47:00
 
 ### Home - cards ao vivo da rail agora destacam melhor transmissão, relógio e placar parcial
