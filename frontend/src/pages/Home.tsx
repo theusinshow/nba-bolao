@@ -111,6 +111,7 @@ function useCountdown(targetDate: string | null | undefined) {
 interface HomeGamesRailEntry {
   kind: 'day' | 'game'
   key: string
+  dateKey?: string
   label?: string
   sublabel?: string
   game?: HomeRailGame
@@ -278,39 +279,9 @@ function buildHomeGamesRailEntries(
     return 'source' in game && game.source === 'external' ? 0 : 1
   }
 
-  function getSeriesUpcomingKey(game: HomeRailGame) {
-    if (game.series_id) return `series:${game.series_id}`
-    return getIdentityKey(game)
-  }
-
   const deduped = new Map<string, HomeRailGame>()
-  const nextUpcomingBySeries = new Map<string, HomeRailGame>()
 
-  for (const game of [...completedGames, ...liveGames]) {
-    const key = getIdentityKey(game)
-    const existing = deduped.get(key)
-    if (!existing || getSourcePriority(game) >= getSourcePriority(existing)) {
-      deduped.set(key, game)
-    }
-  }
-
-  for (const game of [...upcomingGames, ...extraGames]) {
-    const seriesKey = getSeriesUpcomingKey(game)
-    const existing = nextUpcomingBySeries.get(seriesKey)
-    if (!existing) {
-      nextUpcomingBySeries.set(seriesKey, game)
-      continue
-    }
-
-    const existingTime = existing.tip_off_at ? new Date(existing.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
-    const candidateTime = game.tip_off_at ? new Date(game.tip_off_at).getTime() : Number.MAX_SAFE_INTEGER
-
-    if (candidateTime < existingTime || (candidateTime === existingTime && getSourcePriority(game) > getSourcePriority(existing))) {
-      nextUpcomingBySeries.set(seriesKey, game)
-    }
-  }
-
-  for (const game of nextUpcomingBySeries.values()) {
+  for (const game of [...completedGames, ...liveGames, ...upcomingGames, ...extraGames]) {
     const key = getIdentityKey(game)
     const existing = deduped.get(key)
     if (!existing || getSourcePriority(game) >= getSourcePriority(existing)) {
@@ -335,12 +306,13 @@ function buildHomeGamesRailEntries(
     const dateKey = getBrtDateKey(new Date(game.tip_off_at!))
     if (dateKey !== lastDateKey) {
       const dayLabel = formatRailDayLabel(game.tip_off_at!)
-      items.push({
-        kind: 'day',
-        key: `day-${dateKey}`,
-        label: dayLabel.label,
-        sublabel: dayLabel.sublabel,
-      })
+        items.push({
+          kind: 'day',
+          key: `day-${dateKey}`,
+          dateKey,
+          label: dayLabel.label,
+          sublabel: dayLabel.sublabel,
+        })
       lastDateKey = dateKey
     }
 
@@ -401,6 +373,7 @@ function LastNightRecap({
     [railGames]
   )
   const countdown = useCountdown(nextRealGame?.tip_off_at)
+  const todayDateKey = useMemo(() => getBrtDateKey(new Date()), [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -421,30 +394,27 @@ function LastNightRecap({
   useEffect(() => {
     const node = railRef.current
     if (!node || sourceItems.length === 0) return
-
-    let frameId = 0
-    let lastTimestamp = 0
-    const speedPxPerSecond = 18
-
-    const tick = (timestamp: number) => {
-      if (!lastTimestamp) lastTimestamp = timestamp
-      const deltaSeconds = (timestamp - lastTimestamp) / 1000
-      lastTimestamp = timestamp
-
-      if (!pausedRef.current && !draggingRef.current) {
-        const maxScrollLeft = Math.max(node.scrollWidth - node.clientWidth, 0)
-        if (maxScrollLeft > 0) {
-          node.scrollLeft = Math.min(node.scrollLeft + deltaSeconds * speedPxPerSecond, maxScrollLeft)
-        }
+    const frameId = window.requestAnimationFrame(() => {
+      const todayIndex = sourceItems.findIndex((item) => item.kind === 'day' && item.dateKey === todayDateKey)
+      if (todayIndex < 0) {
+        node.scrollLeft = 0
+        return
       }
 
-      frameId = window.requestAnimationFrame(tick)
-    }
+      const entries = Array.from(node.querySelectorAll<HTMLElement>('[data-rail-entry="true"]'))
+      const todayEntry = entries[todayIndex]
+      if (!todayEntry) return
 
-    frameId = window.requestAnimationFrame(tick)
-    return () => {
-      window.cancelAnimationFrame(frameId)
-    }
+      const nextDayEntry = entries.slice(todayIndex + 1).find((entry) => entry.dataset.entryKind === 'day')
+      const start = todayEntry.offsetLeft
+      const end = nextDayEntry ? nextDayEntry.offsetLeft : node.scrollWidth
+      const targetScrollLeft = Math.max(0, start + (end - start) / 2 - node.clientWidth / 2)
+      const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth)
+
+      node.scrollLeft = Math.min(targetScrollLeft, maxScrollLeft)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
   }, [sourceItems.length])
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -662,6 +632,9 @@ function LastNightRecap({
                   return (
                     <div
                       key={`${item.key}-${index}`}
+                      data-rail-entry="true"
+                      data-entry-kind="day"
+                      data-entry-key={item.key}
                       style={{
                         width: isCompactRail ? 58 : 72,
                         minHeight: isCompactRail ? 106 : 116,
@@ -707,6 +680,9 @@ function LastNightRecap({
                 return (
                   <div
                     key={`${item.key}-${index}`}
+                    data-rail-entry="true"
+                    data-entry-kind="game"
+                    data-entry-key={item.key}
                     style={{
                       width: isCompactRail ? (statusMeta.isLive ? 184 : 170) : statusMeta.isLive ? 214 : 196,
                       minHeight: isCompactRail ? 112 : 124,
@@ -2668,7 +2644,13 @@ export function Home({ participantId }: Props) {
       initial="hidden"
       animate="show"
     >
-      <div className="xl:col-span-3 min-w-0">
+      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
+        <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
+        <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
+        <HomeQuickDeck vertical />
+      </div>
+
+      <div className="flex flex-col gap-4 min-w-0">
         <motion.div variants={fadeUpItem}>
           <LastNightRecap
             games={games}
@@ -2678,15 +2660,6 @@ export function Home({ participantId }: Props) {
             loading={seriesLoading}
           />
         </motion.div>
-      </div>
-
-      <div className="hidden xl:flex xl:flex-col xl:gap-4 min-w-0">
-        <RankingCard ranking={ranking} loading={rankLoading} highlightId={participantId} />
-        <StatsGrid participantCount={ranking.length} completedSeries={completedSeries} totalSeries={series.length} myEntry={myEntry} loading={rankLoading || seriesLoading} />
-        <HomeQuickDeck vertical />
-      </div>
-
-      <div className="flex flex-col gap-4 min-w-0">
         <motion.div id="home-summary-tour" variants={scaleInItem}>
           <HeroPanel
             myEntry={myEntry}

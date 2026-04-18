@@ -1,5 +1,16 @@
 # Codex Changelog
 
+## 2026-04-18 01:02:00
+
+### Home - faixa de jogos agora abre focada no dia de hoje
+- mantive o visual e o posicionamento original da faixa `Jogos` em `frontend/src/pages/Home.tsx`, preservando o mesmo layout e as mesmas informações dos cards;
+- restaurei a composição completa da agenda por data, mantendo jogos passados à esquerda, jogos futuros à direita e a ordenação cronológica contínua;
+- a faixa agora identifica o bloco do dia atual e abre com a área de hoje centralizada na rolagem horizontal, aproximando a navegação da lógica visual do site da NBA;
+- preservei a deduplicação por `nba_game_id` e os agrupamentos por dia para que a agenda continue consistente entre base local e jogos extras.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 00:48:00
 
 ### Home - agenda de jogos no topo com leitura mais próxima da NBA
