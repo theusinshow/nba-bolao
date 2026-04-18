@@ -1,5 +1,13 @@
 # Codex Changelog
 
+## 2026-04-18 02:04:00
+
+### Home - bloco do visitante ancorado pela largura do conteúdo
+- finalizei o ajuste do `TeamMark` em `frontend/src/pages/Home.tsx` para que o lado direito em `Jogos de hoje` use largura de conteúdo (`max-content`) e fique realmente preso à borda direita da coluna, em vez de continuar visualmente centralizado.
+
+### Validação
+- `npm --prefix frontend run build`
+
 ## 2026-04-18 02:00:00
 
 ### Home - alinhamento do time visitante ajustado na direita do card
