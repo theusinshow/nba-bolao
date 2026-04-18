@@ -1,5 +1,31 @@
 # Codex Changelog
 
+## 2026-04-18 — Digest: análise de grupo com consenso, divergências e contra a corrente
+
+### O que foi feito
+`backend/src/digest/exportDailyPicksDigest.ts` — três novas funções de análise injetadas no `whatsappText`:
+
+- **`buildGameInsight`**: linha de consenso por jogo com contagem e % de cada time. Detecta consenso total (✅) e duelo acirrado (⚔️ diferença ≤ 1 voto)
+- **`buildSeriesInsight`**: mesmo consenso para séries + distribuição de duração apostada pela maioria (ex: `5j×4, 6j×2`)
+- **`buildContraCorrenteLines`**: bloco final `🔀 Apostas contra a corrente` — lista participantes que apostaram no time minoritário quando a diferença é clara (minoritário ≤ 40% dos votos)
+
+O formato `compact` também recebe a linha de consenso (sem listar nomes).
+Estrutura de dados (`DailyDigestGameSummary`, `DailyDigestSeriesSummary`) não mudou — compatível com frontend existente.
+
+### Exemplo de saída
+```
+Jogo 1 - CLE x TOR (14:00)
+📊 CLE 6 (67%) x TOR 3 (33%) — maioria no CLE (6/9)
+- Victor: CLE | Rafael: CLE | ...
+- Cobertura: 9/9
+
+🔀 Apostas contra a corrente
+- Matheus: TOR (J1 CLE x TOR)
+```
+
+### Validação
+- `npm --prefix backend run build` ✓
+
 ## 2026-04-18 — Admin: ferramenta de inserção manual de palpites
 
 ### O que foi feito

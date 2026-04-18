@@ -188,6 +188,113 @@ async function fetchDigestData() {
   }
 }
 
+function pct(votes: number, total: number): string {
+  return `${Math.round((votes / total) * 100)}%`
+}
+
+function buildGameInsight(
+  gameId: string,
+  homeTeamId: string,
+  awayTeamId: string,
+  gamePicks: GamePickRow[],
+  teamsById: Record<string, TeamRow | undefined>
+): string | null {
+  const picks = gamePicks.filter((p) => p.game_id === gameId)
+  if (picks.length === 0) return null
+
+  const homeVotes = picks.filter((p) => p.winner_id === homeTeamId).length
+  const awayVotes = picks.filter((p) => p.winner_id === awayTeamId).length
+  const homeAbbr = teamLabel(homeTeamId, teamsById)
+  const awayAbbr = teamLabel(awayTeamId, teamsById)
+  const total = picks.length
+
+  if (homeVotes === total) return `✅ Consenso total: todos no ${homeAbbr} (${total} votos)`
+  if (awayVotes === total) return `✅ Consenso total: todos no ${awayAbbr} (${total} votos)`
+
+  const diff = Math.abs(homeVotes - awayVotes)
+  const majorityAbbr = homeVotes >= awayVotes ? homeAbbr : awayAbbr
+  const majorityVotes = Math.max(homeVotes, awayVotes)
+  const base = `📊 ${homeAbbr} ${homeVotes} (${pct(homeVotes, total)}) x ${awayAbbr} ${awayVotes} (${pct(awayVotes, total)})`
+
+  if (diff <= 1) return `${base} — ⚔️ Duelo acirrado no grupo`
+  return `${base} — maioria no ${majorityAbbr} (${majorityVotes}/${total})`
+}
+
+function buildSeriesInsight(
+  seriesId: string,
+  homeTeamId: string | null,
+  awayTeamId: string | null,
+  seriesPicks: SeriesPickRow[],
+  teamsById: Record<string, TeamRow | undefined>
+): string[] {
+  const picks = seriesPicks.filter((p) => p.series_id === seriesId)
+  if (picks.length === 0) return []
+
+  const homeVotes = picks.filter((p) => p.winner_id === homeTeamId).length
+  const awayVotes = picks.filter((p) => p.winner_id === awayTeamId).length
+  const homeAbbr = teamLabel(homeTeamId, teamsById)
+  const awayAbbr = teamLabel(awayTeamId, teamsById)
+  const total = picks.length
+  const lines: string[] = []
+
+  if (homeVotes === total) {
+    lines.push(`✅ Consenso: todos no ${homeAbbr} (${total} votos)`)
+  } else if (awayVotes === total) {
+    lines.push(`✅ Consenso: todos no ${awayAbbr} (${total} votos)`)
+  } else {
+    const diff = Math.abs(homeVotes - awayVotes)
+    lines.push(
+      `📊 ${homeAbbr} ${homeVotes} (${pct(homeVotes, total)}) x ${awayAbbr} ${awayVotes} (${pct(awayVotes, total)})` +
+      (diff <= 1 ? ' — ⚔️ Racha no grupo' : '')
+    )
+  }
+
+  // Distribuição de duração para o time com maioria
+  const majorityTeamId = homeVotes >= awayVotes ? homeTeamId : awayTeamId
+  const majorityPicks = picks.filter((p) => p.winner_id === majorityTeamId)
+  const gcDist = [4, 5, 6, 7]
+    .map((n) => ({ n, count: majorityPicks.filter((p) => p.games_count === n).length }))
+    .filter((x) => x.count > 0)
+    .map((x) => `${x.n}j×${x.count}`)
+    .join(', ')
+
+  if (gcDist) lines.push(`   Duração (maioria): ${gcDist}`)
+
+  return lines
+}
+
+function buildContraCorrenteLines(
+  gamesOfDay: GameRow[],
+  gamePicks: GamePickRow[],
+  participantsById: Record<string, ParticipantRow | undefined>,
+  teamsById: Record<string, TeamRow | undefined>
+): string[] {
+  const lines: string[] = []
+
+  for (const game of gamesOfDay) {
+    const picks = gamePicks.filter((p) => p.game_id === game.id)
+    if (picks.length < 3) continue
+
+    const homeVotes = picks.filter((p) => p.winner_id === game.home_team_id).length
+    const awayVotes = picks.filter((p) => p.winner_id === game.away_team_id).length
+    if (homeVotes === 0 || awayVotes === 0) continue
+
+    const minorityTeamId = homeVotes < awayVotes ? game.home_team_id : game.away_team_id
+    const minorityPicks = picks.filter((p) => p.winner_id === minorityTeamId)
+    if (minorityPicks.length / picks.length > 0.4) continue
+
+    const matchup = `${teamLabel(game.home_team_id, teamsById)} x ${teamLabel(game.away_team_id, teamsById)}`
+    for (const pick of minorityPicks) {
+      const participant = participantsById[pick.participant_id]
+      if (participant) {
+        lines.push(`- ${participant.name}: ${teamLabel(pick.winner_id, teamsById)} (J${game.game_number} ${matchup})`)
+      }
+    }
+  }
+
+  return lines
+}
+
 function buildDigestSections(
   targetDate: string,
   variant: DailyDigestVariant,
@@ -263,15 +370,21 @@ function buildDigestSections(
   if (games.length === 0) {
     parts.push('- Nenhum jogo programado para esta data')
   } else {
-    for (const game of games) {
-      const header = `*Jogo ${game.gameNumber} - ${game.matchup}* (${game.tipOff})`
+    for (const game of gamesOfDay) {
+      const summary_game = games.find((g) => g.gameId === game.id)!
+      const header = `*Jogo ${summary_game.gameNumber} - ${summary_game.matchup}* (${summary_game.tipOff})`
+
       if (variant === 'compact') {
         parts.push(header)
-        parts.push(`- Picks: ${game.totalPicks}/${summary.totalParticipants} | Faltando: ${game.missingCount}`)
-      } else if (game.picks.length > 0) {
+        const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
+        if (insight) parts.push(insight)
+        parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
+      } else if (summary_game.picks.length > 0) {
         parts.push(header)
-        parts.push(...game.picks.map((pick) => `- ${pick}`))
-        parts.push(`- Cobertura: ${game.totalPicks}/${summary.totalParticipants}`)
+        const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
+        if (insight) parts.push(insight)
+        parts.push(...summary_game.picks.map((pick) => `- ${pick}`))
+        parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
       } else {
         parts.push(`${header}\n- Nenhum palpite salvo ainda`)
       }
@@ -284,19 +397,33 @@ function buildDigestSections(
   if (series.length === 0) {
     parts.push('- Nenhuma serie aberta com confronto definido')
   } else {
-    for (const item of series) {
-      const header = `*${item.roundLabel} - ${item.matchup}*`
+    for (const item of activeSeries) {
+      const summary_series = series.find((s) => s.seriesId === item.id)!
+      const header = `*${summary_series.roundLabel} - ${summary_series.matchup}*`
+
       if (variant === 'compact') {
         parts.push(header)
-        parts.push(`- Picks: ${item.totalPicks}/${summary.totalParticipants} | Faltando: ${item.missingCount}`)
-      } else if (item.picks.length > 0) {
+        const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
+        parts.push(...insightLines)
+        parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
+      } else if (summary_series.picks.length > 0) {
         parts.push(header)
-        parts.push(...item.picks.map((pick) => `- ${pick}`))
-        parts.push(`- Cobertura: ${item.totalPicks}/${summary.totalParticipants}`)
+        const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
+        parts.push(...insightLines)
+        parts.push(...summary_series.picks.map((pick) => `- ${pick}`))
+        parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
       } else {
         parts.push(`${header}\n- Nenhum palpite de serie salvo ainda`)
       }
     }
+  }
+
+  // Apostas contra a corrente
+  const contraCorrenteLines = buildContraCorrenteLines(gamesOfDay, data.gamePicks, participantsById, teamsById)
+  if (contraCorrenteLines.length > 0) {
+    parts.push('')
+    parts.push('*🔀 Apostas contra a corrente*')
+    parts.push(...contraCorrenteLines)
   }
 
   return {
