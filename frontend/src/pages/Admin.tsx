@@ -428,6 +428,41 @@ interface PickCoverageResponse {
   }
 }
 
+type PickIntegritySeverity = 'medium' | 'high'
+
+interface PickIntegrityIssue {
+  key: string
+  severity: PickIntegritySeverity
+  label: string
+  count: number
+  description: string
+  recommendation: string
+  samples: string[]
+}
+
+interface PickIntegrityResponse {
+  ok: boolean
+  timestamp: string
+  integrity: {
+    summary: {
+      duplicateGamePickGroups: number
+      duplicateSeriesPickGroups: number
+      orphanedGamePicks: number
+      orphanedSeriesPicks: number
+      invalidGameWinners: number
+      invalidSeriesWinners: number
+      openGamesWithoutTipOff: number
+      readySeriesWithoutTipOff: number
+      totalIssues: number
+    }
+    issues: PickIntegrityIssue[]
+    hardening: {
+      sqlPath: string
+      recommendations: string[]
+    }
+  }
+}
+
 interface ConfirmDialogState {
   title: string
   description: string
@@ -569,6 +604,10 @@ function coverageStatusTone(entry: PickCoverageEntry) {
   return 'var(--nba-gold)'
 }
 
+function pickIntegrityTone(severity: PickIntegritySeverity) {
+  return severity === 'high' ? 'var(--nba-danger)' : 'var(--nba-gold)'
+}
+
 export function Admin({ participantId }: Props) {
   const { addToast } = useUIStore()
   const todayInputDate = useMemo(() => getTodayInputDate(), [])
@@ -579,6 +618,7 @@ export function Admin({ participantId }: Props) {
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [operationsSnapshot, setOperationsSnapshot] = useState<OperationsResponse['operations'] | null>(null)
   const [pickCoverage, setPickCoverage] = useState<PickCoverageResponse['coverage'] | null>(null)
+  const [pickIntegrity, setPickIntegrity] = useState<PickIntegrityResponse['integrity'] | null>(null)
   const [participantsQuery, setParticipantsQuery] = useState('')
   const [allowedEmailInput, setAllowedEmailInput] = useState('')
   const [showOnlyCoveragePending, setShowOnlyCoveragePending] = useState(true)
@@ -587,6 +627,7 @@ export function Admin({ participantId }: Props) {
   const [loadingOverview, setLoadingOverview] = useState(true)
   const [loadingOperations, setLoadingOperations] = useState(true)
   const [loadingPickCoverage, setLoadingPickCoverage] = useState(true)
+  const [loadingPickIntegrity, setLoadingPickIntegrity] = useState(true)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [digestTargetDate, setDigestTargetDate] = useState(todayInputDate)
   const [digestVariant, setDigestVariant] = useState<'full' | 'compact'>('full')
@@ -683,6 +724,18 @@ export function Admin({ participantId }: Props) {
     }
   }
 
+  async function loadPickIntegrity() {
+    setLoadingPickIntegrity(true)
+    try {
+      const payload = await adminGet<PickIntegrityResponse>('/admin/pick-integrity')
+      setPickIntegrity(payload.integrity)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+    } finally {
+      setLoadingPickIntegrity(false)
+    }
+  }
+
   async function loadDigestPreview(targetDate = digestTargetDate, variant = digestVariant) {
     setLoadingDigestPreview(true)
     try {
@@ -714,7 +767,7 @@ export function Admin({ participantId }: Props) {
   }
 
   async function refreshOperationalData() {
-    await Promise.all([loadHealth(), loadOperations(), loadPickCoverage()])
+    await Promise.all([loadHealth(), loadOperations(), loadPickCoverage(), loadPickIntegrity()])
   }
 
   function closeConfirmDialog() {
@@ -744,6 +797,7 @@ export function Admin({ participantId }: Props) {
     loadHealth()
     loadOperations()
     loadPickCoverage()
+    loadPickIntegrity()
 
     const sub = supabase
       .channel('admin-participants')
@@ -751,6 +805,7 @@ export function Admin({ participantId }: Props) {
         loadParticipants()
         loadOverview()
         loadPickCoverage()
+        loadPickIntegrity()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'allowed_emails' }, () => {
         loadAllowedEmails()
@@ -758,15 +813,19 @@ export function Admin({ participantId }: Props) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_picks' }, () => {
         loadPickCoverage()
+        loadPickIntegrity()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series_picks' }, () => {
         loadPickCoverage()
+        loadPickIntegrity()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
         loadPickCoverage()
+        loadPickIntegrity()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series' }, () => {
         loadPickCoverage()
+        loadPickIntegrity()
       })
       .subscribe()
 
@@ -1091,6 +1150,11 @@ export function Admin({ participantId }: Props) {
   const resetSummary = findOperationSummary(operationSummary, 'reset-picks')
   const latestBackupRun = findLatestOperationRun(operationsSnapshot?.runs, 'backup', 'success')
   const latestBackupVerificationRun = findLatestOperationRun(operationsSnapshot?.runs, 'verify-backup')
+  const pickIntegritySummary = pickIntegrity?.summary ?? null
+  const pickIntegrityIssues = pickIntegrity?.issues ?? []
+  const pickIntegrityCriticalCount = (pickIntegritySummary?.duplicateGamePickGroups ?? 0) + (pickIntegritySummary?.duplicateSeriesPickGroups ?? 0)
+  const pickIntegrityWinnerIssues = (pickIntegritySummary?.invalidGameWinners ?? 0) + (pickIntegritySummary?.invalidSeriesWinners ?? 0)
+  const pickIntegrityLockRisk = (pickIntegritySummary?.openGamesWithoutTipOff ?? 0) + (pickIntegritySummary?.readySeriesWithoutTipOff ?? 0)
   const filteredCoverageGames = useMemo(
     () =>
       (pickCoverage?.todayGames ?? []).filter((item) => !showOnlyCoveragePending || item.missingCount > 0),
@@ -2318,6 +2382,182 @@ export function Admin({ participantId }: Props) {
             </div>
           ))}
         </div>
+      </section>
+
+      <section style={card}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <SectionTitle icon={<AlertTriangle size={14} />}>Integridade dos Palpites</SectionTitle>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.78rem', lineHeight: 1.5, marginTop: -6 }}>
+              Radar de duplicidade, winner inválido e risco de lock para antecipar problema antes da reclamação chegar.
+            </div>
+          </div>
+          <button
+            onClick={() => loadPickIntegrity()}
+            disabled={loadingPickIntegrity}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              borderRadius: 10,
+              border: '1px solid rgba(200,150,60,0.18)',
+              background: 'rgba(255,255,255,0.03)',
+              color: 'var(--nba-text)',
+              padding: '10px 12px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <RefreshCw size={14} />
+            {loadingPickIntegrity ? 'Atualizando...' : 'Rodar varredura'}
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10, marginTop: 14 }} className="grid-cols-2 md:grid-cols-4">
+          {[
+            {
+              label: 'Issues totais',
+              value: pickIntegritySummary?.totalIssues ?? '—',
+              tone: (pickIntegritySummary?.totalIssues ?? 0) > 0 ? 'var(--nba-danger)' : 'var(--nba-success)',
+            },
+            {
+              label: 'Grupos duplicados',
+              value: pickIntegrityCriticalCount,
+              tone: pickIntegrityCriticalCount > 0 ? 'var(--nba-danger)' : 'var(--nba-success)',
+            },
+            {
+              label: 'Winner inválido',
+              value: pickIntegrityWinnerIssues,
+              tone: pickIntegrityWinnerIssues > 0 ? 'var(--nba-danger)' : 'var(--nba-success)',
+            },
+            {
+              label: 'Risco de lock',
+              value: pickIntegrityLockRisk,
+              tone: pickIntegrityLockRisk > 0 ? 'var(--nba-gold)' : 'var(--nba-success)',
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 12,
+                background: 'rgba(12,12,18,0.34)',
+                border: '1px solid rgba(200,150,60,0.14)',
+              }}
+            >
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 6 }}>{item.label}</div>
+              <div className="font-condensed font-bold" style={{ color: item.tone, fontSize: '1.18rem', lineHeight: 1.05 }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {loadingPickIntegrity ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '22px 0 8px' }}>
+            <LoadingBasketball size={24} />
+          </div>
+        ) : pickIntegrityIssues.length === 0 ? (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '14px 15px',
+              borderRadius: 12,
+              background: 'rgba(46,204,113,0.08)',
+              border: '1px solid rgba(46,204,113,0.18)',
+              color: 'var(--nba-success)',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+            }}
+          >
+            Nenhuma anomalia crítica encontrada agora.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+            {pickIntegrityIssues.map((issue) => {
+              const tone = pickIntegrityTone(issue.severity)
+              return (
+                <div
+                  key={issue.key}
+                  style={{
+                    padding: '14px 15px',
+                    borderRadius: 12,
+                    background: 'rgba(12,12,18,0.34)',
+                    border: `1px solid ${tone}26`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <div>
+                      <div className="font-condensed font-bold" style={{ color: tone, fontSize: '0.96rem', lineHeight: 1 }}>
+                        {issue.label}
+                      </div>
+                      <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 6 }}>
+                        {issue.description}
+                      </div>
+                    </div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone, border: `1px solid ${tone}33`, background: `${tone}14`, borderRadius: 999, padding: '4px 10px', fontSize: '0.7rem', fontWeight: 800 }}>
+                      {issue.severity === 'high' ? 'Alta prioridade' : 'Atenção'}
+                      <span>•</span>
+                      <span>{issue.count}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ color: 'var(--nba-text)', fontSize: '0.78rem', lineHeight: 1.55, marginTop: 10 }}>
+                    {issue.recommendation}
+                  </div>
+
+                  {issue.samples.length > 0 && (
+                    <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                      {issue.samples.map((sample) => (
+                        <div
+                          key={sample}
+                          style={{
+                            color: 'var(--nba-text-muted)',
+                            fontSize: '0.72rem',
+                            lineHeight: 1.5,
+                            padding: '8px 10px',
+                            borderRadius: 10,
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(200,150,60,0.08)',
+                          }}
+                        >
+                          {sample}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {pickIntegrity?.hardening && (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '14px 15px',
+              borderRadius: 12,
+              background: 'rgba(74,144,217,0.08)',
+              border: '1px solid rgba(74,144,217,0.16)',
+            }}
+          >
+            <div className="font-condensed font-bold" style={{ color: 'var(--nba-east)', fontSize: '0.9rem', lineHeight: 1 }}>
+              Hardening recomendado
+            </div>
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.74rem', marginTop: 6 }}>
+              Script sugerido: {pickIntegrity.hardening.sqlPath}
+            </div>
+            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+              {pickIntegrity.hardening.recommendations.map((item) => (
+                <div key={item} style={{ color: 'var(--nba-text)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <div style={{ display: 'grid', gap: 16 }} className="xl:grid-cols-[1.3fr_0.9fr]">

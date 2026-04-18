@@ -4,6 +4,7 @@ import cors from 'cors'
 import adminRouter from './routes/admin'
 import analysisRouter from './routes/analysis'
 import gamesRouter from './routes/games'
+import picksRouter from './routes/picks'
 import seriesContextRouter from './routes/seriesContext'
 import { getNBASyncSchedulerSnapshot, startNBASyncScheduler } from './scheduler/nbaSyncScheduler'
 import { getDailyDigestSchedulerSnapshot, startDailyDigestScheduler } from './scheduler/dailyDigestScheduler'
@@ -30,6 +31,7 @@ app.use(express.json())
 app.use('/admin', adminRouter)
 app.use('/analysis', analysisRouter)
 app.use('/games', gamesRouter)
+app.use('/api/picks', picksRouter)
 app.use('/api/series-context', seriesContextRouter)
 
 // Public endpoint — no auth required.

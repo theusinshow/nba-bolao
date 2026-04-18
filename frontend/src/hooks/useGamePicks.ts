@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { saveOfficialGamePick } from '../lib/picksApi'
 import type { Game, GamePick } from '../types'
 import { normalizeGame } from '../utils/bracket'
 
@@ -75,52 +76,17 @@ export function useGamePicks(participantId?: string, seriesId?: string) {
     }
 
     try {
-      const { data: existing, error: existingError } = await supabase
-        .from('game_picks')
-        .select('*')
-        .eq('participant_id', participantId)
-        .eq('game_id', gameId)
-        .limit(1)
-        .maybeSingle()
+      const savedPick = await saveOfficialGamePick(gameId, winnerId)
 
-      if (existingError) {
-        return { error: existingError.message }
-      }
-
-      if (existing) {
-        const { data, error } = await supabase
-          .from('game_picks')
-          .update({ winner_id: winnerId })
-          .eq('id', existing.id)
-          .select()
-          .single()
-
-        if (error || !data) {
-          return { error: error?.message ?? 'Não foi possível atualizar o palpite do jogo' }
+      setPicks((prev) => {
+        const alreadyExists = prev.some((pick) => pick.game_id === gameId || pick.id === savedPick.id)
+        if (alreadyExists) {
+          return prev.map((pick) => (
+            pick.game_id === gameId || pick.id === savedPick.id ? savedPick : pick
+          ))
         }
-
-        setPicks((prev) => prev.map((pick) => (
-          pick.game_id === gameId || pick.id === existing.id ? data as GamePick : pick
-        )))
-      } else {
-        const { data, error } = await supabase
-          .from('game_picks')
-          .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
-          .select()
-          .single()
-
-        if (error || !data) {
-          return { error: error?.message ?? 'Não foi possível salvar o palpite do jogo' }
-        }
-
-        setPicks((prev) => {
-          const alreadyExists = prev.some((pick) => pick.game_id === gameId)
-          if (alreadyExists) {
-            return prev.map((pick) => (pick.game_id === gameId ? data as GamePick : pick))
-          }
-          return [...prev, data as GamePick]
-        })
-      }
+        return [...prev, savedPick]
+      })
     } catch (error) {
       console.error('[useGamePicks.saveGamePick] unexpected error:', error)
       return {

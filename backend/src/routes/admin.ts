@@ -75,6 +75,16 @@ interface AdminCoverageSeriesPickRow {
   series_id: string
 }
 
+interface AdminIntegrityGamePickRow extends PickRow {
+  game_id: string
+  winner_id: string
+}
+
+interface AdminIntegritySeriesPickRow extends PickRow {
+  series_id: string
+  winner_id: string
+}
+
 interface AdminRequest extends Request {
   adminUserId?: string
   adminParticipantId?: string
@@ -252,6 +262,29 @@ function getSeriesLockTipOff(seriesId: string, games: AdminCoverageGameRow[]): s
   return datedGames[0]?.tip_off_at ?? null
 }
 
+function buildDuplicateGroups<T extends { id: string }>(rows: T[], keyFn: (row: T) => string) {
+  const groups = new Map<string, { count: number; rows: T[] }>()
+
+  for (const row of rows) {
+    const key = keyFn(row)
+    const current = groups.get(key)
+    if (current) {
+      current.count += 1
+      current.rows.push(row)
+    } else {
+      groups.set(key, { count: 1, rows: [row] })
+    }
+  }
+
+  return Array.from(groups.entries())
+    .filter(([, group]) => group.count > 1)
+    .map(([key, group]) => ({ key, count: group.count, rows: group.rows }))
+}
+
+function takeSamples<T>(items: T[], format: (item: T) => string, limit = 6) {
+  return items.slice(0, limit).map(format)
+}
+
 async function buildAdminPickCoverage() {
   const [
     { data: participants, error: participantsError },
@@ -365,6 +398,208 @@ async function buildAdminPickCoverage() {
       id: participant.id,
       name: participantNamesById.get(participant.id) ?? participant.id,
     })),
+  }
+}
+
+async function buildAdminPickIntegrity() {
+  const [
+    { data: participants, error: participantsError },
+    { data: teams, error: teamsError },
+    { data: games, error: gamesError },
+    { data: series, error: seriesError },
+    { data: gamePicks, error: gamePicksError },
+    { data: seriesPicks, error: seriesPicksError },
+  ] = await Promise.all([
+    supabase.from('participants').select('id, name').order('name', { ascending: true }),
+    supabase.from('teams').select('id, abbreviation'),
+    supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, played').order('tip_off_at', { ascending: true }),
+    supabase.from('series').select('id, round, home_team_id, away_team_id, is_complete').order('round', { ascending: true }),
+    supabase.from('game_picks').select('id, participant_id, game_id, winner_id'),
+    supabase.from('series_picks').select('id, participant_id, series_id, winner_id'),
+  ])
+
+  const fetchError =
+    participantsError ??
+    teamsError ??
+    gamesError ??
+    seriesError ??
+    gamePicksError ??
+    seriesPicksError
+
+  if (fetchError) {
+    throw new Error(fetchError.message)
+  }
+
+  const participantRows = (participants ?? []) as ParticipantNameRow[]
+  const teamRows = (teams ?? []) as TeamAbbreviationRow[]
+  const gameRows = (games ?? []) as AdminCoverageGameRow[]
+  const seriesRows = (series ?? []) as AdminCoverageSeriesRow[]
+  const gamePickRows = (gamePicks ?? []) as AdminIntegrityGamePickRow[]
+  const seriesPickRows = (seriesPicks ?? []) as AdminIntegritySeriesPickRow[]
+
+  const participantNamesById = new Map(participantRows.map((participant) => [participant.id, participant.name]))
+  const teamsById = new Map(teamRows.map((team) => [team.id, team.abbreviation]))
+  const gamesById = new Map(gameRows.map((game) => [game.id, game]))
+  const seriesById = new Map(seriesRows.map((seriesItem) => [seriesItem.id, seriesItem]))
+  const abbr = (teamId: string | null | undefined) => (teamId ? teamsById.get(teamId) ?? teamId : '?')
+  const participantName = (participantId: string) => participantNamesById.get(participantId) ?? participantId
+  const gameMatchup = (game: AdminCoverageGameRow | undefined) => (
+    game ? `${abbr(game.home_team_id)} x ${abbr(game.away_team_id)} · Jogo ${game.game_number}` : 'Jogo ausente'
+  )
+  const seriesMatchup = (seriesItem: AdminCoverageSeriesRow | undefined) => (
+    seriesItem ? `${abbr(seriesItem.home_team_id)} x ${abbr(seriesItem.away_team_id)} · R${seriesItem.round}` : 'Série ausente'
+  )
+
+  const duplicateGamePickGroups = buildDuplicateGroups(gamePickRows, (pick) => `${pick.participant_id}:${pick.game_id}`)
+  const duplicateSeriesPickGroups = buildDuplicateGroups(seriesPickRows, (pick) => `${pick.participant_id}:${pick.series_id}`)
+
+  const orphanedGamePicks = gamePickRows.filter((pick) => (
+    !participantNamesById.has(pick.participant_id) || !gamesById.has(pick.game_id)
+  ))
+  const orphanedSeriesPicks = seriesPickRows.filter((pick) => (
+    !participantNamesById.has(pick.participant_id) || !seriesById.has(pick.series_id)
+  ))
+  const invalidGameWinners = gamePickRows.filter((pick) => {
+    const game = gamesById.get(pick.game_id)
+    if (!game) return false
+    return pick.winner_id !== game.home_team_id && pick.winner_id !== game.away_team_id
+  })
+  const invalidSeriesWinners = seriesPickRows.filter((pick) => {
+    const seriesItem = seriesById.get(pick.series_id)
+    if (!seriesItem) return false
+    if (!seriesItem.home_team_id || !seriesItem.away_team_id) return false
+    return pick.winner_id !== seriesItem.home_team_id && pick.winner_id !== seriesItem.away_team_id
+  })
+  const openGamesWithoutTipOff = gameRows.filter((game) => !game.played && !game.tip_off_at)
+  const readySeriesWithoutTipOff = seriesRows.filter((seriesItem) => (
+    !seriesItem.is_complete &&
+    !!seriesItem.home_team_id &&
+    !!seriesItem.away_team_id &&
+    !getSeriesLockTipOff(seriesItem.id, gameRows)
+  ))
+
+  const issues = [
+    duplicateGamePickGroups.length > 0 ? {
+      key: 'duplicate-game-picks',
+      severity: 'high',
+      label: 'Duplicidade em palpites de jogo',
+      count: duplicateGamePickGroups.length,
+      description: 'Há participantes com mais de um registro para o mesmo jogo, o que pode distorcer save, leitura e pontuação.',
+      recommendation: 'Aplicar UNIQUE em (participant_id, game_id) e manter save via upsert/servidor.',
+      samples: takeSamples(duplicateGamePickGroups, (group) => {
+        const reference = group.rows[0]
+        return `${participantName(reference.participant_id)} aparece ${group.count}x em ${gameMatchup(gamesById.get(reference.game_id))}.`
+      }),
+    } : null,
+    duplicateSeriesPickGroups.length > 0 ? {
+      key: 'duplicate-series-picks',
+      severity: 'high',
+      label: 'Duplicidade em palpites de série',
+      count: duplicateSeriesPickGroups.length,
+      description: 'Há participantes com mais de um registro para a mesma série, abrindo margem para conflitos de update e ranking.',
+      recommendation: 'Aplicar UNIQUE em (participant_id, series_id) e centralizar o save oficial no backend.',
+      samples: takeSamples(duplicateSeriesPickGroups, (group) => {
+        const reference = group.rows[0]
+        return `${participantName(reference.participant_id)} aparece ${group.count}x em ${seriesMatchup(seriesById.get(reference.series_id))}.`
+      }),
+    } : null,
+    orphanedGamePicks.length > 0 ? {
+      key: 'orphaned-game-picks',
+      severity: 'high',
+      label: 'Game picks órfãos',
+      count: orphanedGamePicks.length,
+      description: 'Existem palpites de jogo apontando para participante ou jogo inexistente no estado atual da base.',
+      recommendation: 'Revisar remoções, resets e chaves estrangeiras; limpar órfãos antes do próximo recálculo.',
+      samples: takeSamples(orphanedGamePicks, (pick) => (
+        `${participantName(pick.participant_id)} · game_id=${pick.game_id} · pick_id=${pick.id}.`
+      )),
+    } : null,
+    orphanedSeriesPicks.length > 0 ? {
+      key: 'orphaned-series-picks',
+      severity: 'high',
+      label: 'Series picks órfãos',
+      count: orphanedSeriesPicks.length,
+      description: 'Existem palpites de série apontando para participante ou série inexistente no estado atual da base.',
+      recommendation: 'Revisar integridade referencial e limpar resíduos de resets/remoções antigas.',
+      samples: takeSamples(orphanedSeriesPicks, (pick) => (
+        `${participantName(pick.participant_id)} · series_id=${pick.series_id} · pick_id=${pick.id}.`
+      )),
+    } : null,
+    invalidGameWinners.length > 0 ? {
+      key: 'invalid-game-winners',
+      severity: 'high',
+      label: 'Winner inválido em jogo',
+      count: invalidGameWinners.length,
+      description: 'Há palpites de jogo com `winner_id` fora das duas equipes realmente ligadas ao confronto.',
+      recommendation: 'Salvar apenas via backend validado e revisar registros corrompidos antes do próximo fechamento.',
+      samples: takeSamples(invalidGameWinners, (pick) => {
+        const game = gamesById.get(pick.game_id)
+        return `${participantName(pick.participant_id)} salvou ${pick.winner_id} em ${gameMatchup(game)}.`
+      }),
+    } : null,
+    invalidSeriesWinners.length > 0 ? {
+      key: 'invalid-series-winners',
+      severity: 'high',
+      label: 'Winner inválido em série',
+      count: invalidSeriesWinners.length,
+      description: 'Há palpites de série com `winner_id` incompatível com os dois times cadastrados na série.',
+      recommendation: 'Bloquear gravações fora do servidor e revisar os registros inconsistentes.',
+      samples: takeSamples(invalidSeriesWinners, (pick) => {
+        const seriesItem = seriesById.get(pick.series_id)
+        return `${participantName(pick.participant_id)} salvou ${pick.winner_id} em ${seriesMatchup(seriesItem)}.`
+      }),
+    } : null,
+    openGamesWithoutTipOff.length > 0 ? {
+      key: 'open-games-without-tipoff',
+      severity: 'medium',
+      label: 'Jogos abertos sem tip-off',
+      count: openGamesWithoutTipOff.length,
+      description: 'Jogos sem horário oficial enfraquecem a trava de lock e podem confundir countdown, lembretes e regra de fechamento.',
+      recommendation: 'Verificar sync da NBA e evitar liberar rodada crítica com jogo aberto sem `tip_off_at`.',
+      samples: takeSamples(openGamesWithoutTipOff, (game) => gameMatchup(game)),
+    } : null,
+    readySeriesWithoutTipOff.length > 0 ? {
+      key: 'ready-series-without-tipoff',
+      severity: 'medium',
+      label: 'Séries prontas sem horário-base',
+      count: readySeriesWithoutTipOff.length,
+      description: 'Séries com confronto definido mas sem primeiro tip-off comprometem a trava de palpites de série.',
+      recommendation: 'Conferir se os jogos da série já foram criados e sincronizados com horário antes de abrir a janela.',
+      samples: takeSamples(readySeriesWithoutTipOff, (seriesItem) => seriesMatchup(seriesItem)),
+    } : null,
+  ].filter((issue): issue is {
+    key: string
+    severity: 'medium' | 'high'
+    label: string
+    count: number
+    description: string
+    recommendation: string
+    samples: string[]
+  } => !!issue)
+
+  const summary = {
+    duplicateGamePickGroups: duplicateGamePickGroups.length,
+    duplicateSeriesPickGroups: duplicateSeriesPickGroups.length,
+    orphanedGamePicks: orphanedGamePicks.length,
+    orphanedSeriesPicks: orphanedSeriesPicks.length,
+    invalidGameWinners: invalidGameWinners.length,
+    invalidSeriesWinners: invalidSeriesWinners.length,
+    openGamesWithoutTipOff: openGamesWithoutTipOff.length,
+    readySeriesWithoutTipOff: readySeriesWithoutTipOff.length,
+    totalIssues: issues.reduce((sum, issue) => sum + issue.count, 0),
+  }
+
+  return {
+    summary,
+    issues,
+    hardening: {
+      sqlPath: 'supabase/pick-integrity-hardening.sql',
+      recommendations: [
+        'Aplicar índices/constraints UNIQUE para series_picks e game_picks.',
+        'Endurecer RLS para permitir gravação só do próprio participante e antes do lock.',
+        'Usar o backend oficial de save como caminho principal de escrita em produção.',
+      ],
+    },
   }
 }
 
@@ -666,6 +901,21 @@ router.get('/pick-coverage', async (_req, res) => {
     })
   } catch (err: unknown) {
     console.error('[admin/pick-coverage] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// GET /admin/pick-integrity
+router.get('/pick-integrity', async (_req, res) => {
+  try {
+    const integrity = await buildAdminPickIntegrity()
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      integrity,
+    })
+  } catch (err: unknown) {
+    console.error('[admin/pick-integrity] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })

@@ -12,6 +12,7 @@ import { getGameStatusMeta as getLiveGameStatusMeta } from '../utils/gameStatus'
 import { TEAM_MAP, getTeamLogoUrl } from '../data/teams2025'
 import { teamAbbrStyle } from '../utils/teamColors'
 import { BRT_TIMEZONE } from '../utils/constants'
+import { saveOfficialGamePick } from '../lib/picksApi'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2844,55 +2845,17 @@ export function Games({ participantId }: Props) {
     }
 
     try {
-      const { data: existing, error: existingError } = await supabase
-        .from('game_picks')
-        .select('*')
-        .eq('participant_id', participantId)
-        .eq('game_id', gameId)
-        .limit(1)
-        .maybeSingle()
+      const savedPick = await saveOfficialGamePick(gameId, winnerId)
 
-      if (existingError) {
-        addToast(`Erro ao localizar palpite atual: ${existingError.message}`, 'error')
-        return false
-      }
-
-      if (existing) {
-        const { data, error } = await supabase
-          .from('game_picks')
-          .update({ winner_id: winnerId })
-          .eq('id', existing.id)
-          .select()
-          .single()
-        if (error) {
-          addToast(`Erro ao salvar: ${error.message}`, 'error')
-          return false
+      setPicks((prev) => {
+        const alreadyExists = prev.some((pick) => pick.game_id === gameId || pick.id === savedPick.id)
+        if (alreadyExists) {
+          return prev.map((pick) => (
+            pick.game_id === gameId || pick.id === savedPick.id ? savedPick : pick
+          ))
         }
-        if (data) {
-          setPicks((prev) => prev.map((pick) => (
-            pick.game_id === gameId || pick.id === existing.id ? data as GamePick : pick
-          )))
-        }
-      } else {
-        const { data, error } = await supabase
-          .from('game_picks')
-          .insert({ participant_id: participantId, game_id: gameId, winner_id: winnerId })
-          .select()
-          .single()
-        if (error) {
-          addToast(`Erro ao salvar: ${error.message}`, 'error')
-          return false
-        }
-        if (data) {
-          setPicks((prev) => {
-            const alreadyExists = prev.some((pick) => pick.game_id === gameId)
-            if (alreadyExists) {
-              return prev.map((pick) => (pick.game_id === gameId ? data as GamePick : pick))
-            }
-            return [...prev, data as GamePick]
-          })
-        }
-      }
+        return [...prev, savedPick]
+      })
 
       setAutoPickGameIds((current) => {
         const next = source === 'auto'

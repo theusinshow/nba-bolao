@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { saveOfficialSeriesPick } from '../lib/picksApi'
 import type { Game, Series, SeriesPick } from '../types'
 import { getSeriesSlot } from '../utils/bracket'
 import { TEAM_MAP } from '../data/teams2025'
@@ -84,44 +85,17 @@ export function useSeries(participantId?: string) {
       throw new Error('Os palpites desta série já foram travados')
     }
 
-    const { data: existing, error: existingError } = await supabase
-      .from('series_picks')
-      .select('*')
-      .eq('participant_id', participantId)
-      .eq('series_id', seriesId)
-      .limit(1)
-      .maybeSingle()
+    const savedPick = await saveOfficialSeriesPick(seriesId, winnerId, gamesCount)
 
-    if (existingError) {
-      throw new Error(existingError.message)
-    }
-
-    if (existing) {
-      const { data, error } = await supabase
-        .from('series_picks')
-        .update({ winner_id: winnerId, games_count: gamesCount })
-        .eq('id', existing.id)
-        .select()
-        .single()
-      if (error || !data) throw new Error(error?.message ?? 'Não foi possível atualizar o palpite da série')
-      setPicks((prev) => prev.map((pick) => (
-        pick.series_id === seriesId || pick.id === existing.id ? data as SeriesPick : pick
-      )))
-    } else {
-      const { data, error } = await supabase
-        .from('series_picks')
-        .insert({ participant_id: participantId, series_id: seriesId, winner_id: winnerId, games_count: gamesCount })
-        .select()
-        .single()
-      if (error || !data) throw new Error(error?.message ?? 'Não foi possível salvar o palpite da série')
-      setPicks((prev) => {
-        const alreadyExists = prev.some((pick) => pick.series_id === seriesId)
-        if (alreadyExists) {
-          return prev.map((pick) => (pick.series_id === seriesId ? data as SeriesPick : pick))
-        }
-        return [...prev, data as SeriesPick]
-      })
-    }
+    setPicks((prev) => {
+      const alreadyExists = prev.some((pick) => pick.series_id === seriesId || pick.id === savedPick.id)
+      if (alreadyExists) {
+        return prev.map((pick) => (
+          pick.series_id === seriesId || pick.id === savedPick.id ? savedPick : pick
+        ))
+      }
+      return [...prev, savedPick]
+    })
   }
 
   function getPickForSeries(seriesId: string): SeriesPick | undefined {
