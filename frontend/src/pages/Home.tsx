@@ -444,27 +444,33 @@ function LastNightRecap({
     const node = railRef.current
     if (!node || sourceItems.length === 0) return
     const frameId = window.requestAnimationFrame(() => {
+      const entries = Array.from(node.querySelectorAll<HTMLElement>('[data-rail-entry="true"]'))
+
+      // Prefer centering on the first live game
+      const firstLiveEntry = entries.find((e) => e.dataset.entryLive === 'true')
+      if (firstLiveEntry) {
+        const targetScrollLeft = Math.max(0, firstLiveEntry.offsetLeft - node.clientWidth / 2 + firstLiveEntry.offsetWidth / 2)
+        node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
+        return
+      }
+
+      // Fallback: center on today's date group
       const todayIndex = sourceItems.findIndex((item) => item.kind === 'day' && item.dateKey === todayDateKey)
       if (todayIndex < 0) {
         node.scrollLeft = 0
         return
       }
-
-      const entries = Array.from(node.querySelectorAll<HTMLElement>('[data-rail-entry="true"]'))
       const todayEntry = entries[todayIndex]
       if (!todayEntry) return
-
       const nextDayEntry = entries.slice(todayIndex + 1).find((entry) => entry.dataset.entryKind === 'day')
       const start = todayEntry.offsetLeft
       const end = nextDayEntry ? nextDayEntry.offsetLeft : node.scrollWidth
       const targetScrollLeft = Math.max(0, start + (end - start) / 2 - node.clientWidth / 2)
-      const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth)
-
-      node.scrollLeft = Math.min(targetScrollLeft, maxScrollLeft)
+      node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
     })
 
     return () => window.cancelAnimationFrame(frameId)
-  }, [sourceItems.length])
+  }, [sourceItems.length, liveCount])
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     const node = railRef.current
@@ -748,6 +754,7 @@ function LastNightRecap({
                     data-rail-entry="true"
                     data-entry-kind="game"
                     data-entry-key={item.key}
+                    data-entry-live={statusMeta.isLive ? 'true' : undefined}
                     style={{
                       width: isCompactRail
                         ? (isEditorialGame ? 188 : 166)
