@@ -17,6 +17,8 @@ import type { AdminOperationName } from '../admin/adminOperationLog'
 import type { ArtifactDescriptor } from '../lib/operationalArtifacts'
 import { BRT_TIMEZONE } from '../lib/constants'
 import { getLiveGameColumnsSnapshot } from '../lib/liveGameColumns'
+import { computeAndSaveBadges } from '../badges/engine'
+import { BADGE_DEFINITIONS } from '../badges/definitions'
 
 const router = Router()
 
@@ -1581,6 +1583,31 @@ router.post('/participants/remove', async (req, res) => {
     })
   } catch (err: unknown) {
     console.error('[admin/participants/remove] Removal failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// GET /admin/badges — list all earned badges
+router.get('/badges', async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('participant_badges')
+      .select('participant_id, badge_id, earned_at')
+      .order('earned_at', { ascending: false })
+    if (error) throw error
+    res.json({ ok: true, definitions: BADGE_DEFINITIONS, badges: data ?? [] })
+  } catch (err: unknown) {
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// POST /admin/badges/recompute — force badge recalculation
+router.post('/badges/recompute', async (_req, res) => {
+  try {
+    const result = await computeAndSaveBadges()
+    res.json({ ok: true, ...result })
+  } catch (err: unknown) {
+    console.error('[admin/badges/recompute] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })

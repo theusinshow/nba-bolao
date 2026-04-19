@@ -5,6 +5,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { useParticipantProfile } from '../hooks/useParticipantProfile'
+import { useParticipantBadges, BADGE_DEFINITIONS, sortBadges } from '../hooks/useParticipantBadges'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
 import { getTeamLogoUrl } from '../data/teams2025'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -131,6 +132,9 @@ export function Profile() {
     expensiveMisses,
     entry,
   })
+
+  const { badgesByParticipant } = useParticipantBadges()
+  const earnedBadgeIds = sortBadges(badgesByParticipant.get(id!) ?? [])
 
   const avatarColor = nameToColor(entry.participant_name)
   const rankColor = RANK_COLOR[entry.rank] ?? 'var(--nba-gold)'
@@ -597,6 +601,79 @@ export function Profile() {
           <div style={{ height: 1, flex: 1, background: 'var(--nba-border)' }} />
         </div>
         <ParticipantScoreReport breakdown={breakdown} loading={loading} />
+      </div>
+
+      {/* ── Conquistas ──────────────────────────────────────────────────── */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '0.08em', color: 'var(--nba-text-muted)', margin: 0 }}>
+            CONQUISTAS
+          </h2>
+          <div style={{ height: 1, flex: 1, background: 'var(--nba-border)' }} />
+        </div>
+
+        {earnedBadgeIds.length === 0 ? (
+          <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>
+            Nenhuma conquista ainda — continue palpitando!
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+            {earnedBadgeIds.map((badgeId) => {
+              const def = BADGE_DEFINITIONS[badgeId]
+              if (!def) return null
+              return (
+                <div
+                  key={badgeId}
+                  style={{
+                    background: 'var(--nba-surface)',
+                    border: '1px solid var(--nba-border)',
+                    borderRadius: 8,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{def.emoji}</span>
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.85rem', color: 'var(--nba-gold)', letterSpacing: '0.04em' }}>
+                    {def.label.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--nba-text-muted)', lineHeight: 1.4 }}>
+                    {def.description}
+                  </span>
+                </div>
+              )
+            })}
+
+            {/* Badges não conquistados */}
+            {Object.entries(BADGE_DEFINITIONS)
+              .filter(([id]) => !earnedBadgeIds.includes(id))
+              .map(([badgeId, def]) => (
+                <div
+                  key={badgeId}
+                  style={{
+                    background: 'var(--nba-surface)',
+                    border: '1px solid rgba(136,136,153,0.12)',
+                    borderRadius: 8,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    opacity: 0.4,
+                    filter: 'grayscale(1)',
+                  }}
+                >
+                  <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{def.emoji}</span>
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.85rem', color: 'var(--nba-text-muted)', letterSpacing: '0.04em' }}>
+                    {def.label.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--nba-text-muted)', lineHeight: 1.4 }}>
+                    {def.description}
+                  </span>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </div>
   )

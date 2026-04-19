@@ -5,6 +5,7 @@ import type { RankingEntry } from '../types'
 import { GamePickDots, type DotData } from './GamePickDots'
 import { AnimatedNumber } from './AnimatedNumber'
 import { pressMotion } from '../lib/motion'
+import { BadgeList } from './BadgeList'
 
 interface Props {
   ranking: RankingEntry[]
@@ -12,6 +13,7 @@ interface Props {
   selectedId?: string
   onParticipantClick?: (participantId: string) => void
   dotsById?: Map<string, DotData[]>
+  badgesByParticipant?: Map<string, string[]>
 }
 
 // ─── Avatar com iniciais ──────────────────────────────────────────────────────
@@ -126,7 +128,7 @@ const RANK_COLOR: Record<number, string> = {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick, dotsById }: Props) {
+export function RankingTable({ ranking, highlightId, selectedId, onParticipantClick, dotsById, badgesByParticipant }: Props) {
   const previousByIdRef = useRef<Record<string, RankingEntry>>({})
   const [flashById, setFlashById] = useState<Record<string, 'success' | 'danger'>>({})
 
@@ -257,19 +259,28 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                 <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Avatar name={e.participant_name} />
-                    <span
-                      style={{
-                        color: isMe || isSelected ? 'var(--nba-gold)' : 'var(--nba-text)',
-                        fontWeight: isMe || isSelected ? 600 : 400,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: 140,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {e.participant_name}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                      <span
+                        style={{
+                          color: isMe || isSelected ? 'var(--nba-gold)' : 'var(--nba-text)',
+                          fontWeight: isMe || isSelected ? 600 : 400,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: 140,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {e.participant_name}
+                      </span>
+                      {badgesByParticipant && (
+                        <BadgeList
+                          badgeIds={badgesByParticipant.get(e.participant_id) ?? []}
+                          max={3}
+                          size="sm"
+                        />
+                      )}
+                    </div>
                     {rankDiff !== null && rankDiff > 0 && (
                       <ArrowUp size={11} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />
                     )}

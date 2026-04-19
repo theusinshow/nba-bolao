@@ -9,6 +9,7 @@ import { LoadingBasketball } from '../components/LoadingBasketball'
 import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { useAllGamePickDots } from '../hooks/useAllGamePickDots'
+import { useParticipantBadges } from '../hooks/useParticipantBadges'
 import { SCORING_CONFIG } from '../utils/scoring'
 import { ROUND_LABELS } from '../utils/constants'
 import { fadeUpItem, premiumTween, pressMotion, scaleInItem, softStaggerContainer, staggerContainer } from '../lib/motion'
@@ -390,6 +391,7 @@ function ScoringGuide({ mobile, onClose }: { mobile?: boolean; onClose?: () => v
 export function Ranking({ participantId }: Props) {
   const { ranking, breakdowns, rawSeries, rawSeriesPicks, loading, error } = useRanking()
   const { dotsById } = useAllGamePickDots()
+  const { badgesByParticipant } = useParticipantBadges()
   const [mobileScoringOpen, setMobileScoringOpen] = useState(false)
   const [simOpen, setSimOpen] = useState(false)
   const [isReordering, setIsReordering] = useState(false)
@@ -625,6 +627,7 @@ const navigate = useNavigate()
                   highlightId={participantId}
                   onParticipantClick={handleParticipantClick}
                   dotsById={dotsById}
+                  badgesByParticipant={badgesByParticipant}
                 />
 
                 {/* E se... — abaixo da tabela */}

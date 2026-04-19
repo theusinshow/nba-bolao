@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { type BDLGame, fetchPostseasonGames } from '../lib/nba'
 import { recalculateAllScores } from '../scoring/engine'
+import { computeAndSaveBadges } from '../badges/engine'
 
 const ABBREV_MAP: Record<string, string> = {
   OKC: 'OKC', HOU: 'HOU', GSW: 'GSW', DEN: 'DEN',
@@ -582,6 +583,7 @@ export async function syncNBA(): Promise<void> {
     await persistSeries(originalSeries, series)
 
     await recalculateAllScores()
+    await computeAndSaveBadges().catch((err) => console.error('[syncNBA] Badge compute failed (non-fatal):', err))
     console.log('[syncNBA] Sync complete.')
   } catch (err) {
     console.error('[syncNBA] Error:', err)
