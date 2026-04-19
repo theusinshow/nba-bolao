@@ -107,6 +107,7 @@ export function buildRankingState({
 
   const normalizedGames = games.map((game) => normalizeGame(game, seriesMap[game.series_id]?.round))
   const gameMap = Object.fromEntries(normalizedGames.map((game) => [game.id, game]))
+  const playedGamesCount = normalizedGames.filter((g) => g.played).length
   const breakdowns: Record<string, ParticipantScoreBreakdown> = {}
 
   for (const participant of participants) {
@@ -240,7 +241,7 @@ export function buildRankingState({
         series_correct: seriesCorrect,
         series_total: mySeriesPicks.length,
         games_correct: gamesCorrect,
-        games_total: myGamePicks.length,
+        games_total: playedGamesCount,
       },
       series_breakdown: seriesBreakdown,
       game_breakdown: gameBreakdown,
