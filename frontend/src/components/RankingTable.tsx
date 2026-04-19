@@ -259,28 +259,19 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
                 <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Avatar name={e.participant_name} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                      <span
-                        style={{
-                          color: isMe || isSelected ? 'var(--nba-gold)' : 'var(--nba-text)',
-                          fontWeight: isMe || isSelected ? 600 : 400,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: 140,
-                          lineHeight: 1,
-                        }}
-                      >
-                        {e.participant_name}
-                      </span>
-                      {badgesByParticipant && (
-                        <BadgeList
-                          badgeIds={badgesByParticipant.get(e.participant_id) ?? []}
-                          max={3}
-                          size="sm"
-                        />
-                      )}
-                    </div>
+                    <span
+                      style={{
+                        color: isMe || isSelected ? 'var(--nba-gold)' : 'var(--nba-text)',
+                        fontWeight: isMe || isSelected ? 600 : 400,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: 140,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {e.participant_name}
+                    </span>
                     {rankDiff !== null && rankDiff > 0 && (
                       <ArrowUp size={11} style={{ color: 'var(--nba-success)', flexShrink: 0 }} />
                     )}
