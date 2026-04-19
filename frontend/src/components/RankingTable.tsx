@@ -205,9 +205,7 @@ export function RankingTable({ ranking, highlightId, selectedId, onParticipantCl
             const isSelected = e.participant_id === selectedId
             const isMedal = e.rank <= 3
             const rankDiff = e.prev_rank != null ? e.prev_rank - e.rank : null
-            const totalCorrect = e.series_correct + e.games_correct
-            const totalPicks = e.series_total + e.games_total
-            const seriesPct = totalPicks > 0 ? Math.round((totalCorrect / totalPicks) * 100) : 0
+            const seriesPct = e.games_total > 0 ? Math.round((e.games_correct / e.games_total) * 100) : 0
 
             // Row background priority: medal > me > zebra
             const rowBg =

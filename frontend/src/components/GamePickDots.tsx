@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 export type DotStatus = 'correct' | 'wrong' | 'pending' | 'no-pick'
 
@@ -35,6 +35,63 @@ const DOT_LABEL: Record<DotStatus, string> = {
 
 const COMPACT_COUNT = 5
 
+function DotTooltip({ dot, children }: { dot: DotData; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  const statusColor = DOT_COLOR[dot.status]
+  const label = DOT_LABEL[dot.status]
+
+  return (
+    <span
+      ref={ref}
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <span style={{
+          position: 'absolute',
+          bottom: 'calc(100% + 6px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'var(--nba-surface-2)',
+          border: '1px solid var(--nba-border)',
+          borderRadius: 6,
+          padding: '5px 8px',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+        }}>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '0.72rem', color: 'var(--nba-text-muted)', letterSpacing: '0.03em' }}>
+            J{dot.gameNumber} · {dot.homeAbbr} vs {dot.awayAbbr}
+          </span>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: statusColor, letterSpacing: '0.04em' }}>
+            {label.toUpperCase()}
+          </span>
+          {/* Arrow */}
+          <span style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0,
+            height: 0,
+            borderLeft: '5px solid transparent',
+            borderRight: '5px solid transparent',
+            borderTop: '5px solid var(--nba-border)',
+          }} />
+        </span>
+      )}
+    </span>
+  )
+}
+
 function CompactDots({ dots }: { dots: DotData[] }) {
   // First 5 games in chronological order (earliest tip-off first)
   const recent = dots.slice(0, COMPACT_COUNT)
@@ -61,31 +118,31 @@ function CompactDots({ dots }: { dots: DotData[] }) {
             }}
           />
         ) : (
-          <span
-            key={dot.gameId}
-            title={`J${dot.gameNumber} · ${dot.homeAbbr} vs ${dot.awayAbbr} · ${DOT_LABEL[dot.status]}`}
-            style={{
-              display: 'inline-block',
-              width: 9,
-              height: 9,
-              borderRadius: '50%',
-              background: dot.status === 'no-pick'
-                ? 'rgba(136,136,153,0.08)'
-                : DOT_COLOR[dot.status],
-              border: dot.status === 'no-pick'
-                ? '1px solid rgba(136,136,153,0.4)'
-                : dot.status === 'pending'
-                ? '1px solid rgba(136,136,153,0.3)'
-                : 'none',
-              boxShadow: dot.status === 'correct'
-                ? '0 0 4px rgba(46,204,113,0.5)'
-                : dot.status === 'wrong'
-                ? '0 0 4px rgba(231,76,60,0.4)'
-                : 'none',
-              flexShrink: 0,
-              cursor: 'default',
-            }}
-          />
+          <DotTooltip key={dot.gameId} dot={dot}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                background: dot.status === 'no-pick'
+                  ? 'rgba(136,136,153,0.08)'
+                  : DOT_COLOR[dot.status],
+                border: dot.status === 'no-pick'
+                  ? '1px solid rgba(136,136,153,0.4)'
+                  : dot.status === 'pending'
+                  ? '1px solid rgba(136,136,153,0.3)'
+                  : 'none',
+                boxShadow: dot.status === 'correct'
+                  ? '0 0 4px rgba(46,204,113,0.5)'
+                  : dot.status === 'wrong'
+                  ? '0 0 4px rgba(231,76,60,0.4)'
+                  : 'none',
+                flexShrink: 0,
+                cursor: 'default',
+              }}
+            />
+          </DotTooltip>
         )
       )}
     </span>
