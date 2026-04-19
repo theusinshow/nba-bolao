@@ -114,7 +114,7 @@ function computeBadges(
     if (allCorrect) { earned.add('perfect_day'); break }
   }
 
-  // ── on_fire: 3 jogos certos consecutivos ─────────────────────────────────
+  // ── on_fire / dominant: jogos certos consecutivos ────────────────────────
   const orderedPlayed = playedGames.filter((g) => g.tip_off_at).sort(
     (a, b) => new Date(a.tip_off_at!).getTime() - new Date(b.tip_off_at!).getTime()
   )
@@ -123,10 +123,63 @@ function computeBadges(
     const pick = myGamePicks.find((p) => p.game_id === game.id)
     if (pick && pick.winner_id === game.winner_id) {
       streak++
-      if (streak >= 3) { earned.add('on_fire'); break }
+      if (streak >= 3) earned.add('on_fire')
+      if (streak >= 5) earned.add('dominant')
     } else {
       streak = pick ? 0 : streak // no pick doesn't break streak
     }
+  }
+
+  // ── sniper: ≥80% de acerto (mín. 5 jogos com pick) ───────────────────────
+  const pickedPlayedGames = playedGames.filter((g) => myGamePicks.some((p) => p.game_id === g.id))
+  if (pickedPlayedGames.length >= 5) {
+    const correct = pickedPlayedGames.filter((g) => {
+      const pick = myGamePicks.find((p) => p.game_id === g.id)
+      return pick && pick.winner_id === g.winner_id
+    }).length
+    if (correct / pickedPlayedGames.length >= 0.8) earned.add('sniper')
+  }
+
+  // ── brave: minoria correta em 3 jogos diferentes ──────────────────────────
+  let minorityCorrect = 0
+  for (const game of playedGames) {
+    const myPick = myGamePicks.find((p) => p.game_id === game.id)
+    if (!myPick || myPick.winner_id !== game.winner_id) continue
+    const allPicks = gamePicks.filter((p) => p.game_id === game.id)
+    if (allPicks.length < 3) continue
+    const myVotes = allPicks.filter((p) => p.winner_id === myPick.winner_id).length
+    if (myVotes / allPicks.length <= 0.4) {
+      minorityCorrect++
+      if (minorityCorrect >= 3) { earned.add('brave'); break }
+    }
+  }
+
+  // ── series_master: 5+ séries com vencedor correto ─────────────────────────
+  const correctSeries = mySeriesPicks.filter((sp) => {
+    const s = completeSeries.find((s) => s.id === sp.series_id)
+    return s && sp.winner_id === s.winner_id
+  }).length
+  if (correctSeries >= 5) earned.add('series_master')
+
+  // ── hat_trick: 3 acertos no mesmo dia ────────────────────────────────────
+  const correctByDay = new Map<string, number>()
+  for (const game of playedGames) {
+    if (!game.tip_off_at) continue
+    const pick = myGamePicks.find((p) => p.game_id === game.id)
+    if (pick && pick.winner_id === game.winner_id) {
+      const key = getBrtDateKey(game.tip_off_at)
+      correctByDay.set(key, (correctByDay.get(key) ?? 0) + 1)
+    }
+  }
+  if ([...correctByDay.values()].some((n) => n >= 3)) earned.add('hat_trick')
+
+  // ── zebra: único do grupo a acertar um jogo ───────────────────────────────
+  for (const game of playedGames) {
+    const myPick = myGamePicks.find((p) => p.game_id === game.id)
+    if (!myPick || myPick.winner_id !== game.winner_id) continue
+    const allPicks = gamePicks.filter((p) => p.game_id === game.id)
+    const correctPicks = allPicks.filter((p) => p.winner_id === game.winner_id)
+    if (correctPicks.length === 1) { earned.add('zebra'); break }
   }
 
   return earned
