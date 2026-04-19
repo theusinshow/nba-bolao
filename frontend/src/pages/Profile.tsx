@@ -87,6 +87,7 @@ export function Profile() {
     favoriteTeams,
     expensiveMisses,
   } = useParticipantProfile(id!)
+  const { badgesByParticipant } = useParticipantBadges()
 
   if (loading) {
     return (
@@ -133,7 +134,6 @@ export function Profile() {
     entry,
   })
 
-  const { badgesByParticipant } = useParticipantBadges()
   const earnedBadgeIds = sortBadges(badgesByParticipant.get(id!) ?? [])
 
   const avatarColor = nameToColor(entry.participant_name)
