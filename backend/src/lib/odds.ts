@@ -75,8 +75,12 @@ const oddsApi = axios.create({
   baseURL: 'https://api.the-odds-api.com/v4',
 })
 
+const ESPN_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard'
+const ESPN_CORE_BASE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba'
+
 const BOOKMAKER_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'bet365']
 const DEFAULT_CACHE_TTL_MS = Number(process.env.ODDS_API_CACHE_TTL_MS ?? 10 * 60 * 1000)
+const ESPN_CACHE_TTL_MS = 30 * 60 * 1000 // 30 min — no quota limit
 
 const oddsCache = new Map<string, {
   expiresAt: number
@@ -219,6 +223,94 @@ function mapOddsEvent(event: OddsEvent): AnalysisOddsItem | null {
       over_odds: over?.price ?? null,
       under_odds: under?.price ?? null,
     },
+  }
+}
+
+// ─── ESPN (no API key, no quota) ─────────────────────────────────────────────
+
+interface ESPNCompetitor {
+  homeAway: 'home' | 'away'
+  team: { displayName: string; abbreviation: string }
+}
+interface ESPNOddsItem {
+  provider?: { name: string }
+  homeTeamOdds?: { moneyLine?: number }
+  awayTeamOdds?: { moneyLine?: number }
+}
+interface ESPNOddsResponse { items?: ESPNOddsItem[] }
+interface ESPNCompetition {
+  id: string
+  date: string
+  competitors: ESPNCompetitor[]
+}
+interface ESPNEvent { id: string; competitions: ESPNCompetition[] }
+interface ESPNScoreboardResponse { events?: ESPNEvent[] }
+
+const espnCache = new Map<string, { expiresAt: number; status: OddsProviderStatus; odds: GameOddsSummaryItem[] }>()
+
+export async function fetchESPNGameOddsSummary(): Promise<{ status: OddsProviderStatus; odds: GameOddsSummaryItem[] }> {
+  const cacheKey = 'espn:nba:scoreboard'
+  const cached = espnCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return { status: cached.status, odds: cached.odds }
+  }
+
+  try {
+    const scoreboardRes = await axios.get<ESPNScoreboardResponse>(ESPN_SCOREBOARD_URL, {
+      params: { seasontype: 3, limit: 20 },
+      timeout: 8000,
+    })
+
+    const events = scoreboardRes.data.events ?? []
+
+    const oddsResults = await Promise.all(
+      events.map(async (event) => {
+        const comp = event.competitions[0]
+        if (!comp) return null
+        try {
+          const oddsRes = await axios.get<ESPNOddsResponse>(
+            `${ESPN_CORE_BASE}/events/${event.id}/competitions/${comp.id}/odds`,
+            { timeout: 6000 }
+          )
+          const entry = oddsRes.data.items?.[0]
+          if (!entry) return null
+
+          const home = comp.competitors.find((c) => c.homeAway === 'home')
+          const away = comp.competitors.find((c) => c.homeAway === 'away')
+          if (!home || !away) return null
+
+          const homeML = entry.homeTeamOdds?.moneyLine ?? null
+          const awayML = entry.awayTeamOdds?.moneyLine ?? null
+          if (homeML === null && awayML === null) return null
+
+          const item: GameOddsSummaryItem = {
+            id: event.id,
+            home_team_name: home.team.displayName,
+            away_team_name: away.team.displayName,
+            commence_time: comp.date,
+            bookmaker: entry.provider?.name ?? 'ESPN BET',
+            updated_at: null,
+            moneyline: { home: homeML, away: awayML },
+          }
+          return item
+        } catch {
+          return null
+        }
+      })
+    )
+
+    const odds: GameOddsSummaryItem[] = oddsResults.filter((o): o is GameOddsSummaryItem => o !== null)
+
+    const status: OddsProviderStatus = { provider: 'the-odds-api', configured: true, available: true }
+    espnCache.set(cacheKey, { expiresAt: Date.now() + ESPN_CACHE_TTL_MS, status, odds })
+
+    return { status, odds }
+  } catch (error: unknown) {
+    console.error('[odds/espn] Failed:', error instanceof Error ? error.message : String(error))
+    return {
+      status: { provider: 'the-odds-api', configured: true, available: false, reason: 'Falha ao carregar odds da ESPN.' },
+      odds: [],
+    }
   }
 }
 

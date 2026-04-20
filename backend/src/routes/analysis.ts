@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { fetchNBAGameOdds, fetchNBAGameOddsSummary } from '../lib/odds'
+import { fetchNBAGameOdds, fetchESPNGameOddsSummary } from '../lib/odds'
 import { fetchNBANews } from '../lib/news'
 import { fetchNBAInjuries } from '../lib/injuries'
 import { fetchNBAGameHighlights } from '../lib/gameHighlights'
@@ -85,7 +85,7 @@ router.get('/insights', async (_req, res) => {
 
 router.get('/odds-summary', async (_req, res) => {
   try {
-    const result = await fetchNBAGameOddsSummary()
+    const result = await fetchESPNGameOddsSummary()
 
     res.json({
       ok: true,
