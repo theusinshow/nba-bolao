@@ -1,5 +1,20 @@
 # Codex Changelog
 
+## 2026-04-19 — Sessão extra: histórico de palpites + fixes
+
+### Profile: aba "Histórico" de palpites
+- `frontend/src/pages/Profile.tsx` — novo tab switcher "Perfil / Histórico" abaixo do header card; componente `HistoricoTab` exibe todos os palpites agrupados por rodada (séries + jogos); status emoji: 🏆 cravada, ✅ acerto, ❌ erro, ⏳ pendente; badge de pontos em dourado; sem novas queries — usa `breakdown` já carregado pelo `useParticipantProfile`
+- Commit: `6c9d954`
+
+### Fix: dots do ranking mostravam os 5 jogos mais antigos em vez dos mais recentes
+- `frontend/src/components/GamePickDots.tsx` — `CompactDots` usava `slice(0, 5)` (primeiros 5 cronológicos); o jogo DET-ORL ficava na posição 6 e nunca aparecia; trocado para `slice(-5)` para mostrar sempre os 5 jogos mais recentes
+- Causa raiz: com 8 séries de R1 iniciando simultaneamente, o jogo do DET caia fora da janela fixa dos primeiros 5
+- Commit: `86bdf4d`
+
+### Digest WhatsApp: formato scoreboard
+- `backend/src/digest/exportDailyPicksDigest.ts` — novo `buildBar()` gera barras `█░`; `buildGameScoreboard` / `buildSeriesScoreboard` retornam barras por time com % de votos; picks agrupados por time `👥 Nome1, Nome2 → ABBR`; coverage `✅ 9/9` ou `⚠️ 8/9 · Falta: Nomes`; headers `🏀 *BOLÃO NBA · DD/MM*` com separadores `━━━`; seções `🎮 PALPITES JOGO A JOGO` / `🏆 PALPITES DE SÉRIE`; `formatTipOffShort` converte `21:30` → `21h30`
+- Commit: `a8e3ea5`
+
 ## 2026-04-19 — Múltiplos fixes e melhorias (sessão completa)
 
 ### Admin: painel de cobertura detecta round ativo dinamicamente
