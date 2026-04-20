@@ -7,7 +7,6 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { useParticipantProfile } from '../hooks/useParticipantProfile'
-import { useAuth } from '../hooks/useAuth'
 import { SCORING_CONFIG } from '../utils/scoring'
 import { useParticipantBadges, BADGE_DEFINITIONS, sortBadges } from '../hooks/useParticipantBadges'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
@@ -391,7 +390,7 @@ function HistoricoTab({ breakdown, isOwnProfile = true }: { breakdown: Participa
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export function Profile() {
+export function Profile({ currentParticipantId }: { currentParticipantId?: string }) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const {
@@ -402,8 +401,7 @@ export function Profile() {
     favoriteTeams,
     expensiveMisses,
   } = useParticipantProfile(id!)
-  const { auth } = useAuth()
-  const isOwnProfile = auth.status === 'authorized' && auth.participantId === id
+  const isOwnProfile = !!currentParticipantId && currentParticipantId === id
   const { badgesByParticipant } = useParticipantBadges()
   const [tab, setTab] = useState<'perfil' | 'historico'>('perfil')
 

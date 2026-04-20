@@ -241,7 +241,7 @@ function AppRoutes({
           element={
             <ProtectedRoute auth={auth}>
               <PageTransition>
-                <Profile />
+                <Profile currentParticipantId={participantId} />
               </PageTransition>
             </ProtectedRoute>
           }
