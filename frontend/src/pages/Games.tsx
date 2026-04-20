@@ -104,6 +104,18 @@ function formatTimeBRT(iso: string): string {
   })
 }
 
+function formatShortDateBRT(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit', timeZone: BRT_TIMEZONE,
+  })
+}
+
+function formatDateTimeBRT(iso: string): string {
+  const relative = getRelativeDateLabel(iso)
+  const date = relative ?? formatShortDateBRT(iso)
+  return `${date} · ${formatTimeBRT(iso)}`
+}
+
 function getRelativeDateLabel(iso: string): string | null {
   const target = new Date(iso).toLocaleDateString('pt-BR', { timeZone: BRT_TIMEZONE })
   const now = new Date()
@@ -1622,7 +1634,7 @@ function GameCard({ game, pick, onSave, wasAutoPicked, revealedPicks, onOpenReve
         {game.tip_off_at && !game.played && !isLiveNow && !seriesClosedBeforeGame && (
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', flexShrink: 0 }}>
             <Clock3 size={11} style={{ display: 'inline-flex', verticalAlign: 'text-bottom', marginRight: 4 }} />
-            {formatTimeBRT(game.tip_off_at)}
+            {formatDateTimeBRT(game.tip_off_at)}
           </span>
         )}
       </div>
@@ -3320,9 +3332,18 @@ function SeriesCard({
             }}
           >
             <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>Próximo fechamento</div>
-            <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>
-              {group.nextTipOff ? formatTimeBRT(group.nextTipOff) : '—'}
-            </div>
+            {group.nextTipOff ? (
+              <>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.65rem', marginTop: 2 }}>
+                  {getRelativeDateLabel(group.nextTipOff) ?? formatShortDateBRT(group.nextTipOff)}
+                </div>
+                <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>
+                  {formatTimeBRT(group.nextTipOff)}
+                </div>
+              </>
+            ) : (
+              <div className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '1.1rem', lineHeight: 1.1 }}>—</div>
+            )}
           </div>
         </div>
       </button>
