@@ -151,9 +151,10 @@ function findOddsForGame(
   return null
 }
 
-function formatMoneyline(value: number | null): string {
+function americanToDecimal(value: number | null): string {
   if (value === null) return '—'
-  return value >= 0 ? `+${value}` : String(value)
+  const decimal = value > 0 ? value / 100 + 1 : 100 / Math.abs(value) + 1
+  return decimal.toFixed(2).replace('.', ',')
 }
 
 function medalEmoji(rank: number): string {
@@ -266,7 +267,7 @@ function buildWhatsAppText(
       const hasOdds = game.homeMoneyline !== null || game.awayMoneyline !== null
       if (hasOdds) {
         const bookmaker = game.oddsBookmaker ? ` _${game.oddsBookmaker}_` : ''
-        lines.push(`   💰 ${game.homeAbbr} ${formatMoneyline(game.homeMoneyline)} · ${game.awayAbbr} ${formatMoneyline(game.awayMoneyline)}${bookmaker}`)
+        lines.push(`   💰 ${game.homeAbbr} ${americanToDecimal(game.homeMoneyline)} · ${game.awayAbbr} ${americanToDecimal(game.awayMoneyline)}${bookmaker}`)
       }
     }
   }
