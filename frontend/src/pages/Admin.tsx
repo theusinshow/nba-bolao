@@ -649,7 +649,7 @@ function pickIntegrityTone(severity: PickIntegritySeverity) {
 export function Admin({ participantId }: Props) {
   const { addToast } = useUIStore()
   const todayInputDate = useMemo(() => getTodayInputDate(), [])
-  const [activeView, setActiveView] = useState<'operations' | 'coverage'>('operations')
+  const [activeView, setActiveView] = useState<'operations' | 'coverage' | 'comunicacao'>('operations')
   const [participants, setParticipants] = useState<Participant[]>([])
   const [allowedEmails, setAllowedEmails] = useState<string[]>([])
   const [overview, setOverview] = useState<OverviewResponse['overview'] | null>(null)
@@ -2263,12 +2263,13 @@ export function Admin({ participantId }: Props) {
           {[
             { key: 'operations', label: 'Centro operacional' },
             { key: 'coverage', label: 'Cobertura de palpites' },
+            { key: 'comunicacao', label: 'Comunicação' },
           ].map((item) => {
             const active = activeView === item.key
             return (
               <button
                 key={item.key}
-                onClick={() => setActiveView(item.key as 'operations' | 'coverage')}
+                onClick={() => setActiveView(item.key as 'operations' | 'coverage' | 'comunicacao')}
                 style={{
                   borderRadius: 999,
                   border: `1px solid ${active ? 'rgba(200,150,60,0.28)' : 'rgba(200,150,60,0.12)'}`,
@@ -2287,7 +2288,7 @@ export function Admin({ participantId }: Props) {
         </div>
       </section>
 
-      {activeView === 'operations' ? (
+      {activeView === 'operations' && (
       <div style={{ display: 'grid', gap: 16 }}>
       <section
         style={{
@@ -2798,144 +2799,37 @@ export function Admin({ participantId }: Props) {
             <SectionTitle icon={<Activity size={14} />}>Centro Operacional</SectionTitle>
 
             <div style={{ display: 'grid', gap: 12 }}>
-              {/* ── Resumo do dia ── */}
-              <div style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.34)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                  <div>
-                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em' }}>📋 Resumo do dia</div>
-                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3 }}>
-                      {digestPreview
-                        ? `${digestPreview.summary.todayGames} jogos · ${digestPreview.summary.activeSeries} séries · ${digestPreview.summary.totalGamePicksToday} picks hoje`
-                        : (loadingDigestPreview ? 'Carregando...' : 'Nenhum preview disponível')}
-                    </div>
+              {/* ── Link para Comunicação ── */}
+              <button
+                onClick={() => setActiveView('comunicacao')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(200,150,60,0.22)',
+                  background: 'rgba(200,150,60,0.06)',
+                  color: 'var(--nba-text)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                }}
+              >
+                <div>
+                  <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', marginBottom: 3 }}>
+                    <MessageSquareShare size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+                    Resumo do dia e Lembrete de palpites
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input
-                      type="date"
-                      value={digestTargetDate}
-                      onChange={(event) => setDigestTargetDate(event.target.value)}
-                      style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
-                    />
-                    <select
-                      value={digestSection}
-                      onChange={(event) => setDigestSection(event.target.value as 'all' | 'games' | 'series')}
-                      style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
-                    >
-                      <option value="all">Completo</option>
-                      <option value="games">Só jogos</option>
-                      <option value="series">Só séries</option>
-                    </select>
-                    <select
-                      value={digestVariant}
-                      onChange={(event) => setDigestVariant(event.target.value as 'full' | 'compact')}
-                      style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
-                    >
-                      <option value="full">Detalhado</option>
-                      <option value="compact">Compacto</option>
-                    </select>
+                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem' }}>
+                    Mensagens prontas para WhatsApp — agora na aba Comunicação
                   </div>
                 </div>
-
-                {loadingDigestPreview ? (
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '12px 0', textAlign: 'center' }}>Carregando mensagem...</div>
-                ) : digestPreview?.whatsappText ? (
-                  <>
-                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace,monospace', fontSize: '0.82rem', lineHeight: 1.58, color: 'var(--nba-text)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.10)', borderRadius: 10, padding: '14px 16px', maxHeight: 320, overflowY: 'auto' }}>
-                      {digestPreview.whatsappText}
-                    </pre>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(digestPreview.whatsappText)
-                            addToast('Mensagem copiada para a área de transferência.', 'success')
-                          } catch {
-                            addToast('Não foi possível copiar automaticamente.', 'error')
-                          }
-                        }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(200,150,60,0.24)', background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
-                      >
-                        <MessageSquareShare size={14} />
-                        Copiar mensagem
-                      </button>
-                      <button
-                        onClick={handleDailyDigest}
-                        disabled={busyAction === 'daily-digest'}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text-muted)', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}
-                      >
-                        {busyAction === 'daily-digest' ? 'Exportando...' : '💾 Exportar arquivo'}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '12px 0' }}>Nenhuma mensagem para exibir.</div>
-                )}
-              </div>
-
-              {/* ── Lembrete de palpites ── */}
-              <div style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.34)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                  <div>
-                    <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em' }}>⏰ Lembrete de palpites</div>
-                    <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3 }}>
-                      {reminderPreview
-                        ? `${reminderPreview.summary.gamesNeedingAttention} jogo(s) pendente(s) · ${reminderPreview.summary.participantsPendingToday} participante(s) faltando`
-                        : (loadingReminderPreview ? 'Carregando...' : 'Nenhum preview disponível')}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input
-                      type="date"
-                      value={reminderTargetDate}
-                      onChange={(event) => setReminderTargetDate(event.target.value)}
-                      style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
-                    />
-                    <select
-                      value={reminderVariant}
-                      onChange={(event) => setReminderVariant(event.target.value as 'full' | 'pending-only')}
-                      style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
-                    >
-                      <option value="full">Completo</option>
-                      <option value="pending-only">Só pendentes</option>
-                    </select>
-                  </div>
+                <div style={{ color: 'var(--nba-gold)', fontSize: '0.78rem', fontWeight: 700, flexShrink: 0 }}>
+                  Ir →
                 </div>
-
-                {loadingReminderPreview ? (
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '12px 0', textAlign: 'center' }}>Carregando mensagem...</div>
-                ) : reminderPreview?.whatsappText ? (
-                  <>
-                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace,monospace', fontSize: '0.82rem', lineHeight: 1.58, color: 'var(--nba-text)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.10)', borderRadius: 10, padding: '14px 16px', maxHeight: 320, overflowY: 'auto' }}>
-                      {reminderPreview.whatsappText}
-                    </pre>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(reminderPreview.whatsappText)
-                            addToast('Lembrete copiado para a área de transferência.', 'success')
-                          } catch {
-                            addToast('Não foi possível copiar automaticamente.', 'error')
-                          }
-                        }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(200,150,60,0.24)', background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
-                      >
-                        <MessageSquareShare size={14} />
-                        Copiar lembrete
-                      </button>
-                      <button
-                        onClick={handleDailyReminder}
-                        disabled={busyAction === 'daily-reminder'}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text-muted)', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}
-                      >
-                        {busyAction === 'daily-reminder' ? 'Exportando...' : '💾 Exportar arquivo'}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '12px 0' }}>Nenhum jogo pendente hoje ou preview indisponível.</div>
-                )}
-              </div>
+              </button>
 
               <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.34)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -3247,7 +3141,9 @@ export function Admin({ participantId }: Props) {
         </section>
         </div>
       </div>
-      ) : (
+      )}
+
+      {activeView === 'coverage' && (
       <div style={{ display: 'grid', gap: 16 }}>
 
         {/* ── Inserir Palpite Manual ── */}
@@ -3585,6 +3481,190 @@ export function Admin({ participantId }: Props) {
         )}
       </div>
       )}
+
+      {activeView === 'comunicacao' && (
+      <div style={{ display: 'grid', gap: 16 }}>
+
+        {/* ── Header ── */}
+        <section style={{ ...card, background: 'linear-gradient(135deg, rgba(19,19,26,1), rgba(200,150,60,0.08) 60%, rgba(74,144,217,0.06) 100%)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(200,150,60,0.10)', border: '1px solid rgba(200,150,60,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <MessageSquareShare size={18} color="var(--nba-gold)" />
+            </div>
+            <div>
+              <h2 className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', margin: 0, lineHeight: 1 }}>Central de Comunicação</h2>
+              <p style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', margin: '6px 0 0', lineHeight: 1.55 }}>
+                Mensagens prontas para WhatsApp — configure, visualize o texto completo e copie com um clique.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Dois cards lado a lado ── */}
+        <div style={{ display: 'grid', gap: 16 }} className="md:grid-cols-2">
+
+          {/* ── Resumo do dia ── */}
+          <section style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>📋</span>
+              <div>
+                <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', lineHeight: 1 }}>Resumo do dia</div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3 }}>
+                  {digestPreview
+                    ? `${digestPreview.summary.todayGames} jogos · ${digestPreview.summary.activeSeries} séries · ${digestPreview.summary.totalGamePicksToday} picks hoje`
+                    : loadingDigestPreview ? 'Carregando...' : 'Configure abaixo para gerar o preview'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8, marginBottom: 14 }} className="grid-cols-1 sm:grid-cols-3">
+              <div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Data</div>
+                <input
+                  type="date"
+                  value={digestTargetDate}
+                  onChange={(event) => setDigestTargetDate(event.target.value)}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(12,12,18,0.5)', color: 'var(--nba-text)', padding: '9px 10px', fontSize: '0.8rem' }}
+                />
+              </div>
+              <div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Seção</div>
+                <select
+                  value={digestSection}
+                  onChange={(event) => setDigestSection(event.target.value as 'all' | 'games' | 'series')}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '9px 10px', fontSize: '0.8rem' }}
+                >
+                  <option value="all">Completo</option>
+                  <option value="games">Só jogos</option>
+                  <option value="series">Só séries</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Formato</div>
+                <select
+                  value={digestVariant}
+                  onChange={(event) => setDigestVariant(event.target.value as 'full' | 'compact')}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '9px 10px', fontSize: '0.8rem' }}
+                >
+                  <option value="full">Detalhado</option>
+                  <option value="compact">Compacto</option>
+                </select>
+              </div>
+            </div>
+
+            {loadingDigestPreview ? (
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '24px 0', textAlign: 'center' }}>Carregando mensagem...</div>
+            ) : digestPreview?.whatsappText ? (
+              <>
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace,monospace', fontSize: '0.82rem', lineHeight: 1.65, color: 'var(--nba-text)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.10)', borderRadius: 10, padding: '16px', maxHeight: 480, overflowY: 'auto' }}>
+                  {digestPreview.whatsappText}
+                </pre>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(digestPreview.whatsappText)
+                        addToast('Mensagem copiada para a área de transferência.', 'success')
+                      } catch {
+                        addToast('Não foi possível copiar automaticamente.', 'error')
+                      }
+                    }}
+                    style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(200,150,60,0.30)', background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem' }}
+                  >
+                    <MessageSquareShare size={15} />
+                    Copiar mensagem
+                  </button>
+                  <button
+                    onClick={handleDailyDigest}
+                    disabled={busyAction === 'daily-digest'}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text-muted)', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}
+                  >
+                    {busyAction === 'daily-digest' ? 'Exportando...' : '💾 Exportar'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', padding: '24px 0', textAlign: 'center' }}>Nenhuma mensagem para exibir.</div>
+            )}
+          </section>
+
+          {/* ── Lembrete de palpites ── */}
+          <section style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>⏰</span>
+              <div>
+                <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', lineHeight: 1 }}>Lembrete de palpites</div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3 }}>
+                  {reminderPreview
+                    ? `${reminderPreview.summary.gamesNeedingAttention} jogo(s) pendente(s) · ${reminderPreview.summary.participantsPendingToday} participante(s) faltando`
+                    : loadingReminderPreview ? 'Carregando...' : 'Configure abaixo para gerar o preview'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8, marginBottom: 14 }} className="grid-cols-1 sm:grid-cols-2">
+              <div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Data</div>
+                <input
+                  type="date"
+                  value={reminderTargetDate}
+                  onChange={(event) => setReminderTargetDate(event.target.value)}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(12,12,18,0.5)', color: 'var(--nba-text)', padding: '9px 10px', fontSize: '0.8rem' }}
+                />
+              </div>
+              <div>
+                <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Variante</div>
+                <select
+                  value={reminderVariant}
+                  onChange={(event) => setReminderVariant(event.target.value as 'full' | 'pending-only')}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '9px 10px', fontSize: '0.8rem' }}
+                >
+                  <option value="full">Completo</option>
+                  <option value="pending-only">Só pendentes</option>
+                </select>
+              </div>
+            </div>
+
+            {loadingReminderPreview ? (
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '24px 0', textAlign: 'center' }}>Carregando mensagem...</div>
+            ) : reminderPreview?.whatsappText ? (
+              <>
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace,monospace', fontSize: '0.82rem', lineHeight: 1.65, color: 'var(--nba-text)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.10)', borderRadius: 10, padding: '16px', maxHeight: 480, overflowY: 'auto' }}>
+                  {reminderPreview.whatsappText}
+                </pre>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(reminderPreview.whatsappText)
+                        addToast('Lembrete copiado para a área de transferência.', 'success')
+                      } catch {
+                        addToast('Não foi possível copiar automaticamente.', 'error')
+                      }
+                    }}
+                    style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(200,150,60,0.30)', background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem' }}
+                  >
+                    <MessageSquareShare size={15} />
+                    Copiar lembrete
+                  </button>
+                  <button
+                    onClick={handleDailyReminder}
+                    disabled={busyAction === 'daily-reminder'}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text-muted)', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}
+                  >
+                    {busyAction === 'daily-reminder' ? 'Exportando...' : '💾 Exportar'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', padding: '24px 0', textAlign: 'center' }}>Nenhum jogo pendente hoje ou preview indisponível.</div>
+            )}
+          </section>
+
+        </div>
+      </div>
+      )}
+
       </div>
     </>
   )
