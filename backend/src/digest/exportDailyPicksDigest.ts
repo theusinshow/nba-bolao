@@ -158,6 +158,25 @@ function formatTipOff(value: string | null): string {
   }).format(new Date(value))
 }
 
+function formatTipOffShort(value: string | null): string {
+  if (!value) return '?'
+  const raw = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: BRT_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+  // "21:30" → "21h30"
+  return raw.replace(':', 'h')
+}
+
+function buildBar(votes: number, total: number, width = 9): string {
+  if (total === 0) return '░'.repeat(width)
+  const filled = Math.min(width, Math.round((votes / total) * width))
+  return '█'.repeat(filled) + '░'.repeat(width - filled)
+}
+
+const SEP = '━━━━━━━━━━━━━━━━━━━'
+
 async function fetchDigestData() {
   const [
     { data: participants },
@@ -193,75 +212,53 @@ function pct(votes: number, total: number): string {
   return `${Math.round((votes / total) * 100)}%`
 }
 
-function buildGameInsight(
+// Returns scoreboard bar lines for a game. Also returns isClose flag for caller to mark header.
+function buildGameScoreboard(
   gameId: string,
   homeTeamId: string,
   awayTeamId: string,
   gamePicks: GamePickRow[],
   teamsById: Record<string, TeamRow | undefined>
-): string | null {
+): { lines: string[]; isClose: boolean; hasVotes: boolean } {
   const picks = gamePicks.filter((p) => p.game_id === gameId)
-  if (picks.length === 0) return null
+  if (picks.length === 0) return { lines: [], isClose: false, hasVotes: false }
 
   const homeVotes = picks.filter((p) => p.winner_id === homeTeamId).length
   const awayVotes = picks.filter((p) => p.winner_id === awayTeamId).length
-  const homeAbbr = teamLabel(homeTeamId, teamsById)
-  const awayAbbr = teamLabel(awayTeamId, teamsById)
+  const homeAbbr = teamLabel(homeTeamId, teamsById).padEnd(3)
+  const awayAbbr = teamLabel(awayTeamId, teamsById).padEnd(3)
   const total = picks.length
+  const isClose = Math.abs(homeVotes - awayVotes) <= 1
 
-  if (homeVotes === total) return `✅ Consenso total: todos no ${homeAbbr} (${total} votos)`
-  if (awayVotes === total) return `✅ Consenso total: todos no ${awayAbbr} (${total} votos)`
-
-  const diff = Math.abs(homeVotes - awayVotes)
-  const majorityAbbr = homeVotes >= awayVotes ? homeAbbr : awayAbbr
-  const majorityVotes = Math.max(homeVotes, awayVotes)
-  const base = `📊 ${homeAbbr} ${homeVotes} (${pct(homeVotes, total)}) x ${awayAbbr} ${awayVotes} (${pct(awayVotes, total)})`
-
-  if (diff <= 1) return `${base} — ⚔️ Duelo acirrado no grupo`
-  return `${base} — maioria no ${majorityAbbr} (${majorityVotes}/${total})`
+  const lines = [
+    `🔵 ${homeAbbr}  ${buildBar(homeVotes, total)}  ${homeVotes} voto${homeVotes !== 1 ? 's' : ''} (${pct(homeVotes, total)})`,
+    `🔴 ${awayAbbr}  ${buildBar(awayVotes, total)}  ${awayVotes} voto${awayVotes !== 1 ? 's' : ''} (${pct(awayVotes, total)})`,
+  ]
+  return { lines, isClose, hasVotes: true }
 }
 
-function buildSeriesInsight(
+function buildSeriesScoreboard(
   seriesId: string,
   homeTeamId: string | null,
   awayTeamId: string | null,
   seriesPicks: SeriesPickRow[],
   teamsById: Record<string, TeamRow | undefined>
-): string[] {
+): { lines: string[]; isClose: boolean; hasVotes: boolean } {
   const picks = seriesPicks.filter((p) => p.series_id === seriesId)
-  if (picks.length === 0) return []
+  if (picks.length === 0) return { lines: [], isClose: false, hasVotes: false }
 
   const homeVotes = picks.filter((p) => p.winner_id === homeTeamId).length
   const awayVotes = picks.filter((p) => p.winner_id === awayTeamId).length
-  const homeAbbr = teamLabel(homeTeamId, teamsById)
-  const awayAbbr = teamLabel(awayTeamId, teamsById)
+  const homeAbbr = teamLabel(homeTeamId, teamsById).padEnd(3)
+  const awayAbbr = teamLabel(awayTeamId, teamsById).padEnd(3)
   const total = picks.length
-  const lines: string[] = []
+  const isClose = Math.abs(homeVotes - awayVotes) <= 1
 
-  if (homeVotes === total) {
-    lines.push(`✅ Consenso: todos no ${homeAbbr} (${total} votos)`)
-  } else if (awayVotes === total) {
-    lines.push(`✅ Consenso: todos no ${awayAbbr} (${total} votos)`)
-  } else {
-    const diff = Math.abs(homeVotes - awayVotes)
-    lines.push(
-      `📊 ${homeAbbr} ${homeVotes} (${pct(homeVotes, total)}) x ${awayAbbr} ${awayVotes} (${pct(awayVotes, total)})` +
-      (diff <= 1 ? ' — ⚔️ Racha no grupo' : '')
-    )
-  }
-
-  // Distribuição de duração para o time com maioria
-  const majorityTeamId = homeVotes >= awayVotes ? homeTeamId : awayTeamId
-  const majorityPicks = picks.filter((p) => p.winner_id === majorityTeamId)
-  const gcDist = [4, 5, 6, 7]
-    .map((n) => ({ n, count: majorityPicks.filter((p) => p.games_count === n).length }))
-    .filter((x) => x.count > 0)
-    .map((x) => `${x.n}j×${x.count}`)
-    .join(', ')
-
-  if (gcDist) lines.push(`   Duração (maioria): ${gcDist}`)
-
-  return lines
+  const lines = [
+    `🔵 ${homeAbbr}  ${buildBar(homeVotes, total)}  ${homeVotes} voto${homeVotes !== 1 ? 's' : ''} (${pct(homeVotes, total)})`,
+    `🔴 ${awayAbbr}  ${buildBar(awayVotes, total)}  ${awayVotes} voto${awayVotes !== 1 ? 's' : ''} (${pct(awayVotes, total)})`,
+  ]
+  return { lines, isClose, hasVotes: true }
 }
 
 function buildContraCorrenteLines(
@@ -284,11 +281,11 @@ function buildContraCorrenteLines(
     const minorityPicks = picks.filter((p) => p.winner_id === minorityTeamId)
     if (minorityPicks.length / picks.length > 0.4) continue
 
-    const matchup = `${teamLabel(game.home_team_id, teamsById)} x ${teamLabel(game.away_team_id, teamsById)}`
+    const matchup = `${teamLabel(game.home_team_id, teamsById)} × ${teamLabel(game.away_team_id, teamsById)}`
     for (const pick of minorityPicks) {
       const participant = participantsById[pick.participant_id]
       if (participant) {
-        lines.push(`- ${participant.name}: ${teamLabel(pick.winner_id, teamsById)} (J${game.game_number} ${matchup})`)
+        lines.push(`▸ ${participant.name} → ${teamLabel(pick.winner_id, teamsById)} (J${game.game_number} · ${matchup})`)
       }
     }
   }
@@ -349,6 +346,10 @@ function buildDigestSections(
   })
 
   const humanDate = getBrtFormatter().format(new Date(`${targetDate}T12:00:00Z`))
+  const humanDateShort = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: BRT_TIMEZONE, day: '2-digit', month: '2-digit',
+  }).format(new Date(`${targetDate}T12:00:00Z`))
+
   const summary: DailyDigestSummary = {
     todayGames: games.length,
     activeSeries: series.length,
@@ -360,82 +361,132 @@ function buildDigestSections(
   }
 
   const sectionTitle =
-    section === 'games' ? '🎮 *Palpites jogo a jogo — Bolao NBA*' :
-    section === 'series' ? '🏆 *Palpites de series — Bolao NBA*' :
-    `🏀 *Resumo do Bolao NBA - ${humanDate}*`
+    section === 'games' ? `🎮 *BOLÃO NBA · ${humanDateShort}*` :
+    section === 'series' ? `🏆 *BOLÃO NBA · ${humanDateShort}*` :
+    `🏀 *BOLÃO NBA · ${humanDateShort}*`
 
   const parts: string[] = [
     sectionTitle,
-    `_Gerado em ${generatedAt}_`,
+    SEP,
+    `_${generatedAt}_`,
     '',
   ]
 
+  // ── BLOCO DE JOGOS ───────────────────────────────────────
   if (section !== 'series') {
-    if (section === 'all') {
-      parts.push(`Participantes no radar: ${summary.totalParticipants}`)
-      parts.push(`Jogos do dia: ${summary.todayGames} | Series abertas: ${summary.activeSeries}`)
-      parts.push('')
-    }
-    parts.push('*Palpites jogo a jogo do dia*')
+    parts.push('🎮 *PALPITES JOGO A JOGO*')
+    parts.push('')
 
     if (games.length === 0) {
-      parts.push('- Nenhum jogo programado para esta data')
+      parts.push('_Nenhum jogo programado para esta data_')
     } else {
       for (const game of gamesOfDay) {
         const summary_game = games.find((g) => g.gameId === game.id)!
-        const header = `*Jogo ${summary_game.gameNumber} - ${summary_game.matchup}* (${summary_game.tipOff})`
+        const homeAbbr = teamLabel(game.home_team_id, teamsById)
+        const awayAbbr = teamLabel(game.away_team_id, teamsById)
+        const scoreboard = buildGameScoreboard(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
+        const closeFlag = scoreboard.isClose ? ' ⚔️' : ''
+        const header = `*J${game.game_number} · ${homeAbbr} × ${awayAbbr}* · ${formatTipOffShort(game.tip_off_at)}${closeFlag}`
 
-        if (variant === 'compact') {
-          parts.push(header)
-          const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
-          if (insight) parts.push(insight)
-          parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
-        } else if (summary_game.picks.length > 0) {
-          parts.push(header)
-          const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
-          if (insight) parts.push(insight)
-          parts.push(...summary_game.picks.map((pick) => `- ${pick}`))
-          parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
+        parts.push(header)
+
+        if (scoreboard.hasVotes) {
+          parts.push(...scoreboard.lines)
+
+          if (variant === 'full') {
+            const gamePicsForGame = data.gamePicks.filter((p) => p.game_id === game.id)
+            const homeGroup = gamePicsForGame
+              .filter((p) => p.winner_id === game.home_team_id)
+              .map((p) => participantsById[p.participant_id]?.name)
+              .filter((n): n is string => !!n)
+            const awayGroup = gamePicsForGame
+              .filter((p) => p.winner_id === game.away_team_id)
+              .map((p) => participantsById[p.participant_id]?.name)
+              .filter((n): n is string => !!n)
+            if (homeGroup.length > 0) parts.push(`👥 ${homeGroup.join(', ')} → ${homeAbbr}`)
+            if (awayGroup.length > 0) parts.push(`👥 ${awayGroup.join(', ')} → ${awayAbbr}`)
+          }
+
+          const missing = data.participants.filter((p) => !data.gamePicks.some((gp) => gp.game_id === game.id && gp.participant_id === p.id))
+          if (missing.length === 0) {
+            parts.push(`✅ ${summary_game.totalPicks}/${summary.totalParticipants}`)
+          } else {
+            parts.push(`⚠️ ${summary_game.totalPicks}/${summary.totalParticipants} · Falta: ${missing.map((p) => p.name).join(', ')}`)
+          }
         } else {
-          parts.push(`${header}\n- Nenhum palpite salvo ainda`)
+          parts.push('_⏳ Nenhum palpite ainda_')
         }
+
+        parts.push('')
       }
     }
 
-    // Contra a corrente só no bloco de jogos
+    // Contra a corrente
     const contraCorrenteLines = buildContraCorrenteLines(gamesOfDay, data.gamePicks, participantsById, teamsById)
     if (contraCorrenteLines.length > 0) {
+      parts.push('🔀 *APOSTAS CONTRA A CORRENTE*')
       parts.push('')
-      parts.push('*🔀 Apostas contra a corrente*')
       parts.push(...contraCorrenteLines)
+      parts.push('')
     }
   }
 
+  // ── BLOCO DE SÉRIES ──────────────────────────────────────
   if (section !== 'games') {
-    if (section === 'all') parts.push('')
-    parts.push('*Palpites de series em aberto*')
+    if (section === 'all') {
+      parts.push(SEP)
+      parts.push('')
+    }
+    parts.push('🏆 *PALPITES DE SÉRIE*')
+    parts.push('')
 
     if (series.length === 0) {
-      parts.push('- Nenhuma serie aberta com confronto definido')
+      parts.push('_Nenhuma série aberta com confronto definido_')
     } else {
       for (const item of activeSeries) {
         const summary_series = series.find((s) => s.seriesId === item.id)!
-        const header = `*${summary_series.roundLabel} - ${summary_series.matchup}*`
+        const homeAbbr = teamLabel(item.home_team_id, teamsById)
+        const awayAbbr = teamLabel(item.away_team_id, teamsById)
+        const scoreboard = buildSeriesScoreboard(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
+        const closeFlag = scoreboard.isClose ? ' ⚔️' : ''
+        const header = `*${summary_series.roundLabel} · ${homeAbbr} × ${awayAbbr}*${closeFlag}`
 
-        if (variant === 'compact') {
-          parts.push(header)
-          const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
-          parts.push(...insightLines)
-          parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
-        } else if (summary_series.picks.length > 0) {
-          parts.push(header)
-          const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
-          parts.push(...insightLines)
-          parts.push(...summary_series.picks.map((pick) => `- ${pick}`))
-          parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
+        parts.push(header)
+
+        if (scoreboard.hasVotes) {
+          parts.push(...scoreboard.lines)
+
+          if (variant === 'full') {
+            const seriesPicksForSeries = data.seriesPicks.filter((p) => p.series_id === item.id)
+            const homeGroup = seriesPicksForSeries
+              .filter((p) => p.winner_id === item.home_team_id)
+              .map((p) => {
+                const name = participantsById[p.participant_id]?.name
+                return name ? `${name} (${p.games_count}j)` : null
+              })
+              .filter((n): n is string => !!n)
+            const awayGroup = seriesPicksForSeries
+              .filter((p) => p.winner_id === item.away_team_id)
+              .map((p) => {
+                const name = participantsById[p.participant_id]?.name
+                return name ? `${name} (${p.games_count}j)` : null
+              })
+              .filter((n): n is string => !!n)
+            if (homeGroup.length > 0) parts.push(`👥 ${homeGroup.join(', ')} → ${homeAbbr}`)
+            if (awayGroup.length > 0) parts.push(`👥 ${awayGroup.join(', ')} → ${awayAbbr}`)
+          }
+
+          const missing = data.participants.filter((p) => !data.seriesPicks.some((sp) => sp.series_id === item.id && sp.participant_id === p.id))
+          if (missing.length === 0) {
+            parts.push(`✅ ${summary_series.totalPicks}/${summary.totalParticipants}`)
+          } else {
+            parts.push(`⚠️ ${summary_series.totalPicks}/${summary.totalParticipants} · Falta: ${missing.map((p) => p.name).join(', ')}`)
+          }
         } else {
-          parts.push(`${header}\n- Nenhum palpite de serie salvo ainda`)
+          parts.push('_⏳ Nenhum palpite ainda_')
         }
+
+        parts.push('')
       }
     }
   }
@@ -444,7 +495,7 @@ function buildDigestSections(
     targetDate,
     generatedAt,
     variant,
-    whatsappText: parts.join('\n'),
+    whatsappText: parts.join('\n').trimEnd(),
     summary,
     games,
     series,
