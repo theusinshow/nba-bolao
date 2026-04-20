@@ -1,5 +1,20 @@
 # Codex Changelog
 
+## 2026-04-20 — Odds ESPN + fix dots ranking
+
+### Análise: odds migradas para ESPN (sem key, sem quota)
+- `backend/src/lib/odds.ts` — nova `fetchESPNGameOddsSummary()`: busca scoreboard da ESPN, depois odds do ESPN Core API (`/events/{id}/competitions/{id}/odds`); moneyline americano via `homeTeamOdds.moneyLine` / `awayTeamOdds.moneyLine`; cache 30min; sem API key necessária
+- `backend/src/routes/analysis.ts` — `/odds-summary` trocado para usar ESPN em vez de The Odds API (que esgotou cota gratuita de 500 req/mês)
+- The Odds API permanece no `/insights` endpoint (spread/totals)
+- Commit: `321c1f0`
+
+### Fix: dots do ranking mostrando jogos futuros
+- `frontend/src/components/GamePickDots.tsx` — adicionado campo `played: boolean` ao `DotData`; `CompactDots` agora filtra `dots.filter(d => d.played).slice(-5)` — só jogos já jogados, pegando os 5 mais recentes
+- `frontend/src/hooks/useAllGamePickDots.ts` — `played: game.played` incluído no dot
+- `frontend/src/pages/Compare.tsx` — mesmo campo adicionado em `computeCompareDots`
+- Causa: `slice(-5)` sem filtro pegava os 5 últimos do array (56 jogos), que eram todos game 7 futuros
+- Commits: `86bdf4d`, `6524f74`
+
 ## 2026-04-19 — Sessão extra: histórico de palpites + fixes
 
 ### Profile: aba "Histórico" de palpites
