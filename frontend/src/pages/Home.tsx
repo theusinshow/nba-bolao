@@ -982,6 +982,31 @@ function LastNightRecap({
                           ? (seriesStatus?.liveLabel ?? (stageLabel === 'Play-In' ? 'vaga em jogo ao vivo' : 'série ao vivo'))
                           : (seriesStatus?.preLabel ?? (stageLabel === 'Play-In' ? 'eliminação única' : 'série empatada 0-0'))}
                       </span>
+                      {isEditorialGame && game.nba_game_id && (
+                        <a
+                          href={`https://www.nba.com/game/${game.nba_game_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            color: 'var(--nba-text-muted)',
+                            fontSize: isCompactRail ? '0.5rem' : '0.54rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.1em',
+                            textDecoration: 'none',
+                            border: '1px solid rgba(200,150,60,0.2)',
+                            borderRadius: 4,
+                            padding: '2px 6px',
+                            whiteSpace: 'nowrap',
+                            background: 'rgba(200,150,60,0.06)',
+                          }}
+                        >
+                          NBA.com ↗
+                        </a>
+                      )}
                     </div>
                   </div>
                 )
