@@ -7,6 +7,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { useParticipantProfile } from '../hooks/useParticipantProfile'
+import { SCORING_CONFIG } from '../utils/scoring'
 import { useParticipantBadges, BADGE_DEFINITIONS, sortBadges } from '../hooks/useParticipantBadges'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
 import { getTeamLogoUrl } from '../data/teams2025'
@@ -85,37 +86,101 @@ const HIST_ROUND_LABELS: Record<number, string> = {
   4: 'NBA Finals',
 }
 
-function seriesStatusEmoji(status: 'cravada' | 'winner' | 'wrong' | 'pending') {
-  if (status === 'cravada') return '🏆'
-  if (status === 'winner') return '✅'
-  if (status === 'wrong') return '❌'
-  return '⏳'
+type HistFilter = 'all' | 'correct' | 'wrong' | 'pending'
+
+function statusIsCorrect(s: string) { return s === 'correct' || s === 'winner' || s === 'cravada' }
+
+function rowColors(status: string) {
+  if (statusIsCorrect(status)) return { bg: 'rgba(46,204,113,0.07)', border: '1px solid rgba(46,204,113,0.18)' }
+  if (status === 'wrong') return { bg: 'rgba(231,76,60,0.07)', border: '1px solid rgba(231,76,60,0.18)' }
+  return { bg: 'rgba(0,0,0,0.18)', border: '1px solid rgba(200,150,60,0.08)' }
 }
 
-function gameStatusEmoji(status: 'correct' | 'wrong' | 'pending') {
-  if (status === 'correct') return '✅'
-  if (status === 'wrong') return '❌'
-  return '⏳'
+function StatusPill({ status }: { status: string }) {
+  const cfg: Record<string, { label: string; color: string; bg: string }> = {
+    cravada: { label: 'Cravada 🏆', color: 'var(--nba-gold)', bg: 'rgba(200,150,60,0.14)' },
+    winner:  { label: 'Acerto ✅',  color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.12)' },
+    correct: { label: 'Acerto ✅',  color: 'var(--nba-success)', bg: 'rgba(46,204,113,0.12)' },
+    wrong:   { label: 'Erro ❌',    color: 'var(--nba-danger)',  bg: 'rgba(231,76,60,0.12)' },
+    pending: { label: 'Pendente ⏳', color: 'var(--nba-text-muted)', bg: 'rgba(136,136,153,0.1)' },
+  }
+  const c = cfg[status] ?? cfg.pending
+  return (
+    <span style={{
+      fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.68rem',
+      letterSpacing: '0.05em', color: c.color, background: c.bg,
+      border: `1px solid ${c.color}44`, borderRadius: 4, padding: '2px 7px',
+      flexShrink: 0, whiteSpace: 'nowrap',
+    }}>
+      {c.label}
+    </span>
+  )
+}
+
+function TeamLogo({ abbr }: { abbr: string }) {
+  return (
+    <img
+      src={getTeamLogoUrl(abbr)}
+      alt={abbr}
+      onError={(e) => { e.currentTarget.style.display = 'none' }}
+      style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
+    />
+  )
 }
 
 function HistoricoTab({ breakdown }: { breakdown: ParticipantScoreBreakdown | null }) {
+  const [filter, setFilter] = useState<HistFilter>('all')
+
   if (!breakdown) {
     return (
       <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {[1, 2, 3].map((i) => (
-          <div key={i} style={{ height: 48, borderRadius: 8, background: 'var(--nba-surface-2)', opacity: 0.6 }} />
+          <div key={i} style={{ height: 48, borderRadius: 8, background: 'var(--nba-surface-2)', opacity: 0.5 }} />
         ))}
       </div>
     )
   }
 
-  const seriesByRound = breakdown.series_breakdown.reduce<Record<number, typeof breakdown.series_breakdown>>(
-    (acc, item) => { ;(acc[item.round] ??= []).push(item); return acc },
-    {}
+  const { series_breakdown, game_breakdown } = breakdown
+
+  // ── Summary stats ──────────────────────────────────────────────────────────
+  const totalPts = [...series_breakdown, ...game_breakdown].reduce((s, i) => s + i.points, 0)
+  const seriesCorrect = series_breakdown.filter((i) => statusIsCorrect(i.status)).length
+  const seriesPlayed  = series_breakdown.filter((i) => i.status !== 'pending').length
+  const gamesCorrect  = game_breakdown.filter((i) => i.status === 'correct').length
+  const gamesPlayed   = game_breakdown.filter((i) => i.played).length
+  const cravadas      = series_breakdown.filter((i) => i.status === 'cravada').length
+
+  // ── Streak ─────────────────────────────────────────────────────────────────
+  const allResolved = [
+    ...series_breakdown
+      .filter((i) => i.status !== 'pending')
+      .map((i) => ({ date: i.event_date ?? '', correct: statusIsCorrect(i.status) })),
+    ...game_breakdown
+      .filter((i) => i.played)
+      .map((i) => ({ date: i.event_date ?? '', correct: i.status === 'correct' })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
+
+  let streak = 0
+  const streakCorrect = allResolved[0]?.correct ?? true
+  for (const p of allResolved) {
+    if (p.correct === streakCorrect) streak++
+    else break
+  }
+
+  // ── Filter ─────────────────────────────────────────────────────────────────
+  function matches(status: string) {
+    if (filter === 'all') return true
+    if (filter === 'correct') return statusIsCorrect(status)
+    return status === filter
+  }
+
+  // ── Group by round ─────────────────────────────────────────────────────────
+  const seriesByRound = series_breakdown.reduce<Record<number, typeof series_breakdown>>(
+    (acc, item) => { ;(acc[item.round] ??= []).push(item); return acc }, {}
   )
-  const gamesByRound = breakdown.game_breakdown.reduce<Record<number, typeof breakdown.game_breakdown>>(
-    (acc, item) => { ;(acc[item.round] ??= []).push(item); return acc },
-    {}
+  const gamesByRound = game_breakdown.reduce<Record<number, typeof game_breakdown>>(
+    (acc, item) => { ;(acc[item.round] ??= []).push(item); return acc }, {}
   )
   const allRounds = [
     ...new Set([...Object.keys(seriesByRound), ...Object.keys(gamesByRound)].map(Number)),
@@ -129,144 +194,185 @@ function HistoricoTab({ breakdown }: { breakdown: ParticipantScoreBreakdown | nu
     )
   }
 
-  const rowStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '8px 10px',
-    borderRadius: 8,
-    background: 'rgba(0,0,0,0.18)',
-    border: '1px solid rgba(200,150,60,0.08)',
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {allRounds.map((round) => {
-        const seriesItems = seriesByRound[round] ?? []
-        const gameItems = gamesByRound[round] ?? []
-        return (
-          <div
-            key={round}
+
+      {/* ── Summary card ── */}
+      <div style={{ background: 'var(--nba-surface)', border: '1px solid var(--nba-border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+          {([
+            { label: 'Pts ganhos', value: `${totalPts}`, gold: true },
+            { label: 'Cravadas',   value: `${cravadas}`, gold: true },
+            { label: 'Séries',     value: `${seriesCorrect}/${seriesPlayed}`, gold: false },
+            { label: 'Jogos',      value: `${gamesCorrect}/${gamesPlayed}`,   gold: false },
+          ] as const).map(({ label, value, gold }) => (
+            <div key={label} style={{ textAlign: 'center', padding: '8px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.22)', border: gold ? '1px solid rgba(200,150,60,0.2)' : '1px solid var(--nba-border)' }}>
+              <div className="font-condensed font-bold" style={{ color: gold ? 'var(--nba-gold)' : 'var(--nba-text)', fontSize: '1.25rem', lineHeight: 1 }}>{value}</div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.63rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 3 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+        {streak >= 2 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 8, background: streakCorrect ? 'rgba(46,204,113,0.08)' : 'rgba(231,76,60,0.08)', border: streakCorrect ? '1px solid rgba(46,204,113,0.2)' : '1px solid rgba(231,76,60,0.2)' }}>
+            <span style={{ fontSize: '1rem' }}>{streakCorrect ? '🔥' : '❄️'}</span>
+            <span className="font-condensed font-bold" style={{ fontSize: '0.9rem', color: streakCorrect ? 'var(--nba-success)' : 'var(--nba-danger)' }}>
+              {streak} {streakCorrect ? 'acerto' : 'erro'}{streak !== 1 ? 's' : ''} seguido{streak !== 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Filter pills ── */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {([
+          { key: 'all',     label: 'Todos' },
+          { key: 'correct', label: '✅ Acertos' },
+          { key: 'wrong',   label: '❌ Erros' },
+          { key: 'pending', label: '⏳ Pendentes' },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
             style={{
-              background: 'var(--nba-surface)',
-              border: '1px solid var(--nba-border)',
-              borderRadius: 12,
-              overflow: 'hidden',
+              padding: '5px 14px', borderRadius: 20, cursor: 'pointer',
+              border: filter === key ? '1px solid rgba(200,150,60,0.5)' : '1px solid var(--nba-border)',
+              background: filter === key ? 'rgba(200,150,60,0.12)' : 'var(--nba-surface-2)',
+              color: filter === key ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.82rem',
+              letterSpacing: '0.04em', transition: 'all 0.15s',
             }}
           >
-            <div
-              style={{
-                padding: '9px 16px',
-                borderBottom: '1px solid var(--nba-border)',
-                background: 'rgba(200,150,60,0.06)',
-              }}
-            >
-              <span
-                className="title"
-                style={{ fontSize: '0.88rem', color: 'var(--nba-gold)', letterSpacing: '0.08em' }}
-              >
-                {HIST_ROUND_LABELS[round] ?? `Rodada ${round}`}
-              </span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Rounds ── */}
+      {allRounds.map((round) => {
+        const seriesItems = (seriesByRound[round] ?? []).filter((i) => matches(i.status))
+        const gameItems   = (gamesByRound[round]  ?? []).filter((i) => matches(i.status))
+        if (seriesItems.length === 0 && gameItems.length === 0) return null
+
+        const allForRound  = [...(seriesByRound[round] ?? []), ...(gamesByRound[round] ?? [])]
+        const playedRound  = allForRound.filter((i) => i.status !== 'pending')
+        const correctRound = allForRound.filter((i) => statusIsCorrect(i.status))
+        const roundPct     = playedRound.length > 0 ? Math.round((correctRound.length / playedRound.length) * 100) : null
+        const barColor     = roundPct == null ? 'var(--nba-text-muted)' : roundPct >= 60 ? 'var(--nba-success)' : roundPct >= 40 ? 'var(--nba-gold)' : 'var(--nba-danger)'
+
+        return (
+          <div key={round} style={{ background: 'var(--nba-surface)', border: '1px solid var(--nba-border)', borderRadius: 12, overflow: 'hidden' }}>
+
+            {/* Round header + progress */}
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--nba-border)', background: 'rgba(200,150,60,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: roundPct != null ? 6 : 0 }}>
+                <span className="title" style={{ fontSize: '0.88rem', color: 'var(--nba-gold)', letterSpacing: '0.08em' }}>
+                  {HIST_ROUND_LABELS[round] ?? `Rodada ${round}`}
+                </span>
+                {roundPct != null && (
+                  <span className="font-condensed font-bold" style={{ fontSize: '0.8rem', color: barColor }}>
+                    {correctRound.length}/{playedRound.length} · {roundPct}%
+                  </span>
+                )}
+              </div>
+              {roundPct != null && (
+                <div style={{ height: 3, borderRadius: 2, background: 'rgba(136,136,153,0.15)' }}>
+                  <div style={{ height: '100%', width: `${roundPct}%`, borderRadius: 2, background: barColor, transition: 'width 0.4s ease' }} />
+                </div>
+              )}
             </div>
 
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+
+              {/* Series */}
               {seriesItems.length > 0 && (
                 <>
-                  <div
-                    style={{
-                      fontSize: '0.66rem',
-                      color: 'var(--nba-text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      marginBottom: 2,
-                    }}
-                  >
-                    🏆 Séries
-                  </div>
-                  {seriesItems.map((item) => (
-                    <div key={item.id} style={rowStyle}>
-                      <span style={{ fontSize: '0.95rem', width: 20, textAlign: 'center', flexShrink: 0 }}>
-                        {seriesStatusEmoji(item.status)}
-                      </span>
-                      <span
-                        className="font-condensed font-bold"
-                        style={{ color: 'var(--nba-text)', fontSize: '0.9rem', flex: 1, minWidth: 0 }}
-                      >
-                        {item.matchup_label}
-                      </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.73rem', flexShrink: 0 }}>
-                        {'Apostei: '}
-                        <strong style={{ color: item.status === 'wrong' ? 'var(--nba-danger)' : 'var(--nba-text)' }}>
-                          {item.picked_winner_label}
-                        </strong>
-                        {item.status === 'cravada' && (
-                          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
-                            {' '}({item.picked_games_count}j)
+                  <div style={{ fontSize: '0.64rem', color: 'var(--nba-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>🏆 Séries</div>
+                  {seriesItems.map((item) => {
+                    const [homeAbbr = '', awayAbbr = ''] = item.matchup_label.split(' vs ')
+                    const { bg, border } = rowColors(item.status)
+                    const missed = item.status === 'wrong' ? SCORING_CONFIG.pointsPerSeries[item.round as 1|2|3|4] : 0
+                    return (
+                      <div key={item.id} style={{ borderRadius: 8, background: bg, border, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            <TeamLogo abbr={homeAbbr.trim()} />
+                            <TeamLogo abbr={awayAbbr.trim()} />
+                          </div>
+                          <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.88rem', flex: 1, minWidth: 0 }}>
+                            {item.matchup_label.replace(' vs ', ' × ')}
                           </span>
-                        )}
-                      </span>
-                      <span
-                        className="font-condensed font-bold"
-                        style={{
-                          fontSize: '0.82rem',
-                          minWidth: 54,
-                          textAlign: 'right',
-                          flexShrink: 0,
-                          color: item.points > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                        }}
-                      >
-                        {item.points > 0 ? `+${item.points} pts` : '—'}
-                      </span>
-                    </div>
-                  ))}
+                          <StatusPill status={item.status} />
+                          <span className="font-condensed font-bold" style={{ fontSize: '0.82rem', minWidth: 44, textAlign: 'right', color: item.points > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)' }}>
+                            {item.points > 0 ? `+${item.points}` : '—'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px 8px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <TeamLogo abbr={item.picked_winner_label} />
+                            <span style={{ fontSize: '0.7rem', color: 'var(--nba-text-muted)' }}>
+                              Apostei: <strong style={{ color: item.status === 'wrong' ? 'var(--nba-danger)' : 'var(--nba-text)' }}>{item.picked_winner_label}</strong>
+                              {item.status === 'cravada' && <span style={{ color: 'var(--nba-gold)', fontSize: '0.65rem' }}> · {item.picked_games_count}j 🎯</span>}
+                            </span>
+                          </div>
+                          {item.status === 'wrong' && item.actual_winner_label && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <TeamLogo abbr={item.actual_winner_label} />
+                              <span style={{ fontSize: '0.7rem', color: 'var(--nba-text-muted)' }}>
+                                Ganhou: <strong style={{ color: 'var(--nba-success)' }}>{item.actual_winner_label}</strong>
+                              </span>
+                              <span className="font-condensed font-bold" style={{ fontSize: '0.7rem', color: 'var(--nba-danger)' }}>−{missed} pts</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </>
               )}
 
+              {/* Games */}
               {gameItems.length > 0 && (
                 <>
-                  <div
-                    style={{
-                      fontSize: '0.66rem',
-                      color: 'var(--nba-text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      marginBottom: 2,
-                      marginTop: seriesItems.length > 0 ? 10 : 0,
-                    }}
-                  >
-                    🎮 Jogos
-                  </div>
-                  {gameItems.map((item) => (
-                    <div key={item.id} style={rowStyle}>
-                      <span style={{ fontSize: '0.95rem', width: 20, textAlign: 'center', flexShrink: 0 }}>
-                        {gameStatusEmoji(item.status)}
-                      </span>
-                      <span
-                        className="font-condensed font-bold"
-                        style={{ color: 'var(--nba-text)', fontSize: '0.9rem', flex: 1, minWidth: 0 }}
-                      >
-                        J{item.game_number} · {item.matchup_label}
-                      </span>
-                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.73rem', flexShrink: 0 }}>
-                        {'Apostei: '}
-                        <strong style={{ color: item.status === 'wrong' ? 'var(--nba-danger)' : 'var(--nba-text)' }}>
-                          {item.picked_winner_label}
-                        </strong>
-                      </span>
-                      <span
-                        className="font-condensed font-bold"
-                        style={{
-                          fontSize: '0.82rem',
-                          minWidth: 54,
-                          textAlign: 'right',
-                          flexShrink: 0,
-                          color: item.points > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
-                        }}
-                      >
-                        {item.points > 0 ? `+${item.points} pts` : '—'}
-                      </span>
-                    </div>
-                  ))}
+                  <div style={{ fontSize: '0.64rem', color: 'var(--nba-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2, marginTop: seriesItems.length > 0 ? 10 : 0 }}>🎮 Jogos</div>
+                  {gameItems.map((item) => {
+                    const { bg, border } = rowColors(item.status)
+                    const missed = item.status === 'wrong' ? SCORING_CONFIG.pointsPerGame[item.round as 1|2|3|4] : 0
+                    return (
+                      <div key={item.id} style={{ borderRadius: 8, background: bg, border, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            {item.matchup_label.split(' vs ').map((abbr, i) => (
+                              <TeamLogo key={i} abbr={abbr.trim()} />
+                            ))}
+                          </div>
+                          <span className="font-condensed font-bold" style={{ color: 'var(--nba-text)', fontSize: '0.88rem', flex: 1, minWidth: 0 }}>
+                            J{item.game_number} · {item.matchup_label.replace(' vs ', ' × ')}
+                          </span>
+                          <StatusPill status={item.status} />
+                          <span className="font-condensed font-bold" style={{ fontSize: '0.82rem', minWidth: 44, textAlign: 'right', color: item.points > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)' }}>
+                            {item.points > 0 ? `+${item.points}` : '—'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px 8px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <TeamLogo abbr={item.picked_winner_label} />
+                            <span style={{ fontSize: '0.7rem', color: 'var(--nba-text-muted)' }}>
+                              Apostei: <strong style={{ color: item.status === 'wrong' ? 'var(--nba-danger)' : 'var(--nba-text)' }}>{item.picked_winner_label}</strong>
+                            </span>
+                          </div>
+                          {item.status === 'wrong' && item.actual_winner_label && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <TeamLogo abbr={item.actual_winner_label} />
+                              <span style={{ fontSize: '0.7rem', color: 'var(--nba-text-muted)' }}>
+                                Ganhou: <strong style={{ color: 'var(--nba-success)' }}>{item.actual_winner_label}</strong>
+                              </span>
+                              <span className="font-condensed font-bold" style={{ fontSize: '0.7rem', color: 'var(--nba-danger)' }}>−{missed} pts</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </>
               )}
             </div>
