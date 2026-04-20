@@ -1,5 +1,27 @@
 # Codex Changelog
 
+## 2026-04-19 — Múltiplos fixes e melhorias (sessão completa)
+
+### Admin: painel de cobertura detecta round ativo dinamicamente
+- `backend/src/routes/admin.ts` — `buildAdminPickCoverage` agora busca todas as séries (sem filtro fixo `eq('round', 1)`) e detecta o round ativo como o menor round com séries incompletas; ao fim do R1 passa automaticamente para R2
+- `frontend/src/pages/Admin.tsx` — adicionado `activeRound` à interface e helper `roundShortLabel()`; labels "R1 abertas", "R1 pronta para pick", "Série da rodada 1" etc. agora são dinâmicos
+- Commit: `5e48741`
+
+### Admin: seção de relatório diário reformulada
+- `frontend/src/pages/Admin.tsx` — cards "Resumo do dia" e "Lembrete de palpites" agora exibem o texto completo da mensagem inline (sem precisar clicar "Gerar"); botão "Copiar mensagem" copia direto do preview auto-carregado; "Exportar arquivo" virou ação secundária; modal de exportação simplificado para confirmação apenas
+- Removidos botões "Atualizar preview" (redundantes — useEffect já fazia isso)
+- Commit: `0257653`
+
+### Admin: seletor de seção no digest (só jogos / só séries / completo)
+- `backend/src/digest/exportDailyPicksDigest.ts` — novo tipo `DailyDigestSection = 'all' | 'games' | 'series'`; `buildDigestSections` aceita parâmetro `section`; quando `'games'`: título próprio, bloco de jogos + contra a corrente; quando `'series'`: título próprio, bloco de séries
+- `backend/src/routes/admin.ts` — endpoints preview e POST passam `section` adiante
+- `frontend/src/pages/Admin.tsx` — novo estado `digestSection`; terceiro select "Só jogos / Só séries / Completo"; preview atualiza automaticamente ao mudar seção
+- Commit: `58c7623`
+
+### Home: botão de stats NBA.com removido
+- Tentativa de link para `nba.com/game/{id}` não funcionou: `nba_game_id` no banco é o ID interno do BDL, não o ID oficial da NBA.com; URL com data também não abriu corretamente; feature removida
+- Commits: `49eb9dc`, `627a4dc`, `03ca29b`, `637651f`
+
 ## 2026-04-18 — Home: ampliar detecção de fim de quarto na rail ao vivo
 
 ### Problema
