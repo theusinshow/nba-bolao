@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 import { removeParticipantCompletely } from '../admin/removeParticipant'
 import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
 import { verifyOperationalSnapshot } from '../backup/verifyOperationalSnapshot'
-import { buildDailyPicksDigestPreview, exportDailyPicksDigest } from '../digest/exportDailyPicksDigest'
+import { buildDailyPicksDigestPreview, exportDailyPicksDigest, type DailyDigestSection } from '../digest/exportDailyPicksDigest'
 import { buildDailyReminderPreview, exportDailyReminder } from '../digest/exportDailyReminder'
 import { restoreRows } from '../lib/rollback'
 import { getDailyDigestSchedulerSnapshot } from '../scheduler/dailyDigestScheduler'
@@ -1036,7 +1036,9 @@ router.get('/daily-digest/preview', async (req, res) => {
   try {
     const targetDate = typeof req.query.targetDate === 'string' ? req.query.targetDate.trim() : ''
     const variant = req.query.variant === 'compact' ? 'compact' : 'full'
-    const result = await buildDailyPicksDigestPreview(targetDate || undefined, variant)
+    const rawSection = req.query.section
+    const section: DailyDigestSection = rawSection === 'games' ? 'games' : rawSection === 'series' ? 'series' : 'all'
+    const result = await buildDailyPicksDigestPreview(targetDate || undefined, variant, section)
 
     res.json({
       ok: true,
@@ -1106,6 +1108,8 @@ router.post('/daily-digest', async (req, res) => {
   try {
     const targetDate = typeof req.body?.targetDate === 'string' ? req.body.targetDate.trim() : ''
     const variant = req.body?.variant === 'compact' ? 'compact' : 'full'
+    const rawSection = req.body?.section
+    const section: DailyDigestSection = rawSection === 'games' ? 'games' : rawSection === 'series' ? 'series' : 'all'
     const result = await executeTrackedOperation(
       {
         req,
@@ -1121,7 +1125,7 @@ router.post('/daily-digest', async (req, res) => {
           validation: digest.validation,
         }),
       },
-      () => exportDailyPicksDigest(targetDate || undefined, variant)
+      () => exportDailyPicksDigest(targetDate || undefined, variant, section)
     )
 
     res.json({

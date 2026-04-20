@@ -669,6 +669,7 @@ export function Admin({ participantId }: Props) {
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [digestTargetDate, setDigestTargetDate] = useState(todayInputDate)
   const [digestVariant, setDigestVariant] = useState<'full' | 'compact'>('full')
+  const [digestSection, setDigestSection] = useState<'all' | 'games' | 'series'>('all')
   const [digestPreview, setDigestPreview] = useState<DailyDigestPreviewResult | null>(null)
   const [loadingDigestPreview, setLoadingDigestPreview] = useState(false)
   const [digestModalOpen, setDigestModalOpen] = useState(false)
@@ -824,11 +825,11 @@ export function Admin({ participantId }: Props) {
     }
   }
 
-  async function loadDigestPreview(targetDate = digestTargetDate, variant = digestVariant) {
+  async function loadDigestPreview(targetDate = digestTargetDate, variant = digestVariant, section = digestSection) {
     setLoadingDigestPreview(true)
     try {
       const payload = await adminGet<DailyDigestPreviewResponse>(
-        `/admin/daily-digest/preview?targetDate=${encodeURIComponent(targetDate)}&variant=${encodeURIComponent(variant)}`
+        `/admin/daily-digest/preview?targetDate=${encodeURIComponent(targetDate)}&variant=${encodeURIComponent(variant)}&section=${encodeURIComponent(section)}`
       )
       setDigestPreview(payload.result)
     } catch (error) {
@@ -923,8 +924,8 @@ export function Admin({ participantId }: Props) {
   }, [])
 
   useEffect(() => {
-    loadDigestPreview(digestTargetDate, digestVariant)
-  }, [digestTargetDate, digestVariant])
+    loadDigestPreview(digestTargetDate, digestVariant, digestSection)
+  }, [digestTargetDate, digestVariant, digestSection])
 
   useEffect(() => {
     loadReminderPreview(reminderTargetDate, reminderVariant)
@@ -1034,6 +1035,7 @@ export function Admin({ participantId }: Props) {
         adminPost<DailyDigestResponse>('/admin/daily-digest', {
           targetDate: digestTargetDate,
           variant: digestVariant,
+          section: digestSection,
         })
       )
 
@@ -2815,11 +2817,20 @@ export function Admin({ participantId }: Props) {
                       style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
                     />
                     <select
+                      value={digestSection}
+                      onChange={(event) => setDigestSection(event.target.value as 'all' | 'games' | 'series')}
+                      style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
+                    >
+                      <option value="all">Completo</option>
+                      <option value="games">Só jogos</option>
+                      <option value="series">Só séries</option>
+                    </select>
+                    <select
                       value={digestVariant}
                       onChange={(event) => setDigestVariant(event.target.value as 'full' | 'compact')}
                       style={{ borderRadius: 8, border: '1px solid rgba(200,150,60,0.14)', background: 'rgba(12,12,18,0.8)', color: 'var(--nba-text)', padding: '7px 10px', fontSize: '0.8rem' }}
                     >
-                      <option value="full">Completo</option>
+                      <option value="full">Detalhado</option>
                       <option value="compact">Compacto</option>
                     </select>
                   </div>

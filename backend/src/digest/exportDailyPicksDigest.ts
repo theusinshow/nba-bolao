@@ -57,6 +57,7 @@ interface GamePickRow {
 }
 
 export type DailyDigestVariant = 'full' | 'compact'
+export type DailyDigestSection = 'all' | 'games' | 'series'
 
 interface DailyDigestGameSummary {
   gameId: string
@@ -299,7 +300,8 @@ function buildDigestSections(
   targetDate: string,
   variant: DailyDigestVariant,
   generatedAt: string,
-  data: Awaited<ReturnType<typeof fetchDigestData>>
+  data: Awaited<ReturnType<typeof fetchDigestData>>,
+  section: DailyDigestSection = 'all'
 ): DailyDigestPreview {
   const teamsById = Object.fromEntries(data.teams.map((team) => [team.id, team]))
   const participantsById = Object.fromEntries(data.participants.map((participant) => [participant.id, participant]))
@@ -357,73 +359,85 @@ function buildDigestSections(
     activeSeriesWithoutPicks: series.filter((item) => item.totalPicks === 0).length,
   }
 
+  const sectionTitle =
+    section === 'games' ? '🎮 *Palpites jogo a jogo — Bolao NBA*' :
+    section === 'series' ? '🏆 *Palpites de series — Bolao NBA*' :
+    `🏀 *Resumo do Bolao NBA - ${humanDate}*`
+
   const parts: string[] = [
-    `🏀 *Resumo do Bolao NBA - ${humanDate}*`,
+    sectionTitle,
     `_Gerado em ${generatedAt}_`,
     '',
-    `Participantes no radar: ${summary.totalParticipants}`,
-    `Jogos do dia: ${summary.todayGames} | Series abertas: ${summary.activeSeries}`,
-    '',
-    '*Palpites jogo a jogo do dia*',
   ]
 
-  if (games.length === 0) {
-    parts.push('- Nenhum jogo programado para esta data')
-  } else {
-    for (const game of gamesOfDay) {
-      const summary_game = games.find((g) => g.gameId === game.id)!
-      const header = `*Jogo ${summary_game.gameNumber} - ${summary_game.matchup}* (${summary_game.tipOff})`
+  if (section !== 'series') {
+    if (section === 'all') {
+      parts.push(`Participantes no radar: ${summary.totalParticipants}`)
+      parts.push(`Jogos do dia: ${summary.todayGames} | Series abertas: ${summary.activeSeries}`)
+      parts.push('')
+    }
+    parts.push('*Palpites jogo a jogo do dia*')
 
-      if (variant === 'compact') {
-        parts.push(header)
-        const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
-        if (insight) parts.push(insight)
-        parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
-      } else if (summary_game.picks.length > 0) {
-        parts.push(header)
-        const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
-        if (insight) parts.push(insight)
-        parts.push(...summary_game.picks.map((pick) => `- ${pick}`))
-        parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
-      } else {
-        parts.push(`${header}\n- Nenhum palpite salvo ainda`)
+    if (games.length === 0) {
+      parts.push('- Nenhum jogo programado para esta data')
+    } else {
+      for (const game of gamesOfDay) {
+        const summary_game = games.find((g) => g.gameId === game.id)!
+        const header = `*Jogo ${summary_game.gameNumber} - ${summary_game.matchup}* (${summary_game.tipOff})`
+
+        if (variant === 'compact') {
+          parts.push(header)
+          const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
+          if (insight) parts.push(insight)
+          parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
+        } else if (summary_game.picks.length > 0) {
+          parts.push(header)
+          const insight = buildGameInsight(game.id, game.home_team_id, game.away_team_id, data.gamePicks, teamsById)
+          if (insight) parts.push(insight)
+          parts.push(...summary_game.picks.map((pick) => `- ${pick}`))
+          parts.push(`- Cobertura: ${summary_game.totalPicks}/${summary.totalParticipants}`)
+        } else {
+          parts.push(`${header}\n- Nenhum palpite salvo ainda`)
+        }
       }
+    }
+
+    // Contra a corrente só no bloco de jogos
+    const contraCorrenteLines = buildContraCorrenteLines(gamesOfDay, data.gamePicks, participantsById, teamsById)
+    if (contraCorrenteLines.length > 0) {
+      parts.push('')
+      parts.push('*🔀 Apostas contra a corrente*')
+      parts.push(...contraCorrenteLines)
     }
   }
 
-  parts.push('')
-  parts.push('*Palpites de series em aberto*')
+  if (section !== 'games') {
+    if (section === 'all') parts.push('')
+    parts.push('*Palpites de series em aberto*')
 
-  if (series.length === 0) {
-    parts.push('- Nenhuma serie aberta com confronto definido')
-  } else {
-    for (const item of activeSeries) {
-      const summary_series = series.find((s) => s.seriesId === item.id)!
-      const header = `*${summary_series.roundLabel} - ${summary_series.matchup}*`
+    if (series.length === 0) {
+      parts.push('- Nenhuma serie aberta com confronto definido')
+    } else {
+      for (const item of activeSeries) {
+        const summary_series = series.find((s) => s.seriesId === item.id)!
+        const header = `*${summary_series.roundLabel} - ${summary_series.matchup}*`
 
-      if (variant === 'compact') {
-        parts.push(header)
-        const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
-        parts.push(...insightLines)
-        parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
-      } else if (summary_series.picks.length > 0) {
-        parts.push(header)
-        const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
-        parts.push(...insightLines)
-        parts.push(...summary_series.picks.map((pick) => `- ${pick}`))
-        parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
-      } else {
-        parts.push(`${header}\n- Nenhum palpite de serie salvo ainda`)
+        if (variant === 'compact') {
+          parts.push(header)
+          const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
+          parts.push(...insightLines)
+          parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
+        } else if (summary_series.picks.length > 0) {
+          parts.push(header)
+          const insightLines = buildSeriesInsight(item.id, item.home_team_id, item.away_team_id, data.seriesPicks, teamsById)
+          parts.push(...insightLines)
+          parts.push(...summary_series.picks.map((pick) => `- ${pick}`))
+          parts.push(`- Cobertura: ${summary_series.totalPicks}/${summary.totalParticipants}`)
+        } else {
+          parts.push(`${header}\n- Nenhum palpite de serie salvo ainda`)
+        }
       }
     }
-  }
-
-  // Apostas contra a corrente
-  const contraCorrenteLines = buildContraCorrenteLines(gamesOfDay, data.gamePicks, participantsById, teamsById)
-  if (contraCorrenteLines.length > 0) {
-    parts.push('')
-    parts.push('*🔀 Apostas contra a corrente*')
-    parts.push(...contraCorrenteLines)
   }
 
   return {
@@ -471,18 +485,20 @@ function buildMarkdownSummary(preview: DailyDigestPreview, validation?: Artifact
 
 export async function buildDailyPicksDigestPreview(
   targetDate = getBrtDateKey(new Date()),
-  variant: DailyDigestVariant = 'full'
+  variant: DailyDigestVariant = 'full',
+  section: DailyDigestSection = 'all'
 ): Promise<DailyDigestPreview> {
   const data = await fetchDigestData()
   const { human } = formatTimestampParts(new Date())
-  return buildDigestSections(targetDate, variant, human, data)
+  return buildDigestSections(targetDate, variant, human, data, section)
 }
 
 export async function exportDailyPicksDigest(
   targetDate = getBrtDateKey(new Date()),
-  variant: DailyDigestVariant = 'full'
+  variant: DailyDigestVariant = 'full',
+  section: DailyDigestSection = 'all'
 ): Promise<DailyDigestResult> {
-  const preview = await buildDailyPicksDigestPreview(targetDate, variant)
+  const preview = await buildDailyPicksDigestPreview(targetDate, variant, section)
   const { dateStamp, timeStamp } = formatTimestampParts(new Date())
   const outputDir = path.join(getRepoRoot(), 'backups', 'daily-digests', `${dateStamp}_${timeStamp}`)
   await mkdir(outputDir, { recursive: true })
