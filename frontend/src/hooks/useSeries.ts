@@ -48,21 +48,28 @@ export function useSeries(participantId?: string) {
     const [{ data: seriesData }, { data: teamsData }, { data: gamesData }] = await Promise.all([
       supabase.from('series').select('*').order('round', { ascending: true }).order('position', { ascending: true }),
       supabase.from('teams').select('*'),
-      supabase.from('games').select('series_id, tip_off_at'),
+      supabase.from('games').select('series_id, tip_off_at, winner_id, home_team_id, away_team_id, played'),
     ])
     if (!seriesData) return
     const teamMap = Object.fromEntries(
       (teamsData ?? []).map((t) => [t.id, { ...t, ...TEAM_MAP[t.id] }])
     )
-    const games = (gamesData ?? []) as Pick<Game, 'series_id' | 'tip_off_at'>[] as Game[]
-    const merged = seriesData.map((s) => ({
-      ...s,
-      slot: getSeriesSlot({ id: s.id, slot: (s as Series).slot ?? null }),
-      tip_off_at: getSeriesLockTipOff(s.id, games),
-      home_team: teamMap[s.home_team_id] ?? null,
-      away_team: teamMap[s.away_team_id] ?? null,
-      winner: s.winner_id ? (teamMap[s.winner_id] ?? null) : null,
-    }))
+    const games = (gamesData ?? []) as Game[]
+    const merged = seriesData.map((s) => {
+      const sg = games.filter((g) => g.series_id === s.id && g.played)
+      const home_wins = sg.filter((g) => g.winner_id === s.home_team_id).length
+      const away_wins = sg.filter((g) => g.winner_id === s.away_team_id).length
+      return {
+        ...s,
+        slot: getSeriesSlot({ id: s.id, slot: (s as Series).slot ?? null }),
+        tip_off_at: getSeriesLockTipOff(s.id, games),
+        home_wins,
+        away_wins,
+        home_team: teamMap[s.home_team_id] ?? null,
+        away_team: teamMap[s.away_team_id] ?? null,
+        winner: s.winner_id ? (teamMap[s.winner_id] ?? null) : null,
+      }
+    })
     setSeries(merged as Series[])
   }
 

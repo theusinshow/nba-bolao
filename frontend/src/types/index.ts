@@ -25,6 +25,9 @@ export interface Series {
   is_complete: boolean
   nba_series_id: number | null
   tip_off_at?: string | null
+  // computed from games
+  home_wins?: number
+  away_wins?: number
   // joined from teams table
   home_team?: Team | null
   away_team?: Team | null

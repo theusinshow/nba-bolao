@@ -140,6 +140,7 @@ function MobileSeriesCard({
   const tAWins = isComplete && s.winner_id === tA?.id
   const tBWins = isComplete && s.winner_id === tB?.id
   const score   = isComplete && s.games_played ? `4-${s.games_played - 4}` : null
+  const inProgress = !isComplete && ((s.home_wins ?? 0) + (s.away_wins ?? 0)) > 0
 
   const status = pickStatus(s, pick)
 
@@ -280,6 +281,24 @@ function MobileSeriesCard({
                 {score}
               </span>
               <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.6rem', marginTop: 3 }}>final</span>
+            </>
+          ) : inProgress ? (
+            <>
+              <span
+                className="font-condensed font-bold"
+                style={{ color: 'var(--nba-text)', fontSize: '1.15rem', lineHeight: 1 }}
+              >
+                {s.home_wins ?? 0}
+              </span>
+              <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.58rem', letterSpacing: '0.04em', margin: '2px 0' }}>
+                série
+              </span>
+              <span
+                className="font-condensed font-bold"
+                style={{ color: 'var(--nba-text)', fontSize: '1.15rem', lineHeight: 1 }}
+              >
+                {s.away_wins ?? 0}
+              </span>
             </>
           ) : (
             <span
@@ -657,6 +676,7 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
     const tAWins = isComplete && s?.winner_id === tA?.id
     const tBWins = isComplete && s?.winner_id === tB?.id
     const score  = isComplete && s?.games_played ? `4-${s.games_played - 4}` : ''
+    const inProgress = s ? !isComplete && ((s.home_wins ?? 0) + (s.away_wins ?? 0)) > 0 : false
 
     // Row heights / vertical midpoints
     const rowH = BOX_H / 2   // 35
@@ -795,6 +815,21 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
           </text>
         )}
 
+        {/* In-progress wins count */}
+        {inProgress && (
+          <text
+            x={BOX_W - 26} y={yA}
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="rgba(200,150,60,0.85)"
+            fontSize={13}
+            fontFamily={baseFont}
+            fontWeight="700"
+          >
+            {s?.home_wins ?? 0}
+          </text>
+        )}
+
         {/* User pick ★ */}
         {pick && !isComplete && pick.winner_id === tA?.id && (
           <text
@@ -889,6 +924,21 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
             fontWeight="700"
           >
             ✓
+          </text>
+        )}
+
+        {/* In-progress wins count */}
+        {inProgress && (
+          <text
+            x={BOX_W - 26} y={yB}
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="rgba(200,150,60,0.85)"
+            fontSize={13}
+            fontFamily={baseFont}
+            fontWeight="700"
+          >
+            {s?.away_wins ?? 0}
           </text>
         )}
 
