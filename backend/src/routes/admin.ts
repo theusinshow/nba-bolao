@@ -9,6 +9,7 @@ import { exportOperationalSnapshot } from '../backup/exportOperationalSnapshot'
 import { verifyOperationalSnapshot } from '../backup/verifyOperationalSnapshot'
 import { buildDailyPicksDigestPreview, exportDailyPicksDigest, type DailyDigestSection } from '../digest/exportDailyPicksDigest'
 import { buildDailyReminderPreview, exportDailyReminder } from '../digest/exportDailyReminder'
+import { buildMorningBriefPreview } from '../digest/buildMorningBrief'
 import { restoreRows } from '../lib/rollback'
 import { getDailyDigestSchedulerSnapshot } from '../scheduler/dailyDigestScheduler'
 import { getNBASyncSchedulerSnapshot } from '../scheduler/nbaSyncScheduler'
@@ -1622,6 +1623,18 @@ router.post('/badges/recompute', async (_req, res) => {
     res.json({ ok: true, ...result })
   } catch (err: unknown) {
     console.error('[admin/badges/recompute] Failed:', err)
+    res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// GET /admin/morning-brief/preview
+router.get('/morning-brief/preview', async (req, res) => {
+  try {
+    const targetDate = typeof req.query.targetDate === 'string' ? req.query.targetDate.trim() : undefined
+    const result = await buildMorningBriefPreview(targetDate)
+    res.json({ ok: true, result })
+  } catch (err: unknown) {
+    console.error('[admin/morning-brief/preview] Failed:', err)
     res.status(500).json({ ok: false, error: String(err) })
   }
 })

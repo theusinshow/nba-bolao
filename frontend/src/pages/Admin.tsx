@@ -237,6 +237,41 @@ interface DailyDigestPreviewResponse {
   result: DailyDigestPreviewResult
 }
 
+interface MorningBriefGame {
+  gameId: string
+  gameNumber: number
+  homeTeamName: string
+  awayTeamName: string
+  homeAbbr: string
+  awayAbbr: string
+  tipOffBRT: string | null
+  seriesContext: string
+  homeMoneyline: number | null
+  awayMoneyline: number | null
+  oddsBookmaker: string | null
+}
+
+interface MorningBriefRankingEntry {
+  rank: number
+  name: string
+  points: number
+}
+
+interface MorningBriefPreview {
+  targetDate: string
+  generatedAt: string
+  whatsappText: string
+  games: MorningBriefGame[]
+  top3: MorningBriefRankingEntry[]
+  oddsAvailable: boolean
+  newsAvailable: boolean
+}
+
+interface MorningBriefPreviewResponse {
+  ok: boolean
+  result: MorningBriefPreview
+}
+
 interface PickInsertTarget {
   id: string
   matchup: string
@@ -680,6 +715,9 @@ export function Admin({ participantId }: Props) {
   const [loadingReminderPreview, setLoadingReminderPreview] = useState(false)
   const [reminderModalOpen, setReminderModalOpen] = useState(false)
   const [latestReminder, setLatestReminder] = useState<DailyReminderResponse['result'] | null>(null)
+  const [briefTargetDate, setBriefTargetDate] = useState(todayInputDate)
+  const [briefPreview, setBriefPreview] = useState<MorningBriefPreview | null>(null)
+  const [loadingBriefPreview, setLoadingBriefPreview] = useState(false)
   const [backupModalOpen, setBackupModalOpen] = useState(false)
   const [latestBackup, setLatestBackup] = useState<BackupResponse['result'] | null>(null)
   const [backupVerificationModalOpen, setBackupVerificationModalOpen] = useState(false)
@@ -855,6 +893,21 @@ export function Admin({ participantId }: Props) {
     }
   }
 
+  async function loadBriefPreview(targetDate = briefTargetDate) {
+    setLoadingBriefPreview(true)
+    try {
+      const payload = await adminGet<MorningBriefPreviewResponse>(
+        `/admin/morning-brief/preview?targetDate=${encodeURIComponent(targetDate)}`
+      )
+      setBriefPreview(payload.result)
+    } catch (error) {
+      addToast((error as Error).message, 'error')
+      setBriefPreview(null)
+    } finally {
+      setLoadingBriefPreview(false)
+    }
+  }
+
   async function refreshOperationalData() {
     await Promise.all([loadHealth(), loadOperations(), loadPickCoverage(), loadPickIntegrity()])
   }
@@ -930,6 +983,10 @@ export function Admin({ participantId }: Props) {
   useEffect(() => {
     loadReminderPreview(reminderTargetDate, reminderVariant)
   }, [reminderTargetDate, reminderVariant])
+
+  useEffect(() => {
+    loadBriefPreview(briefTargetDate)
+  }, [briefTargetDate])
 
   const duplicateNameSet = useMemo(() => {
     const counts = new Map<string, number>()
@@ -3498,6 +3555,69 @@ export function Admin({ participantId }: Props) {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* ── Abertura do Dia ── */}
+        <section style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>🌅</span>
+            <div>
+              <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '0.95rem', lineHeight: 1 }}>Abertura do Dia</div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 3 }}>
+                {briefPreview
+                  ? `${briefPreview.games.length} jogo(s) hoje · ${briefPreview.oddsAvailable ? 'odds disponíveis' : 'sem odds'} · ${briefPreview.newsAvailable ? 'notícias OK' : 'sem notícias'}`
+                  : loadingBriefPreview ? 'Gerando mensagem...' : 'Selecione a data para gerar a mensagem'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+            <div>
+              <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Data</div>
+              <input
+                type="date"
+                value={briefTargetDate}
+                onChange={(event) => setBriefTargetDate(event.target.value)}
+                style={{ width: '100%', borderRadius: 8, border: '1px solid rgba(200,150,60,0.18)', background: 'rgba(12,12,18,0.5)', color: 'var(--nba-text)', padding: '9px 10px', fontSize: '0.8rem' }}
+              />
+            </div>
+          </div>
+
+          {loadingBriefPreview ? (
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.8rem', padding: '24px 0', textAlign: 'center' }}>Gerando mensagem...</div>
+          ) : briefPreview?.whatsappText ? (
+            <>
+              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace,monospace', fontSize: '0.82rem', lineHeight: 1.65, color: 'var(--nba-text)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,150,60,0.10)', borderRadius: 10, padding: '16px', maxHeight: 520, overflowY: 'auto' }}>
+                {briefPreview.whatsappText}
+              </pre>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(briefPreview.whatsappText)
+                      addToast('Mensagem de abertura copiada!', 'success')
+                    } catch {
+                      addToast('Não foi possível copiar automaticamente.', 'error')
+                    }
+                  }}
+                  style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(200,150,60,0.30)', background: 'rgba(200,150,60,0.12)', color: 'var(--nba-gold)', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem' }}
+                >
+                  <MessageSquareShare size={15} />
+                  Copiar mensagem
+                </button>
+                <button
+                  onClick={() => loadBriefPreview(briefTargetDate)}
+                  disabled={loadingBriefPreview}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.03)', color: 'var(--nba-text-muted)', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}
+                >
+                  <RefreshCw size={13} />
+                  Atualizar
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.82rem', padding: '24px 0', textAlign: 'center' }}>Nenhum jogo encontrado para esta data.</div>
+          )}
         </section>
 
         {/* ── Dois cards lado a lado ── */}
