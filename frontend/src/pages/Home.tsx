@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronLeft, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, BarChart2, ChevronLeft, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
@@ -984,27 +984,24 @@ function LastNightRecap({
                       </span>
                       {isEditorialGame && game.nba_game_id && (
                         <a
-                          href={`https://www.nba.com/game/${game.nba_game_id}`}
+                          href={`https://www.nba.com/game/${String(game.nba_game_id).padStart(10, '0')}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
+                          title="Ver estatísticas no NBA.com"
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 3,
+                            justifyContent: 'center',
                             color: 'var(--nba-text-muted)',
-                            fontSize: isCompactRail ? '0.5rem' : '0.54rem',
-                            fontWeight: 700,
-                            letterSpacing: '0.1em',
                             textDecoration: 'none',
                             border: '1px solid rgba(200,150,60,0.2)',
                             borderRadius: 4,
-                            padding: '2px 6px',
-                            whiteSpace: 'nowrap',
+                            padding: '3px 6px',
                             background: 'rgba(200,150,60,0.06)',
                           }}
                         >
-                          NBA.com ↗
+                          <BarChart2 size={11} />
                         </a>
                       )}
                     </div>
