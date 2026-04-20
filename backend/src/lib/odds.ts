@@ -248,6 +248,14 @@ interface ESPNScoreboardResponse { events?: ESPNEvent[] }
 
 const espnCache = new Map<string, { expiresAt: number; status: OddsProviderStatus; odds: GameOddsSummaryItem[] }>()
 
+function espnDateRange(): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmt = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`
+  const start = new Date()
+  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
+  return `${fmt(start)}-${fmt(end)}`
+}
+
 export async function fetchESPNGameOddsSummary(): Promise<{ status: OddsProviderStatus; odds: GameOddsSummaryItem[] }> {
   const cacheKey = 'espn:nba:scoreboard'
   const cached = espnCache.get(cacheKey)
@@ -257,7 +265,7 @@ export async function fetchESPNGameOddsSummary(): Promise<{ status: OddsProvider
 
   try {
     const scoreboardRes = await axios.get<ESPNScoreboardResponse>(ESPN_SCOREBOARD_URL, {
-      params: { seasontype: 3, limit: 20 },
+      params: { seasontype: 3, dates: espnDateRange(), limit: 30 },
       timeout: 8000,
     })
 
