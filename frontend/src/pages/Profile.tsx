@@ -7,6 +7,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { useParticipantProfile } from '../hooks/useParticipantProfile'
+import { useAuth } from '../hooks/useAuth'
 import { SCORING_CONFIG } from '../utils/scoring'
 import { useParticipantBadges, BADGE_DEFINITIONS, sortBadges } from '../hooks/useParticipantBadges'
 import { ParticipantScoreReport } from '../components/ParticipantScoreReport'
@@ -128,7 +129,7 @@ function TeamLogo({ abbr }: { abbr: string }) {
   )
 }
 
-function HistoricoTab({ breakdown }: { breakdown: ParticipantScoreBreakdown | null }) {
+function HistoricoTab({ breakdown, isOwnProfile = true }: { breakdown: ParticipantScoreBreakdown | null; isOwnProfile?: boolean }) {
   const [filter, setFilter] = useState<HistFilter>('all')
 
   if (!breakdown) {
@@ -141,7 +142,12 @@ function HistoricoTab({ breakdown }: { breakdown: ParticipantScoreBreakdown | nu
     )
   }
 
-  const { series_breakdown, game_breakdown } = breakdown
+  const series_breakdown = isOwnProfile
+    ? breakdown.series_breakdown
+    : breakdown.series_breakdown.filter((s) => s.status !== 'pending')
+  const game_breakdown = isOwnProfile
+    ? breakdown.game_breakdown
+    : breakdown.game_breakdown.filter((g) => g.played)
 
   // ── Summary stats ──────────────────────────────────────────────────────────
   const totalPts = [...series_breakdown, ...game_breakdown].reduce((s, i) => s + i.points, 0)
@@ -396,6 +402,8 @@ export function Profile() {
     favoriteTeams,
     expensiveMisses,
   } = useParticipantProfile(id!)
+  const { auth } = useAuth()
+  const isOwnProfile = auth.status === 'authorized' && auth.participantId === id
   const { badgesByParticipant } = useParticipantBadges()
   const [tab, setTab] = useState<'perfil' | 'historico'>('perfil')
 
@@ -612,7 +620,7 @@ export function Profile() {
         ))}
       </div>
 
-      {tab === 'historico' && <HistoricoTab breakdown={breakdown} />}
+      {tab === 'historico' && <HistoricoTab breakdown={breakdown} isOwnProfile={isOwnProfile} />}
 
       {tab === 'perfil' && <>
       <div
@@ -939,7 +947,7 @@ export function Profile() {
           </h2>
           <div style={{ height: 1, flex: 1, background: 'var(--nba-border)' }} />
         </div>
-        <ParticipantScoreReport breakdown={breakdown} loading={loading} />
+        <ParticipantScoreReport breakdown={breakdown} loading={loading} isOwnProfile={isOwnProfile} />
       </div>
 
       {/* ── Conquistas ──────────────────────────────────────────────────── */}

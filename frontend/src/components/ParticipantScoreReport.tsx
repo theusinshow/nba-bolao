@@ -6,6 +6,7 @@ import { LoadingBasketball } from './LoadingBasketball'
 interface Props {
   breakdown?: ParticipantScoreBreakdown
   loading?: boolean
+  isOwnProfile?: boolean
 }
 
 const ROUND_LABEL: Record<RoundNumber, string> = {
@@ -101,7 +102,7 @@ function FilterChip({
   )
 }
 
-export function ParticipantScoreReport({ breakdown, loading }: Props) {
+export function ParticipantScoreReport({ breakdown, loading, isOwnProfile = true }: Props) {
   const [expandedSeriesIds, setExpandedSeriesIds] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<ReportViewMode>('all')
   const [roundFilter, setRoundFilter] = useState<RoundNumber>(1)
@@ -125,7 +126,13 @@ export function ParticipantScoreReport({ breakdown, loading }: Props) {
     )
   }
 
-  const { participant, summary, series_breakdown, game_breakdown } = breakdown
+  const { participant, summary } = breakdown
+  const series_breakdown = isOwnProfile
+    ? breakdown.series_breakdown
+    : breakdown.series_breakdown.filter((s) => s.status !== 'pending')
+  const game_breakdown = isOwnProfile
+    ? breakdown.game_breakdown
+    : breakdown.game_breakdown.filter((g) => g.played)
 
   useEffect(() => {
     const currentById: Record<string, SeriesScoreBreakdownItem> = {}
