@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Star, Target, TrendingUp, Zap } from 'lucide-react'
+import type { ParticipantScoreBreakdown } from '../types'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
@@ -74,6 +76,207 @@ function buildProfileBadges({
   return badges.slice(0, 4)
 }
 
+// ─── Histórico de palpites ────────────────────────────────────────────────────
+
+const HIST_ROUND_LABELS: Record<number, string> = {
+  1: 'R1 · Primeira Rodada',
+  2: 'R2 · Semifinais de Conferência',
+  3: 'Finais de Conferência',
+  4: 'NBA Finals',
+}
+
+function seriesStatusEmoji(status: 'cravada' | 'winner' | 'wrong' | 'pending') {
+  if (status === 'cravada') return '🏆'
+  if (status === 'winner') return '✅'
+  if (status === 'wrong') return '❌'
+  return '⏳'
+}
+
+function gameStatusEmoji(status: 'correct' | 'wrong' | 'pending') {
+  if (status === 'correct') return '✅'
+  if (status === 'wrong') return '❌'
+  return '⏳'
+}
+
+function HistoricoTab({ breakdown }: { breakdown: ParticipantScoreBreakdown | null }) {
+  if (!breakdown) {
+    return (
+      <div style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} style={{ height: 48, borderRadius: 8, background: 'var(--nba-surface-2)', opacity: 0.6 }} />
+        ))}
+      </div>
+    )
+  }
+
+  const seriesByRound = breakdown.series_breakdown.reduce<Record<number, typeof breakdown.series_breakdown>>(
+    (acc, item) => { ;(acc[item.round] ??= []).push(item); return acc },
+    {}
+  )
+  const gamesByRound = breakdown.game_breakdown.reduce<Record<number, typeof breakdown.game_breakdown>>(
+    (acc, item) => { ;(acc[item.round] ??= []).push(item); return acc },
+    {}
+  )
+  const allRounds = [
+    ...new Set([...Object.keys(seriesByRound), ...Object.keys(gamesByRound)].map(Number)),
+  ].sort((a, b) => a - b)
+
+  if (allRounds.length === 0) {
+    return (
+      <p style={{ color: 'var(--nba-text-muted)', textAlign: 'center', padding: '32px 0', fontSize: '0.9rem' }}>
+        Nenhum palpite registrado ainda.
+      </p>
+    )
+  }
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '8px 10px',
+    borderRadius: 8,
+    background: 'rgba(0,0,0,0.18)',
+    border: '1px solid rgba(200,150,60,0.08)',
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {allRounds.map((round) => {
+        const seriesItems = seriesByRound[round] ?? []
+        const gameItems = gamesByRound[round] ?? []
+        return (
+          <div
+            key={round}
+            style={{
+              background: 'var(--nba-surface)',
+              border: '1px solid var(--nba-border)',
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                padding: '9px 16px',
+                borderBottom: '1px solid var(--nba-border)',
+                background: 'rgba(200,150,60,0.06)',
+              }}
+            >
+              <span
+                className="title"
+                style={{ fontSize: '0.88rem', color: 'var(--nba-gold)', letterSpacing: '0.08em' }}
+              >
+                {HIST_ROUND_LABELS[round] ?? `Rodada ${round}`}
+              </span>
+            </div>
+
+            <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {seriesItems.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      fontSize: '0.66rem',
+                      color: 'var(--nba-text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      marginBottom: 2,
+                    }}
+                  >
+                    🏆 Séries
+                  </div>
+                  {seriesItems.map((item) => (
+                    <div key={item.id} style={rowStyle}>
+                      <span style={{ fontSize: '0.95rem', width: 20, textAlign: 'center', flexShrink: 0 }}>
+                        {seriesStatusEmoji(item.status)}
+                      </span>
+                      <span
+                        className="font-condensed font-bold"
+                        style={{ color: 'var(--nba-text)', fontSize: '0.9rem', flex: 1, minWidth: 0 }}
+                      >
+                        {item.matchup_label}
+                      </span>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.73rem', flexShrink: 0 }}>
+                        {'Apostei: '}
+                        <strong style={{ color: item.status === 'wrong' ? 'var(--nba-danger)' : 'var(--nba-text)' }}>
+                          {item.picked_winner_label}
+                        </strong>
+                        {item.status === 'cravada' && (
+                          <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem' }}>
+                            {' '}({item.picked_games_count}j)
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="font-condensed font-bold"
+                        style={{
+                          fontSize: '0.82rem',
+                          minWidth: 54,
+                          textAlign: 'right',
+                          flexShrink: 0,
+                          color: item.points > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                        }}
+                      >
+                        {item.points > 0 ? `+${item.points} pts` : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {gameItems.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      fontSize: '0.66rem',
+                      color: 'var(--nba-text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      marginBottom: 2,
+                      marginTop: seriesItems.length > 0 ? 10 : 0,
+                    }}
+                  >
+                    🎮 Jogos
+                  </div>
+                  {gameItems.map((item) => (
+                    <div key={item.id} style={rowStyle}>
+                      <span style={{ fontSize: '0.95rem', width: 20, textAlign: 'center', flexShrink: 0 }}>
+                        {gameStatusEmoji(item.status)}
+                      </span>
+                      <span
+                        className="font-condensed font-bold"
+                        style={{ color: 'var(--nba-text)', fontSize: '0.9rem', flex: 1, minWidth: 0 }}
+                      >
+                        J{item.game_number} · {item.matchup_label}
+                      </span>
+                      <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.73rem', flexShrink: 0 }}>
+                        {'Apostei: '}
+                        <strong style={{ color: item.status === 'wrong' ? 'var(--nba-danger)' : 'var(--nba-text)' }}>
+                          {item.picked_winner_label}
+                        </strong>
+                      </span>
+                      <span
+                        className="font-condensed font-bold"
+                        style={{
+                          fontSize: '0.82rem',
+                          minWidth: 54,
+                          textAlign: 'right',
+                          flexShrink: 0,
+                          color: item.points > 0 ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+                        }}
+                      >
+                        {item.points > 0 ? `+${item.points} pts` : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export function Profile() {
@@ -88,6 +291,7 @@ export function Profile() {
     expensiveMisses,
   } = useParticipantProfile(id!)
   const { badgesByParticipant } = useParticipantBadges()
+  const [tab, setTab] = useState<'perfil' | 'historico'>('perfil')
 
   if (loading) {
     return (
@@ -276,6 +480,35 @@ export function Profile() {
         </div>
       </div>
 
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {(['perfil', 'historico'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding: '6px 18px',
+              borderRadius: 20,
+              border: tab === t ? '1px solid rgba(200,150,60,0.5)' : '1px solid var(--nba-border)',
+              background: tab === t ? 'rgba(200,150,60,0.12)' : 'var(--nba-surface-2)',
+              color: tab === t ? 'var(--nba-gold)' : 'var(--nba-text-muted)',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              letterSpacing: '0.06em',
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+              transition: 'all 0.15s',
+            }}
+          >
+            {t === 'perfil' ? 'Perfil' : 'Histórico'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'historico' && <HistoricoTab breakdown={breakdown} />}
+
+      {tab === 'perfil' && <>
       <div
         id="profile-hero-tour"
         style={{
@@ -675,6 +908,7 @@ export function Profile() {
           </div>
         )}
       </div>
+      </>}
     </div>
   )
 }
