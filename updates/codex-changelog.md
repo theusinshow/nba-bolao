@@ -1,5 +1,18 @@
 # Codex Changelog
 
+## 2026-04-20 — Fix: perfil de outro usuário não exibia palpites futuros + crash ao abrir perfil
+
+### Profile: ocultar palpites futuros no perfil de outros participantes
+- `frontend/src/pages/Profile.tsx` — `HistoricoTab` e `ParticipantScoreReport` passaram a receber prop `isOwnProfile`; quando `false`, séries com `status === 'pending'` e jogos com `played === false` são filtrados antes de renderizar, evitando exposição de palpites futuros de outros jogadores
+- `frontend/src/components/ParticipantScoreReport.tsx` — mesma lógica de filtro aplicada às seções de Séries e Jogos do relatório detalhado
+- Commits: `1f3e10f`
+
+### Fix: crash ao abrir página de perfil
+- Chamar `useAuth()` dentro de `Profile` criava uma segunda instância do hook, abrindo um canal Supabase Realtime com o mesmo nome já registrado pelo `App.tsx` — isso derrubava a página ao navegar para qualquer perfil
+- `frontend/src/App.tsx` — `participantId` agora é passado como prop direto para `<Profile currentParticipantId={participantId} />`
+- `frontend/src/pages/Profile.tsx` — removida a chamada a `useAuth()`; `isOwnProfile` calculado comparando `currentParticipantId` com o `id` da rota
+- Commit: `a9ce46b`
+
 ## 2026-04-20 — Histórico tab melhorado + Odds ESPN + fix dots ranking
 
 ### Profile: aba Histórico aprimorada
