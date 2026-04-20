@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { fetchNBAGameOdds, fetchESPNGameOddsSummary } from '../lib/odds'
+import { fetchESPNGameOddsSummary } from '../lib/odds'
 import { fetchNBANews } from '../lib/news'
 import { fetchNBAInjuries } from '../lib/injuries'
 import { fetchNBAGameHighlights } from '../lib/gameHighlights'
@@ -60,9 +60,18 @@ router.get('/game-highlights', async (req, res) => {
 router.get('/insights', async (_req, res) => {
   try {
     const [oddsResult, newsResult] = await Promise.all([
-      fetchNBAGameOdds(),
+      fetchESPNGameOddsSummary(),
       fetchNBANews(),
     ])
+
+    // Map GameOddsSummaryItem → AnalysisOddsItem (spread/total not available from ESPN)
+    const nullMarket = { home_line: null, home_odds: null, away_line: null, away_odds: null }
+    const nullTotal = { points: null, over_odds: null, under_odds: null }
+    const odds = oddsResult.odds.map((item) => ({
+      ...item,
+      spread: nullMarket,
+      total: nullTotal,
+    }))
 
     res.json({
       ok: true,
@@ -71,7 +80,7 @@ router.get('/insights', async (_req, res) => {
         odds: oddsResult.status,
         news: newsResult.status,
       },
-      odds: oddsResult.odds,
+      odds,
       news: newsResult.news,
     })
   } catch (error: unknown) {
