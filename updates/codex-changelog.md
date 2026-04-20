@@ -1,5 +1,11 @@
 # Codex Changelog
 
+## 2026-04-20 — Histórico tab melhorado + Odds ESPN + fix dots ranking
+
+### Profile: aba Histórico aprimorada
+- `frontend/src/pages/Profile.tsx` — rewrite completo do `HistoricoTab` com: card de resumo (pts totais, cravadas, séries X/Y, jogos X/Y); indicador de sequência (🔥 N acertos / ❄️ N erros, aparece quando ≥2); pills de filtro (Todos / ✅ Acertos / ❌ Erros / ⏳ Pendentes); barra de progresso por rodada colorida pela acurácia; rows coloridos (verde/vermelho por resultado); logos de times via ESPN CDN; layout 2 linhas: linha principal (logos + matchup + pill status + pts) + sublinha (Apostei: ABBR → Ganhou: ABBR + −N pts para erros)
+- Commit: `0ddfce6`
+
 ## 2026-04-20 — Odds ESPN + fix dots ranking
 
 ### Análise: odds migradas para ESPN (sem key, sem quota)
