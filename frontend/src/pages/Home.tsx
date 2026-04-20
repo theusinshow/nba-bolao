@@ -982,9 +982,9 @@ function LastNightRecap({
                           ? (seriesStatus?.liveLabel ?? (stageLabel === 'Play-In' ? 'vaga em jogo ao vivo' : 'série ao vivo'))
                           : (seriesStatus?.preLabel ?? (stageLabel === 'Play-In' ? 'eliminação única' : 'série empatada 0-0'))}
                       </span>
-                      {isEditorialGame && game.nba_game_id && (
+                      {isEditorialGame && game.tip_off_at && (
                         <a
-                          href={`https://www.nba.com/game/${String(game.nba_game_id).padStart(10, '0')}`}
+                          href={`https://www.nba.com/games?date=${game.tip_off_at.slice(0, 10)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
