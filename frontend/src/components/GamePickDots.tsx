@@ -5,6 +5,7 @@ export type DotStatus = 'correct' | 'wrong' | 'pending' | 'no-pick'
 export interface DotData {
   gameId: string
   status: DotStatus
+  played: boolean
   round: number
   seriesId: string
   homeTeamId: string
@@ -93,8 +94,8 @@ function DotTooltip({ dot, children }: { dot: DotData; children: React.ReactNode
 }
 
 function CompactDots({ dots }: { dots: DotData[] }) {
-  // Last 5 games in chronological order (most recent tip-off last)
-  const recent = dots.slice(-COMPACT_COUNT)
+  // Last 5 played games (excludes unplayed future games)
+  const recent = dots.filter((d) => d.played).slice(-COMPACT_COUNT)
   const padded: (DotData | null)[] = [
     ...Array(Math.max(0, COMPACT_COUNT - recent.length)).fill(null),
     ...recent,

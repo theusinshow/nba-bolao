@@ -21,6 +21,7 @@ function computeCompareDots(gamePicks: GamePick[], games: Game[]): DotData[] {
       return {
         gameId: pick.game_id,
         status,
+        played: game.played,
         round: game.round ?? 1,
         seriesId: game.series_id,
         homeTeamId: game.home_team_id,

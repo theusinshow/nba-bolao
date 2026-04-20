@@ -80,6 +80,7 @@ export function useAllGamePickDots(): {
             dots.push({
               gameId: game.id,
               status,
+              played: game.played,
               round: 1,
               seriesId: game.series_id,
               homeTeamId: game.home_team_id,
