@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, BarChart2, ChevronLeft, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, AlertTriangle, ArrowLeftRight, ChevronLeft, ChevronRight, Clock, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react'
 import { SkeletonCard } from '../components/SkeletonCard'
 import { useRanking } from '../hooks/useRanking'
 import { useSeries } from '../hooks/useSeries'
@@ -982,28 +982,6 @@ function LastNightRecap({
                           ? (seriesStatus?.liveLabel ?? (stageLabel === 'Play-In' ? 'vaga em jogo ao vivo' : 'série ao vivo'))
                           : (seriesStatus?.preLabel ?? (stageLabel === 'Play-In' ? 'eliminação única' : 'série empatada 0-0'))}
                       </span>
-                      {isEditorialGame && game.tip_off_at && (
-                        <a
-                          href={`https://www.nba.com/games?date=${game.tip_off_at.slice(0, 10)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Ver estatísticas no NBA.com"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--nba-text-muted)',
-                            textDecoration: 'none',
-                            border: '1px solid rgba(200,150,60,0.2)',
-                            borderRadius: 4,
-                            padding: '3px 6px',
-                            background: 'rgba(200,150,60,0.06)',
-                          }}
-                        >
-                          <BarChart2 size={11} />
-                        </a>
-                      )}
                     </div>
                   </div>
                 )
