@@ -443,6 +443,7 @@ interface PickCoverageResponse {
       totalParticipants: number
       participantsPendingToday: number
       participantsPendingRoundOne: number
+      activeRound: number
       lastSyncAt: string | null
       sourceLabel: string
     }
@@ -613,6 +614,14 @@ function modeLabel(mode: string) {
   if (normalized === 'real') return 'Operação real'
   if (normalized === 'ficticio' || normalized === 'fictício') return 'Simulação'
   return mode
+}
+
+function roundShortLabel(round: number | undefined): string {
+  if (round === 1) return 'R1'
+  if (round === 2) return 'R2'
+  if (round === 3) return 'CF'
+  if (round === 4) return 'Finals'
+  return `R${round ?? 1}`
 }
 
 function coverageStatusLabel(entry: PickCoverageEntry) {
@@ -3605,8 +3614,8 @@ export function Admin({ participantId }: Props) {
             {[
               { label: 'Jogos hoje', value: pickCoverage?.summary.todayGames ?? '—', tone: 'var(--nba-text)' },
               { label: 'Jogos pendentes', value: pickCoverage?.summary.todayGamesPending ?? '—', tone: 'var(--nba-gold)' },
-              { label: 'R1 abertas', value: pickCoverage?.summary.roundOneSeriesOpen ?? '—', tone: 'var(--nba-east)' },
-              { label: 'Pendentes na R1', value: pickCoverage?.summary.participantsPendingRoundOne ?? '—', tone: 'var(--nba-danger)' },
+              { label: `${roundShortLabel(pickCoverage?.summary.activeRound)} abertas`, value: pickCoverage?.summary.roundOneSeriesOpen ?? '—', tone: 'var(--nba-east)' },
+              { label: `Pendentes na ${roundShortLabel(pickCoverage?.summary.activeRound)}`, value: pickCoverage?.summary.participantsPendingRoundOne ?? '—', tone: 'var(--nba-danger)' },
             ].map((item) => (
               <div
                 key={item.label}
@@ -3643,8 +3652,8 @@ export function Admin({ participantId }: Props) {
               },
               {
                 key: 'series',
-                title: 'R1 pronta para pick',
-                empty: 'Nenhuma série de R1 aberta para fechamento agora.',
+                title: `${roundShortLabel(pickCoverage?.summary.activeRound)} pronta para pick`,
+                empty: `Nenhuma série de ${roundShortLabel(pickCoverage?.summary.activeRound)} aberta para fechamento agora.`,
                 items: filteredCoverageSeries,
               },
             ].map((group) => (
@@ -3672,7 +3681,7 @@ export function Admin({ participantId }: Props) {
                                 {item.matchup}
                               </div>
                               <div style={{ color: 'var(--nba-text-muted)', fontSize: '0.72rem', marginTop: 4 }}>
-                                {'gameNumber' in item ? `Jogo ${item.gameNumber}` : 'Série da rodada 1'} · {item.tipOffLabel}
+                                {'gameNumber' in item ? `Jogo ${item.gameNumber}` : `Série da rodada ${pickCoverage?.summary.activeRound ?? 1}`} · {item.tipOffLabel}
                               </div>
                             </div>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: tone, border: `1px solid ${tone}33`, background: `${tone}14`, borderRadius: 999, padding: '4px 10px', fontSize: '0.7rem', fontWeight: 800 }}>

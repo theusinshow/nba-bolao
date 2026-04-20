@@ -312,7 +312,7 @@ async function buildAdminPickCoverage() {
     supabase.from('teams').select('id, abbreviation'),
     supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, played').order('tip_off_at', { ascending: true }),
     supabase.from('game_picks').select('participant_id, game_id'),
-    supabase.from('series').select('id, round, home_team_id, away_team_id, is_complete').eq('round', 1).order('position', { ascending: true }),
+    supabase.from('series').select('id, round, home_team_id, away_team_id, is_complete').order('round', { ascending: true }).order('position', { ascending: true }),
     supabase.from('series_picks').select('participant_id, series_id'),
   ])
 
@@ -372,7 +372,16 @@ async function buildAdminPickCoverage() {
       new Date(left.tipOffAt!).getTime() - new Date(right.tipOffAt!).getTime()
     ))
 
-  const roundOneSeries = seriesRows
+  // Determine active round: lowest round with incomplete series (with teams assigned)
+  const activeRound = seriesRows
+    .filter((s) => !s.is_complete && s.home_team_id && s.away_team_id)
+    .reduce((min, s) => (s.round !== null && s.round < min ? s.round : min), 99)
+  const activeRoundNumber = activeRound === 99
+    ? (seriesRows.reduce((max, s) => (s.round !== null && s.round > max ? s.round : max), 1))
+    : activeRound
+  const activeRoundSeriesRows = seriesRows.filter((s) => s.round === activeRoundNumber)
+
+  const roundOneSeries = activeRoundSeriesRows
     .map((seriesItem) => {
       const tipOffAt = getSeriesLockTipOff(seriesItem.id, gameRows)
       const pickedParticipants = participantRows
@@ -416,6 +425,7 @@ async function buildAdminPickCoverage() {
       totalParticipants: participantTotal,
       participantsPendingToday: pendingParticipantsToday.size,
       participantsPendingRoundOne: pendingParticipantsRoundOne.size,
+      activeRound: activeRoundNumber,
       lastSyncAt: getNBASyncSchedulerSnapshot().lastSyncAt ?? null,
       sourceLabel: 'API da NBA + base local',
     },
