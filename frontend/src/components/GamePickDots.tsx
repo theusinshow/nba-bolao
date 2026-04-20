@@ -93,8 +93,8 @@ function DotTooltip({ dot, children }: { dot: DotData; children: React.ReactNode
 }
 
 function CompactDots({ dots }: { dots: DotData[] }) {
-  // First 5 games in chronological order (earliest tip-off first)
-  const recent = dots.slice(0, COMPACT_COUNT)
+  // Last 5 games in chronological order (most recent tip-off last)
+  const recent = dots.slice(-COMPACT_COUNT)
   const padded: (DotData | null)[] = [
     ...Array(Math.max(0, COMPACT_COUNT - recent.length)).fill(null),
     ...recent,
