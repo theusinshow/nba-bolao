@@ -460,19 +460,39 @@ function LastNightRecap({
           return
         }
 
-        // Fallback: center on today's date group
+        // Helper to center an element inside the scroll container
+        const centerEntry = (el: HTMLElement) => {
+          const target = Math.max(0, el.offsetLeft - node.clientWidth / 2 + el.offsetWidth / 2)
+          node.scrollLeft = Math.min(target, Math.max(0, node.scrollWidth - node.clientWidth))
+        }
+
+        // Fallback 1: center on today's date group (when there are games today)
         const todayIndex = sourceItems.findIndex((item) => item.kind === 'day' && item.dateKey === todayDateKey)
-        if (todayIndex < 0) {
-          node.scrollLeft = 0
+        if (todayIndex >= 0 && entries[todayIndex]) {
+          const todayEntry = entries[todayIndex]
+          const nextDayEntry = entries.slice(todayIndex + 1).find((entry) => entry.dataset.entryKind === 'day')
+          const start = todayEntry.offsetLeft
+          const end = nextDayEntry ? nextDayEntry.offsetLeft : node.scrollWidth
+          const targetScrollLeft = Math.max(0, start + (end - start) / 2 - node.clientWidth / 2)
+          node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
           return
         }
-        const todayEntry = entries[todayIndex]
-        if (!todayEntry) return
-        const nextDayEntry = entries.slice(todayIndex + 1).find((entry) => entry.dataset.entryKind === 'day')
-        const start = todayEntry.offsetLeft
-        const end = nextDayEntry ? nextDayEntry.offsetLeft : node.scrollWidth
-        const targetScrollLeft = Math.max(0, start + (end - start) / 2 - node.clientWidth / 2)
-        node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
+
+        // Fallback 2: center on the next scheduled game (closest future game)
+        const firstScheduled = entries.find((e) => e.dataset.entryKind === 'game' && e.dataset.entryState === 'scheduled')
+        if (firstScheduled) {
+          centerEntry(firstScheduled)
+          return
+        }
+
+        // Fallback 3: center on the last completed game
+        const lastFinal = [...entries].reverse().find((e) => e.dataset.entryKind === 'game' && e.dataset.entryState === 'final')
+        if (lastFinal) {
+          centerEntry(lastFinal)
+          return
+        }
+
+        node.scrollLeft = 0
       })
     })
 
@@ -766,6 +786,7 @@ function LastNightRecap({
                     data-entry-kind="game"
                     data-entry-key={item.key}
                     data-entry-live={statusMeta.isLive ? 'true' : undefined}
+                    data-entry-state={statusMeta.state}
                     style={{
                       width: isCompactRail
                         ? (isEditorialGame ? 188 : 166)
