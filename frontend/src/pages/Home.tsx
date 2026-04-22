@@ -396,6 +396,7 @@ function LastNightRecap({
   const dragStartScrollRef = useRef(0)
   const [isDragging, setIsDragging] = useState(false)
   const [isCompactRail, setIsCompactRail] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false))
+  const [mountKey] = useState(() => Math.random())
   const sourceItems = useMemo(
     () => buildHomeGamesRailEntries(recentCompletedGames, liveGames, upcomingGames, extraGames),
     [recentCompletedGames, liveGames, upcomingGames, extraGames]
@@ -443,34 +444,44 @@ function LastNightRecap({
   useEffect(() => {
     const node = railRef.current
     if (!node || sourceItems.length === 0) return
-    const frameId = window.requestAnimationFrame(() => {
-      const entries = Array.from(node.querySelectorAll<HTMLElement>('[data-rail-entry="true"]'))
 
-      // Prefer centering on the first live game
-      const firstLiveEntry = entries.find((e) => e.dataset.entryLive === 'true')
-      if (firstLiveEntry) {
-        const targetScrollLeft = Math.max(0, firstLiveEntry.offsetLeft - node.clientWidth / 2 + firstLiveEntry.offsetWidth / 2)
+    let outerFrame: number
+    let innerFrame: number
+
+    outerFrame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        const entries = Array.from(node.querySelectorAll<HTMLElement>('[data-rail-entry="true"]'))
+
+        // Prefer centering on the first live game
+        const firstLiveEntry = entries.find((e) => e.dataset.entryLive === 'true')
+        if (firstLiveEntry) {
+          const targetScrollLeft = Math.max(0, firstLiveEntry.offsetLeft - node.clientWidth / 2 + firstLiveEntry.offsetWidth / 2)
+          node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
+          return
+        }
+
+        // Fallback: center on today's date group
+        const todayIndex = sourceItems.findIndex((item) => item.kind === 'day' && item.dateKey === todayDateKey)
+        if (todayIndex < 0) {
+          node.scrollLeft = 0
+          return
+        }
+        const todayEntry = entries[todayIndex]
+        if (!todayEntry) return
+        const nextDayEntry = entries.slice(todayIndex + 1).find((entry) => entry.dataset.entryKind === 'day')
+        const start = todayEntry.offsetLeft
+        const end = nextDayEntry ? nextDayEntry.offsetLeft : node.scrollWidth
+        const targetScrollLeft = Math.max(0, start + (end - start) / 2 - node.clientWidth / 2)
         node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
-        return
-      }
-
-      // Fallback: center on today's date group
-      const todayIndex = sourceItems.findIndex((item) => item.kind === 'day' && item.dateKey === todayDateKey)
-      if (todayIndex < 0) {
-        node.scrollLeft = 0
-        return
-      }
-      const todayEntry = entries[todayIndex]
-      if (!todayEntry) return
-      const nextDayEntry = entries.slice(todayIndex + 1).find((entry) => entry.dataset.entryKind === 'day')
-      const start = todayEntry.offsetLeft
-      const end = nextDayEntry ? nextDayEntry.offsetLeft : node.scrollWidth
-      const targetScrollLeft = Math.max(0, start + (end - start) / 2 - node.clientWidth / 2)
-      node.scrollLeft = Math.min(targetScrollLeft, Math.max(0, node.scrollWidth - node.clientWidth))
+      })
     })
 
-    return () => window.cancelAnimationFrame(frameId)
-  }, [sourceItems.length, liveCount])
+    return () => {
+      window.cancelAnimationFrame(outerFrame)
+      window.cancelAnimationFrame(innerFrame)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceItems.length, liveCount, mountKey])
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     const node = railRef.current
