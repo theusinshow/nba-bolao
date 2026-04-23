@@ -239,24 +239,29 @@ function buildRailSeriesStatusMap(
       return (left.game_number ?? 0) - (right.game_number ?? 0)
     })
 
-    let homeWins = 0
-    let awayWins = 0
+    // Track wins by team ID so home-court swaps don't misattribute wins
+    const teamWins = new Map<string, number>()
 
     for (const game of orderedGames) {
+      const homeId = game.home_team_id
+      const awayId = game.away_team_id
       const stageLabel = getRailStageLabel(game)
       const homeAbbr = getRailGameAbbr(game, 'home')
       const awayAbbr = getRailGameAbbr(game, 'away')
       const isPlayIn = stageLabel === 'Play-In'
+
+      const homeWins = homeId ? (teamWins.get(homeId) ?? 0) : 0
+      const awayWins = awayId ? (teamWins.get(awayId) ?? 0) : 0
+
       const preLabel = isPlayIn ? 'eliminação única' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'pre', false)
       const liveLabel = isPlayIn ? 'vaga em jogo ao vivo' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'live', false)
 
-      let nextHomeWins = homeWins
-      let nextAwayWins = awayWins
-
-      if (game.played) {
-        if (game.winner_id === game.home_team_id) nextHomeWins += 1
-        if (game.winner_id === game.away_team_id) nextAwayWins += 1
+      if (game.played && game.winner_id) {
+        teamWins.set(game.winner_id, (teamWins.get(game.winner_id) ?? 0) + 1)
       }
+
+      const nextHomeWins = homeId ? (teamWins.get(homeId) ?? 0) : 0
+      const nextAwayWins = awayId ? (teamWins.get(awayId) ?? 0) : 0
 
       const postLabel = isPlayIn
         ? game.played && game.winner_id
@@ -265,8 +270,6 @@ function buildRailSeriesStatusMap(
         : formatRailSeriesStanding(nextHomeWins, nextAwayWins, homeAbbr, awayAbbr, 'post', Math.max(nextHomeWins, nextAwayWins) >= 4)
 
       statusByGameId.set(game.id, { preLabel, liveLabel, postLabel })
-      homeWins = nextHomeWins
-      awayWins = nextAwayWins
     }
   }
 
