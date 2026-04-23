@@ -10,7 +10,7 @@ import { useGameFeed } from '../hooks/useGameFeed'
 import { useAnalysisInsights } from '../hooks/useAnalysisInsights'
 import { useGameHighlights } from '../hooks/useGameHighlights'
 import { type InjuryItem, useInjuries } from '../hooks/useInjuries'
-import { type PostseasonRailExtraGame, usePostseasonRailExtras } from '../hooks/usePostseasonRailExtras'
+import { type PostseasonRailExtraGame, type SeriesStanding, usePostseasonRailExtras } from '../hooks/usePostseasonRailExtras'
 import { isSeriesReadyForPick } from '../utils/bracket'
 import { getGameStatusMeta } from '../utils/gameStatus'
 import { getTeamLogoUrl } from '../data/teams2025'
@@ -205,9 +205,24 @@ function formatRailSeriesStanding(
   return `${leaderAbbr} lidera ${leaderWins}-${trailingWins}`
 }
 
+function resolveStandingForGame(
+  game: HomeRailGame,
+  standing: SeriesStanding
+): { homeWins: number; awayWins: number } | null {
+  const homeId = game.home_team_id
+  if (homeId === standing.homeTeamId) {
+    return { homeWins: standing.homeWins, awayWins: standing.awayWins }
+  }
+  if (homeId === standing.awayTeamId) {
+    return { homeWins: standing.awayWins, awayWins: standing.homeWins }
+  }
+  return null
+}
+
 function buildRailSeriesStatusMap(
   games: ReturnType<typeof useGameFeed>['games'],
-  extraGames: PostseasonRailExtraGame[]
+  extraGames: PostseasonRailExtraGame[],
+  seriesStandings: Record<string, SeriesStanding>
 ) {
   const seenNbaIds = new Set<number>()
   const allKnownGames: HomeRailGame[] = []
@@ -220,7 +235,6 @@ function buildRailSeriesStatusMap(
   }
 
   const grouped = new Map<string, HomeRailGame[]>()
-
   for (const game of allKnownGames) {
     const key = getRailSeriesGroupKey(game)
     if (!key) continue
@@ -239,37 +253,70 @@ function buildRailSeriesStatusMap(
       return (left.game_number ?? 0) - (right.game_number ?? 0)
     })
 
-    // Track wins by team ID so home-court swaps don't misattribute wins
-    const teamWins = new Map<string, number>()
+    // Find the backend-computed standing for this series group (authoritative)
+    const seriesId = orderedGames.find((g) => g.series_id)?.series_id ?? null
+    const standing = seriesId ? (seriesStandings[seriesId] ?? null) : null
 
-    for (const game of orderedGames) {
-      const homeId = game.home_team_id
-      const awayId = game.away_team_id
-      const stageLabel = getRailStageLabel(game)
-      const homeAbbr = getRailGameAbbr(game, 'home')
-      const awayAbbr = getRailGameAbbr(game, 'away')
-      const isPlayIn = stageLabel === 'Play-In'
+    if (standing) {
+      const isClosed = Math.max(standing.homeWins, standing.awayWins) >= 4
 
-      const homeWins = homeId ? (teamWins.get(homeId) ?? 0) : 0
-      const awayWins = awayId ? (teamWins.get(awayId) ?? 0) : 0
+      for (const game of orderedGames) {
+        const stageLabel = getRailStageLabel(game)
+        const homeAbbr = getRailGameAbbr(game, 'home')
+        const awayAbbr = getRailGameAbbr(game, 'away')
+        const isPlayIn = stageLabel === 'Play-In'
 
-      const preLabel = isPlayIn ? 'eliminação única' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'pre', false)
-      const liveLabel = isPlayIn ? 'vaga em jogo ao vivo' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'live', false)
+        if (isPlayIn) {
+          const advancer = game.played && game.winner_id
+            ? `${game.winner_id === game.home_team_id ? homeAbbr : awayAbbr} avançou`
+            : 'eliminação única'
+          statusByGameId.set(game.id, { preLabel: 'eliminação única', liveLabel: 'vaga em jogo ao vivo', postLabel: advancer })
+          continue
+        }
 
-      if (game.played && game.winner_id) {
-        teamWins.set(game.winner_id, (teamWins.get(game.winner_id) ?? 0) + 1)
+        const wins = resolveStandingForGame(game, standing)
+        const homeWins = wins?.homeWins ?? 0
+        const awayWins = wins?.awayWins ?? 0
+
+        statusByGameId.set(game.id, {
+          preLabel: formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'pre', false),
+          liveLabel: formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'live', false),
+          postLabel: formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'post', isClosed),
+        })
       }
+    } else {
+      // Fallback: derive from game records (Play-In or series not yet matched to backend)
+      const teamWins = new Map<string, number>()
 
-      const nextHomeWins = homeId ? (teamWins.get(homeId) ?? 0) : 0
-      const nextAwayWins = awayId ? (teamWins.get(awayId) ?? 0) : 0
+      for (const game of orderedGames) {
+        const homeId = game.home_team_id
+        const awayId = game.away_team_id
+        const stageLabel = getRailStageLabel(game)
+        const homeAbbr = getRailGameAbbr(game, 'home')
+        const awayAbbr = getRailGameAbbr(game, 'away')
+        const isPlayIn = stageLabel === 'Play-In'
 
-      const postLabel = isPlayIn
-        ? game.played && game.winner_id
-          ? `${game.winner_id === game.home_team_id ? homeAbbr : awayAbbr} avançou`
-          : 'eliminação única'
-        : formatRailSeriesStanding(nextHomeWins, nextAwayWins, homeAbbr, awayAbbr, 'post', Math.max(nextHomeWins, nextAwayWins) >= 4)
+        const homeWins = homeId ? (teamWins.get(homeId) ?? 0) : 0
+        const awayWins = awayId ? (teamWins.get(awayId) ?? 0) : 0
 
-      statusByGameId.set(game.id, { preLabel, liveLabel, postLabel })
+        const preLabel = isPlayIn ? 'eliminação única' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'pre', false)
+        const liveLabel = isPlayIn ? 'vaga em jogo ao vivo' : formatRailSeriesStanding(homeWins, awayWins, homeAbbr, awayAbbr, 'live', false)
+
+        if (game.played && game.winner_id) {
+          teamWins.set(game.winner_id, (teamWins.get(game.winner_id) ?? 0) + 1)
+        }
+
+        const nextHomeWins = homeId ? (teamWins.get(homeId) ?? 0) : 0
+        const nextAwayWins = awayId ? (teamWins.get(awayId) ?? 0) : 0
+
+        const postLabel = isPlayIn
+          ? game.played && game.winner_id
+            ? `${game.winner_id === homeId ? homeAbbr : awayAbbr} avançou`
+            : 'eliminação única'
+          : formatRailSeriesStanding(nextHomeWins, nextAwayWins, homeAbbr, awayAbbr, 'post', Math.max(nextHomeWins, nextAwayWins) >= 4)
+
+        statusByGameId.set(game.id, { preLabel, liveLabel, postLabel })
+      }
     }
   }
 
@@ -400,7 +447,7 @@ function LastNightRecap({
   upcomingGames: ReturnType<typeof useGameFeed>['upcomingGames']
   loading: boolean
 }) {
-  const { games: extraGames } = usePostseasonRailExtras()
+  const { games: extraGames, seriesStandings } = usePostseasonRailExtras()
   const railRef = useRef<HTMLDivElement | null>(null)
   const pausedRef = useRef(false)
   const draggingRef = useRef(false)
@@ -414,8 +461,8 @@ function LastNightRecap({
     [recentCompletedGames, liveGames, upcomingGames, extraGames]
   )
   const seriesStatusByGameId = useMemo(
-    () => buildRailSeriesStatusMap(games, extraGames),
-    [games, extraGames]
+    () => buildRailSeriesStatusMap(games, extraGames, seriesStandings),
+    [games, extraGames, seriesStandings]
   )
   const railGames = useMemo(
     () => sourceItems.flatMap((item) => (item.kind === 'game' && item.game ? [item.game] : [])),

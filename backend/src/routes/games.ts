@@ -120,6 +120,45 @@ router.get('/rail', async (_req, res) => {
       localGamesBySeriesId.set(game.series_id, bucket)
     }
 
+    // Compute series standings from ALL provider games (both synced and unsynced)
+    // This is the source of truth — the NBA API has the real results.
+    const seriesStandings: Record<string, {
+      homeTeamId: string
+      awayTeamId: string
+      homeWins: number
+      awayWins: number
+    }> = {}
+
+    for (const game of providerGames) {
+      if (!isFinalStatus(game.status)) continue
+      const homeTeamId = mapAbbr(game.home_team.abbreviation)
+      const awayTeamId = mapAbbr(game.visitor_team.abbreviation)
+      const pairKey = buildPairKey(homeTeamId, awayTeamId)
+      if (!pairKey) continue
+      const matchedSeries = seriesByPair.get(pairKey)
+      if (!matchedSeries?.home_team_id || !matchedSeries?.away_team_id) continue
+
+      const winnerId = game.home_team_score > game.visitor_team_score
+        ? homeTeamId
+        : game.visitor_team_score > game.home_team_score
+        ? awayTeamId
+        : null
+      if (!winnerId) continue
+
+      if (!seriesStandings[matchedSeries.id]) {
+        seriesStandings[matchedSeries.id] = {
+          homeTeamId: matchedSeries.home_team_id,
+          awayTeamId: matchedSeries.away_team_id,
+          homeWins: 0,
+          awayWins: 0,
+        }
+      }
+
+      const standing = seriesStandings[matchedSeries.id]
+      if (winnerId === standing.homeTeamId) standing.homeWins += 1
+      else if (winnerId === standing.awayTeamId) standing.awayWins += 1
+    }
+
     const unmatchedGames = providerGames
       .filter((game) => !localIds.has(game.id))
       .sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime())
@@ -221,6 +260,7 @@ router.get('/rail', async (_req, res) => {
       ok: true,
       generatedAt: new Date().toISOString(),
       games: unmatchedGames,
+      seriesStandings,
     })
   } catch (error: unknown) {
     console.error('[games/rail] Failed:', error)

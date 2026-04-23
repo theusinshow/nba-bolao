@@ -25,13 +25,22 @@ export interface PostseasonRailExtraGame {
   source: 'external'
 }
 
+export interface SeriesStanding {
+  homeTeamId: string
+  awayTeamId: string
+  homeWins: number
+  awayWins: number
+}
+
 interface PostseasonRailExtrasResponse {
   ok: boolean
   games: PostseasonRailExtraGame[]
+  seriesStandings?: Record<string, SeriesStanding>
 }
 
 export function usePostseasonRailExtras() {
   const [games, setGames] = useState<PostseasonRailExtraGame[]>([])
+  const [seriesStandings, setSeriesStandings] = useState<Record<string, SeriesStanding>>({})
 
   useEffect(() => {
     let active = true
@@ -43,10 +52,12 @@ export function usePostseasonRailExtras() {
         const payload = await response.json() as PostseasonRailExtrasResponse
         if (!active) return
         setGames(payload.games ?? [])
+        setSeriesStandings(payload.seriesStandings ?? {})
       } catch (error) {
         console.error('[usePostseasonRailExtras] Failed:', error)
         if (!active) return
         setGames([])
+        setSeriesStandings({})
       }
     }
 
@@ -59,5 +70,5 @@ export function usePostseasonRailExtras() {
     }
   }, [])
 
-  return { games }
+  return { games, seriesStandings }
 }
