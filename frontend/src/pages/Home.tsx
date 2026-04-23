@@ -209,8 +209,17 @@ function buildRailSeriesStatusMap(
   games: ReturnType<typeof useGameFeed>['games'],
   extraGames: PostseasonRailExtraGame[]
 ) {
+  const seenNbaIds = new Set<number>()
+  const allKnownGames: HomeRailGame[] = []
+  for (const game of [...games, ...extraGames]) {
+    if (typeof game.nba_game_id === 'number' && Number.isFinite(game.nba_game_id)) {
+      if (seenNbaIds.has(game.nba_game_id)) continue
+      seenNbaIds.add(game.nba_game_id)
+    }
+    allKnownGames.push(game)
+  }
+
   const grouped = new Map<string, HomeRailGame[]>()
-  const allKnownGames: HomeRailGame[] = [...games, ...extraGames]
 
   for (const game of allKnownGames) {
     const key = getRailSeriesGroupKey(game)
