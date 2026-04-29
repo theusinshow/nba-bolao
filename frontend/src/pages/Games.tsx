@@ -280,7 +280,7 @@ function computeSeriesGroups(games: GameWithTeams[], picks: GamePick[]): SeriesG
         key: seriesId,
         seriesId,
         round,
-        games: orderedGames,
+        games: effectiveGames,
         teamA: firstGame.team_a ?? null,
         teamB: firstGame.team_b ?? null,
         openGames,
@@ -1027,20 +1027,27 @@ function RevealedPicksModal({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm">
       <div
         style={{
           width: '100%',
           maxWidth: 560,
-          maxHeight: '90vh',
-          overflowY: 'auto',
+          maxHeight: '92dvh',
+          display: 'flex',
+          flexDirection: 'column',
           background: 'var(--nba-surface)',
           border: '1px solid rgba(200,150,60,0.22)',
-          borderRadius: 14,
-          padding: '1rem',
+          borderRadius: '14px 14px 0 0',
         }}
+        className="sm:rounded-[14px] sm:mx-4"
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+        {/* Header fixo — sempre visível */}
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 12, padding: '1rem 1rem 0.75rem',
+          borderBottom: '1px solid rgba(200,150,60,0.12)',
+          flexShrink: 0,
+        }}>
           <div>
             <div className="title" style={{ color: 'var(--nba-gold)', fontSize: '1.1rem', marginBottom: 4 }}>
               Palpites revelados
@@ -1058,11 +1065,14 @@ function RevealedPicksModal({
               borderRadius: 10,
               padding: '6px 10px',
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             <X size={16} />
           </button>
         </div>
+        {/* Body scrollável */}
+        <div style={{ overflowY: 'auto', padding: '0.875rem 1rem 1rem', flex: 1 }}>
 
         <div style={{ display: 'grid', gap: 10, marginBottom: 14 }} className="grid-cols-1 sm:grid-cols-2">
           <div
@@ -1213,6 +1223,7 @@ function RevealedPicksModal({
             })}
           </div>
         )}
+        </div>{/* fim body scrollável */}
       </div>
     </div>
   )
