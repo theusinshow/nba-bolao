@@ -2695,6 +2695,7 @@ export function Games({ participantId }: Props) {
     if (!selectedDay) return []
     return games
       .filter((game) => game.tip_off_at && dateKeyBRT(game.tip_off_at) === selectedDay)
+      .filter((game) => !isSeriesClosedBeforeGame(game))
       .sort((a, b) => new Date(a.tip_off_at!).getTime() - new Date(b.tip_off_at!).getTime())
   }, [games, selectedDay])
 
