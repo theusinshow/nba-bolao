@@ -331,12 +331,41 @@ async function deleteGameRows(gameIds: string[]) {
   }
 }
 
+// NBA bracket slot order by top seed: 1v8→slot0, 4v5→slot1, 3v6→slot2, 2v7→slot3
+// This ensures 1-seed and 4-seed are in the same half (W2-1) and
+// 2-seed and 3-seed are in the other half (W2-2), meeting only in the Conf Finals.
+const NBA_SLOT_ORDER_BY_TOP_SEED: number[] = [1, 4, 3, 2]
+
 async function assignRoundOneSeries(series: SeriesRow[], matchups: MatchupGroup[], games: GameRow[]) {
   const matchedSeriesIds = new Set<string>()
 
   for (const matchup of matchups) {
     const existing = findSeriesByPair(series, matchup.homeTeamId, matchup.awayTeamId)
     if (existing) matchedSeriesIds.add(existing.id)
+  }
+
+  const { data: teamRows } = await supabase.from('teams').select('id, seed')
+  const seedByTeam = new Map<string, number>(
+    (teamRows ?? [])
+      .filter((t) => t.seed != null)
+      .map((t) => [t.id as string, t.seed as number])
+  )
+
+  function getTopSeed(matchup: MatchupGroup): number {
+    const s1 = seedByTeam.get(matchup.homeTeamId) ?? 99
+    const s2 = seedByTeam.get(matchup.awayTeamId) ?? 99
+    return Math.min(s1, s2)
+  }
+
+  function sortByNBABracketOrder(a: MatchupGroup, b: MatchupGroup): number {
+    const aTop = getTopSeed(a)
+    const bTop = getTopSeed(b)
+    const aIdx = NBA_SLOT_ORDER_BY_TOP_SEED.indexOf(aTop)
+    const bIdx = NBA_SLOT_ORDER_BY_TOP_SEED.indexOf(bTop)
+    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+    if (aIdx !== -1) return -1
+    if (bIdx !== -1) return 1
+    return sortMatchups(a, b)
   }
 
   for (const conference of ['West', 'East'] as const) {
@@ -360,7 +389,7 @@ async function assignRoundOneSeries(series: SeriesRow[], matchups: MatchupGroup[
       targetSeries = availableSeries.slice(0, unmatchedMatchups.length)
     }
 
-    const sortedMatchups = [...unmatchedMatchups].sort(sortMatchups)
+    const sortedMatchups = [...unmatchedMatchups].sort(sortByNBABracketOrder)
     sortedMatchups.forEach((matchup, index) => {
       const target = targetSeries[index]
       if (!target) return
