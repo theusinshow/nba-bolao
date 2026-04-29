@@ -1,5 +1,15 @@
 # Codex Changelog
 
+## 2026-04-29 — Fix: jogo 5 de série encerrada + UX mobile do modal de palpites revelados
+
+### Fix: jogos além do encerramento da série não aparecem mais na agenda de palpites
+- `frontend/src/pages/Games.tsx` — função `groupSeriesByRound` retornava `games: orderedGames` (todos os jogos da série), mas deveria retornar `games: effectiveGames` (filtrado até `series_games_played`); o Jogo 5 de uma série 4-0 continuava aparecendo na agenda mesmo com `isSeriesClosedBeforeGame` retornando `true` — a lógica de filtro existia mas não era aplicada no array que vai pro render
+- Commits: `57b6692`, `0df1aa2`
+
+### Fix: modal de palpites revelados (mobile) — header com X sempre visível
+- `frontend/src/pages/Games.tsx` — `RevealedPicksModal` tinha `overflowY: auto` no container inteiro, fazendo o header (com o botão X) sumir ao scrollar a lista de palpites; reestruturado em header fixo (`flexShrink: 0` + `borderBottom`) + body com scroll independente (`flex: 1, overflowY: auto`); no mobile abre como bottom sheet (`items-end` + `borderRadius: 14px 14px 0 0`), no desktop continua centralizado (`sm:items-center` + `sm:rounded-[14px]`); usa `92dvh` para respeitar a barra de endereço do Safari/Chrome mobile
+- Commits: `57b6692`, `0df1aa2`
+
 ## 2026-04-20 — Fix: perfil de outro usuário não exibia palpites futuros + crash ao abrir perfil
 
 ### Profile: ocultar palpites futuros no perfil de outros participantes
