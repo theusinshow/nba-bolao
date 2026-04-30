@@ -33,6 +33,11 @@ interface GameRow {
   played: boolean
 }
 
+interface SeriesRow {
+  id: string
+  is_complete: boolean
+}
+
 interface GamePickRow {
   participant_id: string
   game_id: string
@@ -151,16 +156,22 @@ export async function buildDailyReminderPreview(
     { data: teams },
     { data: games },
     { data: gamePicks },
+    { data: series },
   ] = await Promise.all([
     supabase.from('participants').select('id, name').order('name', { ascending: true }),
     supabase.from('teams').select('id, abbreviation'),
     supabase.from('games').select('id, series_id, game_number, home_team_id, away_team_id, tip_off_at, played').order('tip_off_at', { ascending: true }),
     supabase.from('game_picks').select('participant_id, game_id'),
+    supabase.from('series').select('id, is_complete'),
   ])
 
-  if (!participants || !teams || !games || !gamePicks) {
+  if (!participants || !teams || !games || !gamePicks || !series) {
     throw new Error('Nao foi possivel carregar os dados para gerar o lembrete.')
   }
+
+  const completedSeriesIds = new Set(
+    (series as SeriesRow[]).filter((s) => s.is_complete).map((s) => s.id)
+  )
 
   const teamsById = Object.fromEntries((teams as TeamRow[]).map((team) => [team.id, team]))
   const participantList = participants as ParticipantRow[]
@@ -168,7 +179,11 @@ export async function buildDailyReminderPreview(
   const abbr = (id: string | null) => (id ? teamsById[id]?.abbreviation ?? id : '?')
 
   const todayGames = (games as GameRow[]).filter(
-    (game) => game.tip_off_at && getBrtDateKey(new Date(game.tip_off_at)) === targetDate && !game.played
+    (game) =>
+      game.tip_off_at &&
+      getBrtDateKey(new Date(game.tip_off_at)) === targetDate &&
+      !game.played &&
+      !completedSeriesIds.has(game.series_id)
   )
 
   const gamesWithMissingPicks = todayGames.map((game) => {
