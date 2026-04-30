@@ -73,7 +73,7 @@ export function useGameFeed() {
   const liveGames = useMemo(
     () =>
       games
-        .filter((game) => isGameLive(game))
+        .filter((game) => isGameLive(game) && !game.series?.is_complete)
         .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime()),
     [games]
   )
@@ -81,7 +81,7 @@ export function useGameFeed() {
   const upcomingGames = useMemo(
     () =>
       games
-        .filter((game) => !game.played && !isGameLive(game) && !!game.tip_off_at && new Date(game.tip_off_at).getTime() > Date.now())
+        .filter((game) => !game.played && !isGameLive(game) && !!game.tip_off_at && new Date(game.tip_off_at).getTime() > Date.now() && !game.series?.is_complete)
         .sort((left, right) => new Date(left.tip_off_at ?? 0).getTime() - new Date(right.tip_off_at ?? 0).getTime())
         .slice(0, 6),
     [games]

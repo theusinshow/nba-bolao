@@ -89,7 +89,7 @@ router.get('/rail', async (_req, res) => {
     const [providerGames, localGamesResult, localSeriesResult] = await Promise.all([
       fetchPostseasonGames(season),
       supabase.from('games').select('id, nba_game_id, series_id, game_number, home_team_id, away_team_id, tip_off_at'),
-      supabase.from('series').select('id, round, home_team_id, away_team_id'),
+      supabase.from('series').select('id, round, home_team_id, away_team_id, is_complete'),
     ])
 
     if (localGamesResult.error) throw localGamesResult.error
@@ -97,6 +97,7 @@ router.get('/rail', async (_req, res) => {
 
     const localGames = localGamesResult.data ?? []
     const localSeries = localSeriesResult.data ?? []
+    const completedSeriesIds = new Set(localSeries.filter((s) => s.is_complete).map((s) => s.id))
 
     const localIds = new Set(
       localGames
@@ -256,10 +257,14 @@ router.get('/rail', async (_req, res) => {
       }
     }
 
+    const filteredUnmatchedGames = unmatchedGames.filter(
+      (game) => !game.series_id || !completedSeriesIds.has(game.series_id)
+    )
+
     res.json({
       ok: true,
       generatedAt: new Date().toISOString(),
-      games: unmatchedGames,
+      games: filteredUnmatchedGames,
       seriesStandings,
     })
   } catch (error: unknown) {
