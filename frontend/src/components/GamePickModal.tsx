@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, Lock } from 'lucide-react'
+import { HomeCourtBadge } from './HomeCourtBadge'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import type { Series } from '../types'
 import { getTeam, getTeamLogoUrl } from '../data/teams2025'
@@ -211,9 +212,9 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
 
                   <div className="flex gap-2">
                     {[
-                      { team: getTeam(homeId) ?? teamA, id: homeId },
-                      { team: getTeam(awayId) ?? teamB, id: awayId },
-                    ].map(({ team, id }) => {
+                      { team: getTeam(homeId) ?? teamA, id: homeId, isHome: true },
+                      { team: getTeam(awayId) ?? teamB, id: awayId, isHome: false },
+                    ].map(({ team, id, isHome }) => {
                       if (!team) return null
                       const isPicked = pick?.winner_id === id
                       const isWinner = normalizedGame.winner_id === id
@@ -237,7 +238,10 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                             onError={(e) => (e.currentTarget.style.display = 'none')}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                           />
-                          <span className="text-sm">{team.abbreviation}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm">{team.abbreviation}</span>
+                            {isHome && <HomeCourtBadge size={14} />}
+                          </div>
                         </button>
                       )
                     })}

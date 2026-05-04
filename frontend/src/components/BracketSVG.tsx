@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { HomeCourtBadge } from './HomeCourtBadge'
 import { motion } from 'motion/react'
 import { Trophy } from 'lucide-react'
 import type { Series, SeriesPick } from '../types'
@@ -226,34 +227,34 @@ function MobileSeriesCard({
             transition: 'opacity 0.2s',
           }}
         >
-          {tA && !homeDisplay.isPlaceholder && !logoErr.a ? (
-            <img
-              src={teamLogoUrl(tA.abbreviation)}
-              alt={tA.abbreviation}
-              onError={() => setLogoErr((e) => ({ ...e, a: true }))}
-              style={{ width: 44, height: 44, objectFit: 'contain' }}
-            />
-          ) : (
-            <span
-              className="font-condensed font-bold"
-              style={{
-                ...(homeDisplay.isPlaceholder
-                  ? { color: 'var(--nba-text-muted)' }
-                  : teamAbbrStyle(tA?.primary_color)),
-                fontSize: '1.9rem',
-                lineHeight: 1,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              {homeDisplay.abbreviation}
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {tA && !homeDisplay.isPlaceholder && !logoErr.a ? (
+              <img
+                src={teamLogoUrl(tA.abbreviation)}
+                alt={tA.abbreviation}
+                onError={() => setLogoErr((e) => ({ ...e, a: true }))}
+                style={{ width: 44, height: 44, objectFit: 'contain' }}
+              />
+            ) : (
+              <span
+                className="font-condensed font-bold"
+                style={{
+                  ...(homeDisplay.isPlaceholder
+                    ? { color: 'var(--nba-text-muted)' }
+                    : teamAbbrStyle(tA?.primary_color)),
+                  fontSize: '1.9rem',
+                  lineHeight: 1,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {homeDisplay.abbreviation}
+              </span>
+            )}
+            {tA && !homeDisplay.isPlaceholder && <HomeCourtBadge size={18} />}
+          </div>
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
             {homeDisplay.isPlaceholder ? homeDisplay.name : tA?.name?.split(' ').pop() ?? ''}
           </span>
-          {tA && !homeDisplay.isPlaceholder && (
-            <span style={{ color: 'rgba(200,150,60,0.55)', fontSize: '0.6rem', marginTop: 2 }}>⌂ mando</span>
-          )}
           {/* Pick star */}
           {pickedTeamId === tA?.id && !isComplete && (
             <span style={{ color: 'var(--nba-gold)', fontSize: '0.7rem', marginTop: 4 }}>★ seu palpite</span>
@@ -812,15 +813,10 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
           </text>
         )}
         {tA && !homeDisplay.isPlaceholder && (
-          <text
-            x={40} y={rowH - 9}
-            dominantBaseline="middle"
-            fill="rgba(200,150,60,0.5)"
-            fontSize={7}
-            fontFamily={baseFont}
-          >
-            ⌂ mando
-          </text>
+          <g style={{ cursor: 'default' }}>
+            <title>Mando de quadra</title>
+            <image href="/svg-mando.svg" x={68} y={yA - 8} width={16} height={16} />
+          </g>
         )}
 
         {/* Score (on winner row) */}
