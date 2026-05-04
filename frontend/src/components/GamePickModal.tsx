@@ -224,7 +224,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                           key={id}
                           disabled={locked || saving === game.id}
                           onClick={() => handlePick(game.id, id)}
-                          className={`flex-1 py-3 px-3 rounded border font-condensed transition-all flex flex-col items-center gap-1 ${
+                          className={`relative flex-1 py-3 px-3 rounded border font-condensed transition-all flex flex-col items-center gap-1 ${
                             isPicked && isWinner ? 'border-nba-success bg-nba-success/10 text-nba-success' :
                             isPicked && game.played && !isWinner ? 'border-nba-danger bg-nba-danger/10 text-nba-danger' :
                             isPicked ? 'border-nba-gold bg-nba-surface-2 text-nba-gold' :
@@ -232,16 +232,18 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                             'border-nba-border text-nba-muted hover:border-nba-gold/40'
                           } ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >
+                          {isHome && (
+                            <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}>
+                              <HomeCourtBadge size={14} />
+                            </div>
+                          )}
                           <img
                             src={getTeamLogoUrl(team.abbreviation)}
                             alt={team.abbreviation}
                             onError={(e) => (e.currentTarget.style.display = 'none')}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                           />
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm">{team.abbreviation}</span>
-                            {isHome && <HomeCourtBadge size={14} />}
-                          </div>
+                          <span className="text-sm">{team.abbreviation}</span>
                         </button>
                       )
                     })}

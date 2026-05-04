@@ -1370,10 +1370,9 @@ function TeamSide({
       }}
     >
       {side === 'left' && team && abbr !== 'TBD' && (
-        <HomeCourtBadge
-          size={16}
-          style={{ position: 'absolute', top: 8, right: 8 }}
-        />
+        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}>
+          <HomeCourtBadge size={16} />
+        </div>
       )}
       {showLogo ? (
         <img

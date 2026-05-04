@@ -2,15 +2,14 @@ import { useState } from 'react'
 
 interface Props {
   size?: number
-  style?: React.CSSProperties
 }
 
-export function HomeCourtBadge({ size = 16, style }: Props) {
+export function HomeCourtBadge({ size = 16 }: Props) {
   const [show, setShow] = useState(false)
 
   return (
     <div
-      style={{ position: 'relative', display: 'inline-flex', cursor: 'default', flexShrink: 0, ...style }}
+      style={{ position: 'relative', display: 'inline-flex', cursor: 'default', flexShrink: 0 }}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
