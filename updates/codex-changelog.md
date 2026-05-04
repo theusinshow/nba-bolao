@@ -1,5 +1,14 @@
 # Codex Changelog
 
+## 2026-05-04 — Feature: distribuição de palpites por série no bracket e modal
+
+### Feature: barra de distribuição no bracket (BracketSVG + BracketEditor)
+- `frontend/src/components/BracketSVG.tsx` — nova prop `picksDistribution?: Record<seriesId, {homeVotes, awayVotes}>`; barra de 3px na base de cada slot SVG (rects com cor primária de cada time, opacidade 0.5, apenas quando `seriesLocked`); barra de 4px no rodapé do `MobileSeriesCard` com as mesmas cores; prop fluye por `BracketSVG → MobileBracketView → MobileSeriesCard`
+- `frontend/src/pages/BracketEditor.tsx` — `useEffect` com `distributionFetched` ref faz fetch único de `series_picks` (select `series_id, winner_id`) em batch para todos os IDs de série; agrupa localmente em `homeVotes/awayVotes` e passa como `picksDistribution` para `BracketSVG`; commit `46887e3`
+
+### Feature: palpites do grupo em séries em andamento (SeriesModal)
+- `frontend/src/components/SeriesModal.tsx` — condição do bloco expandida de `series.is_complete` para `seriesLocked || series.is_complete`; para séries em andamento exibe barra proporcional colorida por time (height 2, rounded, opacity 0.75) + percentual por time + lista de nomes por time e quantidade de jogos; para séries completas mantém a classificação cravada/acerto/erro existente; commit `46887e3`
+
 ## 2026-05-04 — Feature: impacto de jogo clímax + histórico de palpites da série
 
 ### Feature: painel de impacto no modal jogo a jogo (GamePickModal)
