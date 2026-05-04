@@ -1,5 +1,10 @@
 # Codex Changelog
 
+## 2026-05-04 — Feature: indicador de mando de quadra no bracket
+
+### Feature: indicador "⌂ mando" no card de série (BracketSVG)
+- `frontend/src/components/BracketSVG.tsx` — exibe indicador dourado sutil "⌂ mando" abaixo do nome do time da casa no card mobile (`MobileSeriesCard`) e no slot SVG desktop (`renderBox`); aparece apenas quando o time está identificado (não é placeholder); ajuda participantes leigos a identificarem quem tem vantagem de quadra sem precisar conhecer seeds
+
 ## 2026-05-04 — Feature: distribuição de palpites por série no bracket e modal
 
 ### Feature: barra de distribuição no bracket (BracketSVG + BracketEditor)

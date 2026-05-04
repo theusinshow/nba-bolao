@@ -251,6 +251,9 @@ function MobileSeriesCard({
           <span style={{ color: 'var(--nba-text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
             {homeDisplay.isPlaceholder ? homeDisplay.name : tA?.name?.split(' ').pop() ?? ''}
           </span>
+          {tA && !homeDisplay.isPlaceholder && (
+            <span style={{ color: 'rgba(200,150,60,0.55)', fontSize: '0.6rem', marginTop: 2 }}>⌂ mando</span>
+          )}
           {/* Pick star */}
           {pickedTeamId === tA?.id && !isComplete && (
             <span style={{ color: 'var(--nba-gold)', fontSize: '0.7rem', marginTop: 4 }}>★ seu palpite</span>
@@ -806,6 +809,17 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
             opacity={isComplete && !tAWins ? 0.35 : 1}
           >
             {homeDisplay.abbreviation}
+          </text>
+        )}
+        {tA && !homeDisplay.isPlaceholder && (
+          <text
+            x={40} y={rowH - 9}
+            dominantBaseline="middle"
+            fill="rgba(200,150,60,0.5)"
+            fontSize={7}
+            fontFamily={baseFont}
+          >
+            ⌂ mando
           </text>
         )}
 
