@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X, Lock } from 'lucide-react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import type { Series, SeriesPick } from '../types'
+import type { Series } from '../types'
 import { getTeam, getTeamLogoUrl } from '../data/teams2025'
 import { useGamePicks } from '../hooks/useGamePicks'
 import { useUIStore } from '../store/useUIStore'
@@ -24,7 +24,8 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
   const [closing, setClosing] = useState(false)
   // Estado local da série — atualizado via realtime enquanto o modal estiver aberto
   const [liveSeries, setLiveSeries] = useState<Series>(series)
-  const [mySeriesPick, setMySeriesPick] = useState<SeriesPick | null>(null)
+  const [allSeriesPicks, setAllSeriesPicks] = useState<Array<{ winner_id: string; games_count: number; participant_id: string; participant_name: string }>>([])
+
   const dialogRef = useFocusTrap<HTMLDivElement>(true)
   const titleId = 'game-pick-modal-title'
 
@@ -56,15 +57,21 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
   }, [series.id])
 
   useEffect(() => {
-    if (!participantId) return
     supabase
       .from('series_picks')
-      .select('*')
+      .select('winner_id, games_count, participant_id, participants(name)')
       .eq('series_id', series.id)
-      .eq('participant_id', participantId)
-      .maybeSingle()
-      .then(({ data }) => setMySeriesPick(data as SeriesPick | null))
-  }, [series.id, participantId])
+      .then(({ data }) => {
+        setAllSeriesPicks(
+          (data ?? []).map((d) => ({
+            winner_id: d.winner_id as string,
+            games_count: d.games_count as number,
+            participant_id: d.participant_id as string,
+            participant_name: (Array.isArray(d.participants) ? d.participants[0]?.name : (d.participants as { name?: string } | null)?.name) ?? '?',
+          }))
+        )
+      })
+  }, [series.id])
 
   const teamA = liveSeries.home_team ?? getTeam(liveSeries.home_team_id)
   const teamB = liveSeries.away_team ?? getTeam(liveSeries.away_team_id)
@@ -81,14 +88,19 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
     if (myWins + 1 < 4) return { closes: false as const, score: `${myWins + 1}–${oppWins}` }
     const totalGames = 4 + oppWins
     const round = liveSeries.round as 1 | 2 | 3 | 4
-    if (!mySeriesPick) return { closes: true as const, score: `4–${oppWins}`, status: 'sem_palpite' as const, points: 0 }
-    if (mySeriesPick.winner_id !== winningTeamId) return { closes: true as const, score: `4–${oppWins}`, status: 'erro' as const, points: 0 }
-    const cravada = mySeriesPick.games_count === totalGames
+    const label = (p: typeof allSeriesPicks[0]) =>
+      p.participant_id === participantId ? `${p.participant_name} (você)` : p.participant_name
+    const cravadas = allSeriesPicks.filter(p => p.winner_id === winningTeamId && p.games_count === totalGames).map(label)
+    const acertos  = allSeriesPicks.filter(p => p.winner_id === winningTeamId && p.games_count !== totalGames).map(label)
+    const erros    = allSeriesPicks.filter(p => p.winner_id !== winningTeamId).map(label)
     return {
       closes: true as const,
       score: `4–${oppWins}`,
-      status: (cravada ? 'cravada' : 'acerto') as 'cravada' | 'acerto',
-      points: cravada ? SCORING_CONFIG.pointsPerCravada[round] : SCORING_CONFIG.pointsPerSeries[round],
+      cravadas,
+      acertos,
+      erros,
+      cravadaPts: SCORING_CONFIG.pointsPerCravada[round],
+      acertoPts: SCORING_CONFIG.pointsPerSeries[round],
     }
   }
 
@@ -232,7 +244,7 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                   </div>
 
                   {isClimax && !normalizedGame.played && !seriesClosedBeforeGame && (
-                    <div className="mt-2 rounded border border-nba-gold/15 bg-nba-surface-2 px-3 py-2 flex flex-col gap-1.5">
+                    <div className="mt-2 rounded border border-nba-gold/15 bg-nba-surface-2 px-3 py-2 flex flex-col gap-2">
                       {[
                         { teamId: homeId, team: getTeam(homeId) ?? teamA },
                         { teamId: awayId, team: getTeam(awayId) ?? teamB },
@@ -240,24 +252,28 @@ export function GamePickModal({ series, participantId, onClose }: Props) {
                         const o = getOutcome(teamId)
                         if (!o) return null
                         return (
-                          <div key={teamId} className="flex items-center gap-1.5 text-xs font-condensed flex-wrap">
-                            {team && (
-                              <img src={getTeamLogoUrl(team.abbreviation)} alt="" onError={e => (e.currentTarget.style.display = 'none')} style={{ width: 14, height: 14, objectFit: 'contain' }} />
-                            )}
-                            <span className="text-nba-muted">
-                              Se <strong className="text-nba-text">{team?.abbreviation ?? '?'}</strong> vencer —
-                            </span>
-                            {!o.closes && <span className="text-nba-muted">Série ficaria {o.score}</span>}
+                          <div key={teamId} className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5 text-xs font-condensed">
+                              {team && (
+                                <img src={getTeamLogoUrl(team.abbreviation)} alt="" onError={e => (e.currentTarget.style.display = 'none')} style={{ width: 14, height: 14, objectFit: 'contain' }} />
+                              )}
+                              <span className="text-nba-muted">
+                                Se <strong className="text-nba-text">{team?.abbreviation ?? '?'}</strong> vencer —
+                              </span>
+                              {!o.closes
+                                ? <span className="text-nba-muted">Série ficaria {o.score}</span>
+                                : <span className="text-nba-success font-medium">Encerra {o.score}</span>
+                              }
+                            </div>
                             {o.closes && (
-                              <>
-                                <span className={o.status === 'cravada' ? 'text-nba-gold' : o.status === 'acerto' ? 'text-nba-success' : 'text-nba-muted'}>
-                                  Encerra {o.score}
-                                </span>
-                                {o.status === 'cravada' && <span className="text-nba-gold font-medium">🏆 Cravada! (+{o.points} pts)</span>}
-                                {o.status === 'acerto' && <span className="text-nba-success">✓ Acerta série (+{o.points} pts)</span>}
-                                {o.status === 'erro' && <span className="text-nba-muted">✗ Erra série</span>}
-                                {o.status === 'sem_palpite' && <span className="text-nba-muted italic">sem palpite de série</span>}
-                              </>
+                              <div className="pl-5 flex flex-col gap-0.5 text-[11px]">
+                                {o.cravadas.length > 0 && <span className="text-nba-gold">🏆 Crava (+{o.cravadaPts} pts): {o.cravadas.join(', ')}</span>}
+                                {o.acertos.length > 0  && <span className="text-nba-success/80">✓ Acerta (+{o.acertoPts} pts): {o.acertos.join(', ')}</span>}
+                                {o.erros.length > 0    && <span className="text-nba-muted">✗ Erra: {o.erros.join(', ')}</span>}
+                                {o.cravadas.length === 0 && o.acertos.length === 0 && o.erros.length === 0 && (
+                                  <span className="text-nba-muted italic">nenhum palpite neste vencedor</span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )
