@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'motion/react'
-import { X, Check } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
+import { X, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useSeriesContext } from '../hooks/useSeriesContext'
 import type { Series, SeriesPick } from '../types'
@@ -9,6 +9,7 @@ import { useUIStore } from '../store/useUIStore'
 import { getSeriesTeamDisplay, isSeriesReadyForPick } from '../utils/bracket'
 import { teamAbbrStyle } from '../utils/teamColors'
 import { premiumTween, pressMotion, softStaggerContainer, scaleInItem } from '../lib/motion'
+import { supabase } from '../lib/supabase'
 
 interface Props {
   series: Series
@@ -26,6 +27,9 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
   const [selectedGames, setSelectedGames] = useState<number>(existingPick?.games_count ?? 0)
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [showGroupPicks, setShowGroupPicks] = useState(false)
+  const [groupPicks, setGroupPicks] = useState<Array<{ winner_id: string; games_count: number; participant_name: string }> | null>(null)
+  const [picksLoading, setPicksLoading] = useState(false)
   const { addToast } = useUIStore()
   const dialogRef = useFocusTrap<HTMLDivElement>(true)
   const titleId = 'series-modal-title'
@@ -40,6 +44,25 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
     return () => document.removeEventListener('keydown', handleKeyDown)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function handleToggleGroupPicks() {
+    if (!showGroupPicks && groupPicks === null) {
+      setPicksLoading(true)
+      const { data } = await supabase
+        .from('series_picks')
+        .select('winner_id, games_count, participants(name)')
+        .eq('series_id', series.id)
+      setGroupPicks(
+        (data ?? []).map((d) => ({
+          winner_id: d.winner_id as string,
+          games_count: d.games_count as number,
+          participant_name: (Array.isArray(d.participants) ? d.participants[0]?.name : (d.participants as { name?: string } | null)?.name) ?? '?',
+        }))
+      )
+      setPicksLoading(false)
+    }
+    setShowGroupPicks(p => !p)
+  }
 
   const teamA = series.home_team ?? getTeam(series.home_team_id)
   const teamB = series.away_team ?? getTeam(series.away_team_id)
@@ -325,11 +348,76 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
 
         {/* Result display */}
         {series.is_complete && (
-          <div className="mb-4 p-3 rounded-lg bg-nba-surface-2 text-center">
-            <span className="text-nba-muted text-xs">Resultado: </span>
-            <span className="font-condensed font-bold text-nba-text">
-              {(series.winner ?? getTeam(series.winner_id))?.abbreviation ?? series.winner_id} 4x{series.games_played - 4}
-            </span>
+          <div className="mb-4 flex flex-col gap-2">
+            <div className="p-3 rounded-lg bg-nba-surface-2 text-center">
+              <span className="text-nba-muted text-xs">Resultado: </span>
+              <span className="font-condensed font-bold text-nba-text">
+                {(series.winner ?? getTeam(series.winner_id))?.abbreviation ?? series.winner_id} 4x{series.games_played - 4}
+              </span>
+            </div>
+
+            <button
+              onClick={handleToggleGroupPicks}
+              className="flex items-center justify-center gap-1.5 text-xs font-condensed text-nba-muted hover:text-nba-gold transition-colors py-1"
+            >
+              {showGroupPicks ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              {showGroupPicks ? 'Ocultar palpites do grupo' : 'Ver palpites do grupo'}
+            </button>
+
+            <AnimatePresence>
+              {showGroupPicks && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  {picksLoading ? (
+                    <div className="flex flex-col gap-1.5 py-2">
+                      <div className="skeleton h-3 w-3/4 rounded" />
+                      <div className="skeleton h-3 w-2/3 rounded" />
+                      <div className="skeleton h-3 w-1/2 rounded" />
+                    </div>
+                  ) : (() => {
+                    const cravadas: string[] = []
+                    const acertos: string[] = []
+                    const erros: string[] = []
+                    for (const p of groupPicks ?? []) {
+                      const teamAbbr = getTeam(p.winner_id)?.abbreviation ?? p.winner_id
+                      const label = `${p.participant_name} — ${teamAbbr} em ${p.games_count}`
+                      if (p.winner_id === series.winner_id && p.games_count === series.games_played) cravadas.push(label)
+                      else if (p.winner_id === series.winner_id) acertos.push(label)
+                      else erros.push(label)
+                    }
+                    const noone = cravadas.length === 0 && acertos.length === 0 && erros.length === 0
+                    return (
+                      <div className="rounded-lg border border-nba-border bg-nba-surface-2 p-3 flex flex-col gap-3 text-xs font-condensed">
+                        {noone && <p className="text-nba-muted text-center">Nenhum palpite registrado.</p>}
+                        {cravadas.length > 0 && (
+                          <div>
+                            <p className="text-nba-gold uppercase tracking-wide text-[10px] mb-1">🏆 Cravada</p>
+                            {cravadas.map(l => <p key={l} className="text-nba-text pl-1">{l}</p>)}
+                          </div>
+                        )}
+                        {acertos.length > 0 && (
+                          <div>
+                            <p className="text-nba-success uppercase tracking-wide text-[10px] mb-1">✓ Acertou o vencedor</p>
+                            {acertos.map(l => <p key={l} className="text-nba-text pl-1">{l}</p>)}
+                          </div>
+                        )}
+                        {erros.length > 0 && (
+                          <div>
+                            <p className="text-nba-muted uppercase tracking-wide text-[10px] mb-1">✗ Errou</p>
+                            {erros.map(l => <p key={l} className="text-nba-muted pl-1">{l}</p>)}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
