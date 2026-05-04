@@ -3,7 +3,7 @@
 ## 2026-05-04 — Feature: impacto de jogo clímax + histórico de palpites da série
 
 ### Feature: painel de impacto no modal jogo a jogo (GamePickModal)
-- `frontend/src/components/GamePickModal.tsx` — quando a série está em situação clímax (ao menos um time tem 3 vitórias), exibe painel "Se X vencer" abaixo dos botões de pick para cada jogo ainda não disputado; busca o palpite de série do próprio usuário e mostra: "Encerra 4-N · 🏆 Cravada! (+N pts)", "Encerra 4-N · ✓ Acerta série (+N pts)", "Encerra 4-N · ✗ Erra série" ou "Série ficaria N-N"; pontuação calculada via `SCORING_CONFIG`; sem exposição de dados de outros participantes
+- `frontend/src/components/GamePickModal.tsx` — quando a série está em situação clímax (ao menos um time tem 3 vitórias), exibe painel "Se X vencer" abaixo dos botões de pick para cada jogo ainda não disputado; busca os palpites de série de todos os participantes (com join no nome) e classifica em Cravadas / Acerta / Erra com pontuação por rodada via `SCORING_CONFIG`; usuário atual destacado com "(você)" na lista; commit `e4f3a4e`
 
 ### Feature: histórico de palpites do grupo no modal de série (SeriesModal)
 - `frontend/src/components/SeriesModal.tsx` — botão colapsível "Ver palpites do grupo" aparece apenas em séries completas (`series.is_complete`); fetch lazy (só na primeira abertura, cacheado no state); classifica cada palpite em Cravada / Acertou o vencedor / Errou; exibe `Nome — ABBR em N` por grupo; animação de height via `AnimatePresence`
