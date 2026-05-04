@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Trophy, GitBranch, Target, BadgeCheck, Hourglass, X } from 'lucide-react'
 import { BracketSVG } from '../components/BracketSVG'
@@ -8,6 +8,7 @@ import { useSeries } from '../hooks/useSeries'
 import type { Series } from '../types'
 import { getSeriesSlot, isSeriesReadyForPick } from '../utils/bracket'
 import { ROUND_LABELS } from '../utils/constants'
+import { supabase } from '../lib/supabase'
 
 interface Props {
   participantId: string
@@ -475,6 +476,29 @@ export function BracketEditor({ participantId }: Props) {
   const [gamePickSeries, setGamePickSeries]    = useState<Series | null>(null)
   const [mobileFocus, setMobileFocus] = useState<'west' | 'finals' | 'east' | 'full'>('full')
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
+  const [picksDistribution, setPicksDistribution] = useState<Record<string, { homeVotes: number; awayVotes: number }>>({})
+  const distributionFetched = useRef(false)
+
+  useEffect(() => {
+    if (series.length === 0 || distributionFetched.current) return
+    distributionFetched.current = true
+    const ids = series.map(s => s.id)
+    supabase
+      .from('series_picks')
+      .select('series_id, winner_id')
+      .in('series_id', ids)
+      .then(({ data }) => {
+        const dist: Record<string, { homeVotes: number; awayVotes: number }> = {}
+        for (const s of series) {
+          const sPicks = (data ?? []).filter(p => p.series_id === s.id)
+          dist[s.id] = {
+            homeVotes: sPicks.filter(p => p.winner_id === s.home_team_id).length,
+            awayVotes: sPicks.filter(p => p.winner_id === s.away_team_id).length,
+          }
+        }
+        setPicksDistribution(dist)
+      })
+  }, [series.length])
 
   if (loading) {
     return (
@@ -581,6 +605,7 @@ export function BracketEditor({ participantId }: Props) {
           picks={picks}
           onSeriesClick={(s) => setSelectedSeries(s)}
           focusSection={mobileFocus}
+          picksDistribution={picksDistribution}
         />
       </div>
 

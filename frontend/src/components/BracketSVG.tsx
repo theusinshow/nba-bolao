@@ -119,6 +119,7 @@ function MobileSeriesCard({
   myPick,
   isCompareMode,
   freshlyCompleted,
+  votes,
   onClick,
 }: {
   s: Series
@@ -127,6 +128,7 @@ function MobileSeriesCard({
   myPick?: SeriesPick
   isCompareMode: boolean
   freshlyCompleted?: boolean
+  votes?: { homeVotes: number; awayVotes: number }
   onClick?: () => void
 }) {
   const [logoErr, setLogoErr] = useState({ a: false, b: false })
@@ -391,6 +393,17 @@ function MobileSeriesCard({
           </span>
         )}
       </div>
+
+      {votes && (votes.homeVotes + votes.awayVotes) > 0 && (() => {
+        const total = votes.homeVotes + votes.awayVotes
+        const homeFrac = votes.homeVotes / total
+        return (
+          <div style={{ display: 'flex', height: 4, overflow: 'hidden' }}>
+            <div style={{ width: `${homeFrac * 100}%`, background: colorA, opacity: 0.6 }} />
+            <div style={{ flex: 1, background: colorB, opacity: 0.6 }} />
+          </div>
+        )
+      })()}
     </motion.button>
   )
 }
@@ -404,6 +417,7 @@ function MobileBracketView({
   freshlyCompletedIds = [],
   onSeriesClick,
   focusSection = 'full',
+  picksDistribution,
 }: {
   series: Series[]
   picks: SeriesPick[]
@@ -411,6 +425,7 @@ function MobileBracketView({
   freshlyCompletedIds?: string[]
   onSeriesClick?: (s: Series) => void
   focusSection?: 'west' | 'finals' | 'east' | 'full'
+  picksDistribution?: Record<string, { homeVotes: number; awayVotes: number }>
 }) {
   const pickBySeriesId    = Object.fromEntries(picks.map((p) => [p.series_id, p]))
   const compareBySeriesId = comparePicks
@@ -489,6 +504,7 @@ function MobileBracketView({
                 myPick={pickBySeriesId[s.id]}
                 isCompareMode={isCompareMode}
                 freshlyCompleted={freshlyCompletedSet.has(s.id)}
+                votes={s.tip_off_at && new Date(s.tip_off_at) <= new Date() ? picksDistribution?.[s.id] : undefined}
                 onClick={onSeriesClick ? () => onSeriesClick(s) : undefined}
               />
             ))}
@@ -510,6 +526,7 @@ interface Props {
   comparePicks?: SeriesPick[]
   onSeriesHover?: (series: Series | null, clientX: number, clientY: number) => void
   focusSection?: 'west' | 'finals' | 'east' | 'full'
+  picksDistribution?: Record<string, { homeVotes: number; awayVotes: number }>
 }
 
 function BracketSkeleton({ mobile }: { mobile: boolean }) {
@@ -551,7 +568,7 @@ function BracketSkeleton({ mobile }: { mobile: boolean }) {
   )
 }
 
-export function BracketSVG({ series, picks = [], loading = false, onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full' }: Props) {
+export function BracketSVG({ series, picks = [], loading = false, onSeriesClick, comparePicks, onSeriesHover, focusSection = 'full', picksDistribution }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const completedRef = useRef<Set<string>>(new Set())
@@ -620,6 +637,7 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
         freshlyCompletedIds={freshlyCompletedIds}
         onSeriesClick={onSeriesClick}
         focusSection={focusSection}
+        picksDistribution={picksDistribution}
       />
     )
   }
@@ -706,6 +724,11 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
     }
 
     const baseFont = "'Barlow Condensed', sans-serif"
+
+    const isSeriesLocked = !!s?.tip_off_at && new Date(s.tip_off_at) <= new Date()
+    const distEntry = s && isSeriesLocked ? picksDistribution?.[s.id] : undefined
+    const distTotal = distEntry ? distEntry.homeVotes + distEntry.awayVotes : 0
+    const distHomeFrac = distTotal > 0 ? distEntry!.homeVotes / distTotal : 0
 
     return (
       <g
@@ -952,6 +975,14 @@ export function BracketSVG({ series, picks = [], loading = false, onSeriesClick,
           >
             ★
           </text>
+        )}
+
+        {/* ── Picks distribution bar ── */}
+        {distTotal > 0 && (
+          <>
+            <rect x={3} y={BOX_H - 4} width={(BOX_W - 6) * distHomeFrac} height={3} fill={tA?.primary_color ?? '#c8963c'} opacity={0.5} />
+            <rect x={3 + (BOX_W - 6) * distHomeFrac} y={BOX_H - 4} width={(BOX_W - 6) * (1 - distHomeFrac)} height={3} fill={tB?.primary_color ?? '#c8963c'} opacity={0.5} />
+          </>
         )}
 
         {/* ── Champion badge (Finals only) ── */}

@@ -346,15 +346,17 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
           })}
         </motion.div>
 
-        {/* Result display */}
-        {series.is_complete && (
+        {/* Result display + group picks */}
+        {(seriesLocked || series.is_complete) && (
           <div className="mb-4 flex flex-col gap-2">
-            <div className="p-3 rounded-lg bg-nba-surface-2 text-center">
-              <span className="text-nba-muted text-xs">Resultado: </span>
-              <span className="font-condensed font-bold text-nba-text">
-                {(series.winner ?? getTeam(series.winner_id))?.abbreviation ?? series.winner_id} 4x{series.games_played - 4}
-              </span>
-            </div>
+            {series.is_complete && (
+              <div className="p-3 rounded-lg bg-nba-surface-2 text-center">
+                <span className="text-nba-muted text-xs">Resultado: </span>
+                <span className="font-condensed font-bold text-nba-text">
+                  {(series.winner ?? getTeam(series.winner_id))?.abbreviation ?? series.winner_id} 4x{series.games_played - 4}
+                </span>
+              </div>
+            )}
 
             <button
               onClick={handleToggleGroupPicks}
@@ -379,7 +381,7 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                       <div className="skeleton h-3 w-2/3 rounded" />
                       <div className="skeleton h-3 w-1/2 rounded" />
                     </div>
-                  ) : (() => {
+                  ) : series.is_complete ? (() => {
                     const cravadas: string[] = []
                     const acertos: string[] = []
                     const erros: string[] = []
@@ -410,6 +412,40 @@ export function SeriesModal({ series, existingPick, onSave, onClose, readOnly }:
                           <div>
                             <p className="text-nba-muted uppercase tracking-wide text-[10px] mb-1">✗ Errou</p>
                             {erros.map(l => <p key={l} className="text-nba-muted pl-1">{l}</p>)}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })() : (() => {
+                    const homeVotes = (groupPicks ?? []).filter(p => p.winner_id === series.home_team_id)
+                    const awayVotes = (groupPicks ?? []).filter(p => p.winner_id === series.away_team_id)
+                    const total = (groupPicks ?? []).length
+                    if (total === 0) return <p className="text-nba-muted text-center text-xs font-condensed py-2">Nenhum palpite registrado.</p>
+                    const homeFrac = homeVotes.length / total
+                    const homeColor = teamA?.primary_color ?? '#c8963c'
+                    const awayColor = teamB?.primary_color ?? '#c8963c'
+                    return (
+                      <div className="rounded-lg border border-nba-border bg-nba-surface-2 p-3 flex flex-col gap-3 text-xs font-condensed">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-2 rounded-full overflow-hidden flex">
+                            {homeVotes.length > 0 && <div style={{ width: `${homeFrac * 100}%`, background: homeColor, opacity: 0.75 }} />}
+                            {awayVotes.length > 0 && <div style={{ flex: 1, background: awayColor, opacity: 0.75 }} />}
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span style={{ color: homeColor }}>{teamA?.abbreviation} — {homeVotes.length} ({Math.round(homeFrac * 100)}%)</span>
+                            <span style={{ color: awayColor }}>{teamB?.abbreviation} — {awayVotes.length} ({Math.round((1 - homeFrac) * 100)}%)</span>
+                          </div>
+                        </div>
+                        {homeVotes.length > 0 && (
+                          <div>
+                            <p className="uppercase tracking-wide text-[10px] mb-1" style={{ color: homeColor }}>{teamA?.abbreviation}</p>
+                            {homeVotes.map(p => <p key={p.participant_name} className="text-nba-text pl-1">{p.participant_name} — em {p.games_count}</p>)}
+                          </div>
+                        )}
+                        {awayVotes.length > 0 && (
+                          <div>
+                            <p className="uppercase tracking-wide text-[10px] mb-1" style={{ color: awayColor }}>{teamB?.abbreviation}</p>
+                            {awayVotes.map(p => <p key={p.participant_name} className="text-nba-text pl-1">{p.participant_name} — em {p.games_count}</p>)}
                           </div>
                         )}
                       </div>
