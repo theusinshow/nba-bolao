@@ -336,20 +336,13 @@ async function deleteGameRows(gameIds: string[]) {
 // 2-seed and 3-seed are in the other half (W2-2), meeting only in the Conf Finals.
 const NBA_SLOT_ORDER_BY_TOP_SEED: number[] = [1, 4, 3, 2]
 
-async function assignRoundOneSeries(series: SeriesRow[], matchups: MatchupGroup[], games: GameRow[]) {
+async function assignRoundOneSeries(series: SeriesRow[], matchups: MatchupGroup[], games: GameRow[], seedByTeam: Map<string, number>) {
   const matchedSeriesIds = new Set<string>()
 
   for (const matchup of matchups) {
     const existing = findSeriesByPair(series, matchup.homeTeamId, matchup.awayTeamId)
     if (existing) matchedSeriesIds.add(existing.id)
   }
-
-  const { data: teamRows } = await supabase.from('teams').select('id, seed')
-  const seedByTeam = new Map<string, number>(
-    (teamRows ?? [])
-      .filter((t) => t.seed != null)
-      .map((t) => [t.id as string, t.seed as number])
-  )
 
   function getTopSeed(matchup: MatchupGroup): number {
     const s1 = seedByTeam.get(matchup.homeTeamId) ?? 99
@@ -418,7 +411,7 @@ async function assignRoundOneSeries(series: SeriesRow[], matchups: MatchupGroup[
   }
 }
 
-function propagateBracket(series: SeriesRow[]) {
+function propagateBracket(series: SeriesRow[], seedByTeam: Map<string, number>) {
   const byId = Object.fromEntries(series.map((item) => [item.id, item])) as Record<string, SeriesRow | undefined>
 
   for (const [targetId, feeder] of Object.entries(FEEDERS)) {
@@ -427,8 +420,19 @@ function propagateBracket(series: SeriesRow[]) {
     const awaySource = byId[feeder.away]
     if (!target) continue
 
-    target.home_team_id = homeSource?.winner_id ?? null
-    target.away_team_id = awaySource?.winner_id ?? null
+    const winner1 = homeSource?.winner_id ?? null
+    const winner2 = awaySource?.winner_id ?? null
+
+    if (winner1 && winner2) {
+      // Higher seed (lower number) always has home court advantage
+      const seed1 = seedByTeam.get(winner1) ?? 99
+      const seed2 = seedByTeam.get(winner2) ?? 99
+      target.home_team_id = seed1 <= seed2 ? winner1 : winner2
+      target.away_team_id = seed1 <= seed2 ? winner2 : winner1
+    } else {
+      target.home_team_id = winner1
+      target.away_team_id = winner2
+    }
   }
 }
 
@@ -505,6 +509,7 @@ export async function syncNBA(): Promise<void> {
     const [
       { data: seriesRows, error: seriesError },
       { data: localGameRows, error: localGamesError },
+      { data: teamRows },
     ] = await Promise.all([
       supabase
         .from('series')
@@ -514,7 +519,16 @@ export async function syncNBA(): Promise<void> {
       supabase
         .from('games')
         .select('id, series_id, game_number, nba_game_id, winner_id, played'),
+      supabase
+        .from('teams')
+        .select('id, seed'),
     ])
+
+    const seedByTeam = new Map<string, number>(
+      (teamRows ?? [])
+        .filter((t) => t.seed != null)
+        .map((t) => [t.id as string, t.seed as number])
+    )
 
     if (seriesError) throw seriesError
     if (localGamesError) throw localGamesError
@@ -537,7 +551,7 @@ export async function syncNBA(): Promise<void> {
     const activeLocalGames = ((localGameRows ?? []) as GameRow[]).filter((game) => !staleGameIds.includes(game.id))
     const matchups = buildMatchups(bdlGames)
 
-    await assignRoundOneSeries(series, matchups, activeLocalGames)
+    await assignRoundOneSeries(series, matchups, activeLocalGames, seedByTeam)
 
     for (const bdlGame of bdlGames) {
       const homeTeamId = mapAbbr(bdlGame.home_team.abbreviation)
@@ -605,7 +619,7 @@ export async function syncNBA(): Promise<void> {
 
     for (let iteration = 0; iteration < 4; iteration += 1) {
       recomputeSeriesResults(series, syncedGames)
-      propagateBracket(series)
+      propagateBracket(series, seedByTeam)
     }
 
     recomputeSeriesResults(series, syncedGames)
