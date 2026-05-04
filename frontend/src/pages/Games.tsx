@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Lock, CheckCircle, XCircle, Save, Sparkles, Flame, BadgeCheck, CircleOff, Clock3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Layers3, Users, X, Shuffle, BellRing } from 'lucide-react'
+import { HomeCourtBadge } from '../components/HomeCourtBadge'
 import { supabase } from '../lib/supabase'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { LoadingBasketball } from '../components/LoadingBasketball'
@@ -1339,6 +1340,7 @@ function TeamSide({
       disabled={locked}
       style={{
         flex: 1,
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: align,
@@ -1367,6 +1369,12 @@ function TeamSide({
         }
       }}
     >
+      {side === 'left' && team && abbr !== 'TBD' && (
+        <HomeCourtBadge
+          size={16}
+          style={{ position: 'absolute', top: 8, right: 8 }}
+        />
+      )}
       {showLogo ? (
         <img
           src={getTeamLogoUrl(team!.abbreviation)}
